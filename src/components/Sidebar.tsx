@@ -20,6 +20,10 @@ import {
   UtensilsCrossed,
   Sprout,
   Activity,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sun,
+  Moon,
   type LucideIcon,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
@@ -63,6 +67,12 @@ export function Sidebar() {
   const favorites = useStore((s) => s.favorites);
   const channels = useStore((s) => s.channels);
   const filter = useStore((s) => s.filter);
+  const sidebarCollapsed = useStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useStore((s) => s.toggleSidebar);
+  const mobileSidebarOpen = useStore((s) => s.mobileSidebarOpen);
+  const setMobileSidebar = useStore((s) => s.setMobileSidebar);
+  const theme = useStore((s) => s.theme);
+  const toggleTheme = useStore((s) => s.toggleTheme);
 
   // 计算每个分类的频道数
   const catCounts = useMemo(() => {
@@ -93,8 +103,27 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar__scroll">
+    <>
+      {mobileSidebarOpen && (
+        <div className="sidebar__overlay" onClick={() => setMobileSidebar(false)} />
+      )}
+      <aside
+        className={`sidebar ${sidebarCollapsed ? "is-collapsed" : ""} ${mobileSidebarOpen ? "is-mobile-open" : ""}`}
+        onClickCapture={(e) => {
+          if (mobileSidebarOpen && (e.target as HTMLElement).closest("button")) {
+            setMobileSidebar(false);
+          }
+        }}
+      >
+        <div className="sidebar__scroll">
+          <button
+            className="sidebar__toggle"
+            onClick={toggleSidebar}
+            aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
+            title={sidebarCollapsed ? "展开" : "收起"}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
         <nav className="nav">
           <button
             className={`nav__item ${isActiveNav("home") && !filter.q ? "is-active" : ""}`}
@@ -170,8 +199,18 @@ export function Sidebar() {
             <span>上行链路已建立</span>
             <span className="dot" />
           </div>
+          <button
+            className="sidebar__theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "切换到白昼模式" : "切换到夜间模式"}
+            title={theme === "dark" ? "白昼模式" : "夜间模式"}
+          >
+            {theme === "dark" ? <Sun size={13} /> : <Moon size={13} />}
+            <span>{theme === "dark" ? "白昼模式" : "夜间模式"}</span>
+          </button>
         </div>
       </div>
     </aside>
+    </>
   );
 }

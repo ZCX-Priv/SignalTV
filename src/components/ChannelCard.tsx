@@ -3,6 +3,7 @@ import { Play, Star, Tv2 } from "lucide-react";
 import type { ChannelWithStream } from "../types";
 import { useStore } from "../store/useStore";
 import { channelPosition, flagUrl, prettyCategory } from "../lib/format";
+import { LatencyTag } from "./LatencyTag";
 
 interface Props {
   channel: ChannelWithStream;
@@ -14,6 +15,7 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
   const toggleFavorite = useStore((s) => s.toggleFavorite);
   const favorites = useStore((s) => s.favorites);
   const isFav = favorites.includes(channel.id);
+  const latency = useStore((s) => s.latency.get(channel.id));
 
   const cat = channel.categories[0];
   const pos = channelPosition(channel.id);
@@ -53,6 +55,8 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
         <div className="card__live mono">
           <span className="dot" /> 直播
         </div>
+
+        <LatencyTag ms={latency} className="card__ping" />
       </div>
 
       <div className="card__body">

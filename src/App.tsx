@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
 import { useStore } from "./store/useStore";
-import { Logo } from "./components/Logo";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { Hero } from "./components/Hero";
@@ -19,10 +18,22 @@ function App() {
   const loaded = useStore((s) => s.loaded);
   const error = useStore((s) => s.error);
   const view = useStore((s) => s.view);
+  const theme = useStore((s) => s.theme);
+  const runLatencyProbe = useStore((s) => s.runLatencyProbe);
 
   useEffect(() => {
     void init();
   }, [init]);
+
+  // 加载完成后后台批量探测流延迟
+  useEffect(() => {
+    if (loaded) void runLatencyProbe();
+  }, [loaded, runLatencyProbe]);
+
+  // 主题切换时同步到 <html data-theme>
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   // 全局 ⌘K / Ctrl+K 聚焦搜索框
   useEffect(() => {
@@ -69,9 +80,6 @@ function App() {
       <div className="scanlines" />
 
       <div className="app">
-        <div className="app__logo">
-          <Logo />
-        </div>
         <div className="app__header">
           <Header />
         </div>

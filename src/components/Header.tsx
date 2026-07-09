@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { Search, X, Command } from "lucide-react";
+import { Search, X, Command, Menu } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useAllChannels } from "../hooks/useChannels";
 import { broadcastDate, clock } from "../lib/format";
+import { Logo } from "./Logo";
 
 export function Header() {
   const setFilter = useStore((s) => s.setFilter);
   const filter = useStore((s) => s.filter);
   const setView = useStore((s) => s.setView);
   const channels = useAllChannels();
+  const mobileSidebarOpen = useStore((s) => s.mobileSidebarOpen);
+  const setMobileSidebar = useStore((s) => s.setMobileSidebar);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -31,6 +34,14 @@ export function Header() {
 
   return (
     <header className="header">
+      <button
+        className="header__menu"
+        onClick={() => setMobileSidebar(!mobileSidebarOpen)}
+        aria-label={mobileSidebarOpen ? "关闭菜单" : "打开菜单"}
+      >
+        <Menu size={18} />
+      </button>
+      <Logo />
       <form className="search" onSubmit={onSubmit} role="search">
         <Search size={16} strokeWidth={2} className="search__icon" />
         <input

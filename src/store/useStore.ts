@@ -10,6 +10,28 @@ import {
   buildChannelIndex,
   buildCountryInfo,
 } from "../lib/api";
+import { probeBatch } from "../lib/latency";
+
+export type Theme = "dark" | "light";
+
+// 首次访问跟随系统 prefers-color-scheme；用户手动切换后持久化覆盖
+export function getInitialTheme(): Theme {
+  if (typeof window === "undefined") return "dark";
+  try {
+    const raw = localStorage.getItem("signaltv-iptv");
+    if (raw) {
+      const parsed = JSON.parse(raw) as { state?: { theme?: Theme } };
+      if (parsed.state?.theme === "dark" || parsed.state?.theme === "light") {
+        return parsed.state.theme;
+      }
+    }
+  } catch {
+    // 解析失败则回落到系统偏好
+  }
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches
+    ? "light"
+    : "dark";
+}
 
 export type SortKey = "default" | "name" | "country" | "recent";
 
@@ -37,12 +59,19 @@ interface State {
   loading: boolean;
   error: string | null;
 
+  // 延迟探测
+  latency: Map<string, number>; // 频道id → 延迟ms，-1 表示失败
+  latencyLoading: boolean;
+
   // 界面状态
   view: View;
   filter: Filter;
   activeChannelId: string | null; // 播放器目标
   favorites: string[];
   recents: string[]; // 最近观看，最新在前
+  sidebarCollapsed: boolean; // 桌面端侧边栏收起
+  mobileSidebarOpen: boolean; // 移动端抽屉式侧边栏开关
+  theme: Theme; // 深色 / 白昼模式
 
   // 动作
   init: () => Promise<void>;
@@ -51,6 +80,12 @@ interface State {
   openChannel: (id: string | null) => void;
   toggleFavorite: (id: string) => void;
   pushRecent: (id: string) => void;
+  setLatency: (id: string, ms: number) => void;
+  runLatencyProbe: () => Promise<void>;
+  toggleSidebar: () => void;
+  setMobileSidebar: (open: boolean) => void;
+  setTheme: (t: Theme) => void;
+  toggleTheme: () => void;
 }
 
 export const useStore = create<State>()(
@@ -68,6 +103,11 @@ export const useStore = create<State>()(
       activeChannelId: null,
       favorites: [],
       recents: [],
+      latency: new Map(),
+      latencyLoading: false,
+      sidebarCollapsed: false,
+      mobileSidebarOpen: false,
+      theme: getInitialTheme(),
 
       init: async () => {
         if (get().loaded || get().loading) return;
@@ -115,10 +155,40 @@ export const useStore = create<State>()(
         set((s) => ({
           recents: [id, ...s.recents.filter((r) => r !== id)].slice(0, 24),
         })),
+      setLatency: (id, ms) =>
+        set((s) => {
+          const next = new Map(s.latency);
+          next.set(id, ms);
+          return { latency: next };
+        }),
+      runLatencyProbe: async () => {
+        if (get().latencyLoading) return;
+        const channels = get().channels;
+        const urls = new Map<string, string>();
+        for (const [id, c] of channels) {
+          if (c.streamUrl) urls.set(id, c.streamUrl);
+        }
+        if (urls.size === 0) return;
+        set({ latencyLoading: true });
+        await probeBatch(urls, 8, (id, ms) => {
+          get().setLatency(id, ms);
+        });
+        set({ latencyLoading: false });
+      },
+      toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      setMobileSidebar: (open) => set({ mobileSidebarOpen: open }),
+      setTheme: (t) => set({ theme: t }),
+      toggleTheme: () =>
+        set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
     }),
     {
       name: "signaltv-iptv",
-      partialize: (s) => ({ favorites: s.favorites, recents: s.recents }),
+      partialize: (s) => ({
+        favorites: s.favorites,
+        recents: s.recents,
+        sidebarCollapsed: s.sidebarCollapsed,
+        theme: s.theme,
+      }),
     },
   ),
 );

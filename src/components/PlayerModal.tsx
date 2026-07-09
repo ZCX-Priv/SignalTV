@@ -14,6 +14,7 @@ import { useStore } from "../store/useStore";
 import { useChannel } from "../hooks/useChannels";
 import { useHls } from "../hooks/useHls";
 import { broadcastDate, channelPosition, flagUrl, prettyCategory } from "../lib/format";
+import { LatencyTag } from "./LatencyTag";
 
 export function PlayerModal() {
   const activeId = useStore((s) => s.activeChannelId);
@@ -24,7 +25,7 @@ export function PlayerModal() {
   const channels = useStore((s) => s.channels);
 
   const url = channel?.streamUrl ?? null;
-  const { videoRef, state, message } = useHls(url);
+  const { videoRef, state, message, latency } = useHls(url);
 
   // ESC 关闭
   useEffect(() => {
@@ -65,6 +66,8 @@ export function PlayerModal() {
             </span>
             <span className="player__divider" />
             <span className="mono player__time">{broadcastDate()}</span>
+            <span className="player__divider" />
+            <LatencyTag ms={latency} className="player__ping" />
           </div>
           <button className="player__close" onClick={() => openChannel(null)} aria-label="关闭播放器">
             <X size={18} />

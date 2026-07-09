@@ -188,15 +188,12 @@ textarea {
   grid-template-columns: var(--sidebar-w) 1fr;
   grid-template-rows: var(--header-h) 1fr;
   grid-template-areas:
-    "logo header"
+    "header header"
     "sidebar main";
   height: 100vh;
   width: 100vw;
 }
 
-.app__logo {
-  grid-area: logo;
-}
 .app__header {
   grid-area: header;
 }
@@ -286,4 +283,68 @@ textarea {
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: scale(1); }
+}
+
+/* ============================================================
+   白昼模式覆盖 —— 暖米色底镜像方案
+   ============================================================ */
+[data-theme="light"] {
+  --bg: #f5f1e8;
+  --bg-1: #efe9dc;
+  --bg-2: #e8e1d0;
+  --bg-3: #ddd4be;
+  --bg-card: #f0eadf;
+  --bg-elev: #f3eee2;
+
+  --ink: #1a1a1f;
+  --ink-dim: #4a4640;
+  --ink-mute: #7a7468;
+  --ink-faint: #b8b0a0;
+
+  --signaltv: #ff3b30;
+  --signaltv-soft: #e02d24;
+  --amber: #c87a00;
+  --cyan: #0094b8;
+  --lime: #5f9e1f;
+
+  --line: rgba(26, 26, 31, 0.08);
+  --line-2: rgba(26, 26, 31, 0.14);
+  --line-strong: rgba(26, 26, 31, 0.24);
+
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 8px 24px rgba(26, 26, 31, 0.08);
+  --shadow-glow: 0 0 0 1px rgba(255, 59, 48, 0.3), 0 18px 60px -12px rgba(255, 59, 48, 0.25);
+}
+
+/* 白昼模式下氛围层调整：扫描线减弱、颗粒隐藏、辉光减半 */
+[data-theme="light"] .scanlines {
+  opacity: 0.15;
+}
+[data-theme="light"] .grain {
+  display: none;
+}
+[data-theme="light"] .app-bg {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(255, 59, 48, 0.04), transparent 60%),
+    radial-gradient(900px 700px at 110% 10%, rgba(42, 216, 255, 0.025), transparent 55%),
+    radial-gradient(800px 800px at 50% 120%, rgba(255, 182, 39, 0.02), transparent 60%);
+}
+/* 白昼下脉冲信号点阴影颜色跟随 */
+[data-theme="light"] .dot {
+  box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.6);
+}
+@keyframes pulse-light {
+  0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.45); }
+  70% { box-shadow: 0 0 0 8px rgba(255, 59, 48, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+}
+[data-theme="light"] .dot {
+  animation-name: pulse-light;
+}
+/* 滚动条在浅底下的表现 */
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-color: var(--bg);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-faint);
 }
