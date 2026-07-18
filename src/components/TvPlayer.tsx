@@ -143,11 +143,28 @@ export function TvPlayer({
       const v = document.querySelector<HTMLVideoElement>(
         ".player__video [data-media-player] video"
       );
-      if (v && v.buffered.length > 0) {
+      // 前置过滤：视频元素不存在 / 未就绪 / 未开始播放 → 保持 null，避免误判
+      if (!v || v.readyState < 2 || v.currentTime <= 0) return;
+
+      // 优先：通过 vidstack provider 获取 hls.js 实例，读取真实直播延迟
+      // hls.latency = estimateLiveEdge() - currentTime（秒），加载前为 0
+      const provider = playerRef.current?.provider;
+      if (provider?.type === "hls") {
+        const hls = (provider as { instance: Hls | null }).instance;
+        const latencySec = hls?.latency ?? 0;
+        if (latencySec > 0) {
+          setLatency(Math.round(latencySec * 1000));
+          return;
+        }
+      }
+
+      // 降级：用 seekable.end（直播边缘）- currentTime 计算延迟
+      // 不用 buffered.end，因为缓冲区为空时会误判为 0ms
+      if (v.seekable.length > 0) {
         const ms = Math.round(
-          (v.buffered.end(v.buffered.length - 1) - v.currentTime) * 1000
+          (v.seekable.end(v.seekable.length - 1) - v.currentTime) * 1000
         );
-        setLatency(ms);
+        if (ms >= 0) setLatency(ms);
       }
     }, 1000);
   }
