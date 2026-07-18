@@ -1,15 +1,80 @@
 import { useEffect, useRef, useState } from "react";
-import { MediaPlayer, MediaProvider } from "@vidstack/react";
+import Hls from "hls.js";
+import {
+  MediaPlayer,
+  MediaProvider,
+  type MediaPlayerInstance,
+  type MediaAutoPlayFailEventDetail,
+} from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
-import { Loader2, AlertTriangle, Volume2 } from "lucide-react";
+import { Loader2, AlertTriangle, Play } from "lucide-react";
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
 
-type PlayerState = "idle" | "loading" | "ready" | "error";
+// vidstack DefaultVideoLayout 中文翻译（覆盖 DefaultLayoutWord 全部词汇）
+const zhCNLayoutTranslations = {
+  "Announcements": "通知",
+  "Accessibility": "无障碍",
+  "AirPlay": "AirPlay",
+  "Audio": "音频",
+  "Auto": "自动",
+  "Boost": "增益",
+  "Captions": "字幕",
+  "Caption Styles": "字幕样式",
+  "Captions look like this": "字幕看起来像这样",
+  "Chapters": "章节",
+  "Closed-Captions Off": "关闭字幕",
+  "Closed-Captions On": "开启字幕",
+  "Connected": "已连接",
+  "Continue": "继续",
+  "Connecting": "连接中",
+  "Default": "默认",
+  "Disabled": "已禁用",
+  "Disconnected": "已断开",
+  "Display Background": "显示背景",
+  "Download": "下载",
+  "Enter Fullscreen": "进入全屏",
+  "Enter PiP": "进入画中画",
+  "Exit Fullscreen": "退出全屏",
+  "Exit PiP": "退出画中画",
+  "Font": "字体",
+  "Family": "字体族",
+  "Fullscreen": "全屏",
+  "Google Cast": "Google 投屏",
+  "Keyboard Animations": "键盘动画",
+  "LIVE": "直播",
+  "Loop": "循环",
+  "Mute": "静音",
+  "Normal": "正常",
+  "Off": "关闭",
+  "Pause": "暂停",
+  "Play": "播放",
+  "Playback": "播放",
+  "PiP": "画中画",
+  "Quality": "画质",
+  "Replay": "重播",
+  "Reset": "重置",
+  "Seek Backward": "快退",
+  "Seek Forward": "快进",
+  "Seek": "跳转",
+  "Settings": "设置",
+  "Skip To Live": "跳至直播",
+  "Speed": "速度",
+  "Size": "大小",
+  "Color": "颜色",
+  "Opacity": "不透明度",
+  "Shadow": "阴影",
+  "Text": "文字",
+  "Text Background": "文字背景",
+  "Track": "音轨",
+  "Unmute": "取消静音",
+  "Volume": "音量",
+} as const;
+
+type PlayerState = "idle" | "loading" | "ready" | "paused" | "error";
 
 interface TvPlayerProps {
   url: string | null;
-  country?: string;
   onStateChange?: (s: PlayerState) => void;
   onMessageChange?: (m: string | null) => void;
   onLatencyChange?: (ms: number | null) => void;
@@ -17,7 +82,6 @@ interface TvPlayerProps {
 
 export function TvPlayer({
   url,
-  country,
   onStateChange,
   onMessageChange,
   onLatencyChange,
@@ -26,6 +90,9 @@ export function TvPlayer({
   const [message, setMessage] = useState<string | null>(null);
   const [latency, setLatency] = useState<number | null>(null);
   const latencyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const playerRef = useRef<MediaPlayerInstance>(null);
+  // 防止 onAutoPlayFail 与 onCanPlay 之间形成无限重试循环
+  const autoPlayRetryRef = useRef(false);
 
   // 状态向上同步
   useEffect(() => {
@@ -45,11 +112,13 @@ export function TvPlayer({
     if (!url) {
       setState("idle");
       setLatency(null);
+      autoPlayRetryRef.current = false;
       return;
     }
     setState("loading");
     setMessage(null);
     setLatency(null);
+    autoPlayRetryRef.current = false;
     return () => {
       if (latencyTimerRef.current) {
         clearInterval(latencyTimerRef.current);
@@ -83,14 +152,87 @@ export function TvPlayer({
     }, 1000);
   }
 
+  // canPlay 触发后仅更新状态并启动延迟采样
+  // 不主动调用 play()，避免与 vidstack autoPlay 机制冲突导致 onAutoPlayFail 误触发
+  function handleCanPlay() {
+    setState("ready");
+    startLatencySampling();
+  }
+
+  // 自动播放失败时：延迟检查 player 实际状态，避免"播放成功但 onAutoPlayFail 仍被触发"的误判
+  function handleAutoPlayFail(detail: MediaAutoPlayFailEventDetail) {
+    const player = playerRef.current;
+    if (!player) return;
+
+    // 延迟到下一个事件循环，让 play() 的 promise 有机会 resolve
+    setTimeout(() => {
+      // 检查 player 实际状态：如果已经在播放，不要显示 paused 覆盖层
+      if (!player.state.paused) {
+        setState("ready");
+        return;
+      }
+
+      // 真的没在播放，执行重试逻辑
+      if (autoPlayRetryRef.current) {
+        setState("paused");
+        return;
+      }
+      autoPlayRetryRef.current = true;
+
+      // 未静音失败 → 强制静音后重试
+      if (!detail.muted) {
+        try {
+          player.remoteControl.mute();
+          player.remoteControl.play();
+          return;
+        } catch {
+          setState("paused");
+          return;
+        }
+      }
+
+      // 已静音仍失败 → 等待用户手动点击
+      setState("paused");
+    }, 0);
+  }
+
+  // 最终层：用户点击"点击播放"覆盖层（合法 user gesture，可取消静音）
+  function handleManualPlay() {
+    const player = playerRef.current;
+    if (!player) return;
+    try {
+      player.remoteControl.unmute();
+      player.remoteControl.play();
+      setState("ready");
+    } catch {
+      // 取消静音失败 → 退回静音播放
+      try {
+        player.remoteControl.mute();
+        player.remoteControl.play();
+        setState("ready");
+      } catch {
+        setState("error");
+        setMessage("无法启动播放，请重试或切换频道。");
+      }
+    }
+  }
+
   return (
     <div className={`player__video ${state === "error" ? "is-error" : ""}`}>
       <MediaPlayer
+        ref={playerRef}
         src={url ?? ""}
         streamType="live"
         autoPlay
+        muted
         playsInline
-        load="visible"
+        load="eager"
+        onProviderChange={(provider) => {
+          if (provider?.type === "hls") {
+            // 使用本地 hls.js,避免 vidstack 默认从 CDN 加载
+            (provider as any).library = Hls;
+          }
+        }}
         onError={(detail) => {
           setState("error");
           setMessage(detail.message ?? "此直播流不可用。");
@@ -99,16 +241,18 @@ export function TvPlayer({
             latencyTimerRef.current = null;
           }
         }}
-        onCanPlay={() => {
-          setState("ready");
-          startLatencySampling();
+        onCanPlay={handleCanPlay}
+        onAutoPlayFail={handleAutoPlayFail}
+        onPlay={() => {
+          // 用户手动播放成功后，从 paused 状态恢复到 ready
+          if (state === "paused") setState("ready");
         }}
         onWaiting={() => {
           // 缓冲时保持当前状态，不重置
         }}
       >
         <MediaProvider />
-        <DefaultVideoLayout icons={defaultLayoutIcons} />
+        <DefaultVideoLayout icons={defaultLayoutIcons} translations={zhCNLayoutTranslations} />
       </MediaPlayer>
 
       {state === "loading" && (
@@ -116,6 +260,19 @@ export function TvPlayer({
           <Loader2 size={28} className="spin" />
           <p className="mono">正在获取信号…</p>
         </div>
+      )}
+
+      {state === "paused" && (
+        <button
+          type="button"
+          className="player__overlay player__overlay--paused"
+          onClick={handleManualPlay}
+          aria-label="点击开始播放"
+        >
+          <Play size={48} fill="currentColor" />
+          <span className="display">点击播放</span>
+          <span className="mono">浏览器策略要求手动启动</span>
+        </button>
       )}
 
       {state === "error" && (
@@ -126,12 +283,6 @@ export function TvPlayer({
           <p className="player__error-note mono">
             许多免费信号受地区限制或间歇性离线，请尝试同一电视网的其他频道。
           </p>
-        </div>
-      )}
-
-      {state === "ready" && country && (
-        <div className="player__signaltv mono">
-          <Volume2 size={11} /> 信号已锁定 · {country}
         </div>
       )}
 

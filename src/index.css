@@ -196,14 +196,17 @@ textarea {
 
 .app__header {
   grid-area: header;
+  min-width: 0;
 }
 .app__sidebar {
   grid-area: sidebar;
   min-height: 0;
+  min-width: 0;
 }
 .app__main {
   grid-area: main;
   min-height: 0;
+  min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;

@@ -70,6 +70,7 @@
   display: flex;
   align-items: center;
   flex: 1;
+  min-width: 0;
   max-width: 560px;
   margin: 0 auto;
   height: 40px;
@@ -91,6 +92,8 @@
 }
 .search__input {
   flex: 1;
+  min-width: 0;
+  width: 100%;
   background: transparent;
   border: 0;
   outline: 0;
@@ -812,10 +815,13 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 .card {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   background: var(--bg-card);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -979,12 +985,15 @@
   font-size: 13.5px;
   font-weight: 550;
   margin: 0;
+  min-width: 0;
   color: var(--ink);
   line-height: 1.25;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .card__fav {
   flex-shrink: 0;
@@ -1157,6 +1166,13 @@
   color: var(--signaltv);
   letter-spacing: 0.14em;
 }
+.player__signal-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--cyan);
+  letter-spacing: 0.14em;
+}
 .player__time {
   color: var(--ink-mute);
 }
@@ -1212,6 +1228,33 @@
   --media-controls-color: #f5f5f5;
   --media-focus-ring-color: var(--signaltv, #ff3b30);
 }
+/* 隐藏 vidstack 内置 buffering spinner，避免与网站自定义加载圈重复显示 */
+.player__video .vds-buffering-indicator {
+  display: none !important;
+}
+/*
+ * 播放控制栏显示/收起动画优化
+ * 覆盖 vidstack 默认的纯 opacity 0.2s 过渡：
+ * - 加入 6px Y 轴位移，让控件"上浮淡入 / 下沉淡出"，避免突兀
+ * - 时长对齐项目其它过渡（0.28s / 0.24s）
+ * - 曲线统一使用 --ease (cubic-bezier(0.22, 1, 0.36, 1))
+ *
+ * 注意：vidstack 默认 transition 仅列出了 opacity，所以必须同时设置
+ * transform 的初态（隐藏时 translateY(6px)）与终态（显示时 translateY(0)），
+ * transform 才会真正参与过渡。
+ */
+.player__video [data-view-type='video'] .vds-controls {
+  --media-controls-in-transition:
+    opacity 0.28s var(--ease),
+    transform 0.28s var(--ease);
+  --media-controls-out-transition:
+    opacity 0.24s var(--ease),
+    transform 0.24s var(--ease);
+  transform: translateY(6px);
+}
+.player__video [data-view-type='video'] .vds-controls[data-visible] {
+  transform: translateY(0);
+}
 /* vidstack 的 MediaPlayer 渲染为 [data-media-player] 容器，内部 video 由其管理 */
 .player__video [data-media-player] {
   width: 100%;
@@ -1220,7 +1263,7 @@
 .player__video video {
   width: 100%;
   height: 100%;
-  object-fit: contain;  /* 关键：源画面在 16:9 容器内按实际比例 letterbox 自适应 */
+  object-fit: contain;  /* 容器比例由父级 .player__video 控制：桌面端靠 grid 拉伸，移动端靠 aspect-ratio:16/9 */
   background: #000;
 }
 .player__overlay {
@@ -1249,29 +1292,34 @@
   background: radial-gradient(circle at 50% 40%, rgba(255, 59, 48, 0.15), rgba(5, 5, 9, 0.92));
   color: var(--ink-dim);
 }
+/* 加载完成但自动播放被浏览器拦截：点击播放覆盖层 */
+.player__overlay--paused {
+  background: rgba(5, 5, 9, 0.78);
+  color: var(--ink);
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  text-align: center;
+  transition: background 0.18s var(--ease);
+}
+.player__overlay--paused:hover {
+  background: rgba(5, 5, 9, 0.65);
+}
+.player__overlay--paused .display {
+  font-size: 22px;
+  letter-spacing: 0.02em;
+}
+.player__overlay--paused .mono {
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-top: -4px;
+}
 .player__error-note {
   margin-top: 8px !important;
   max-width: 380px;
   font-size: 11px !important;
   color: var(--ink-mute);
   line-height: 1.6;
-}
-.player__signaltv {
-  position: absolute;
-  bottom: 14px;
-  left: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 9px;
-  background: rgba(10, 10, 15, 0.6);
-  border: 1px solid var(--line-2);
-  border-radius: 6px;
-  backdrop-filter: blur(6px);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  color: var(--cyan);
-  pointer-events: none;
 }
 .player__scan {
   position: absolute;
@@ -1567,9 +1615,10 @@
     overflow-y: auto;
   }
   .player__video {
-    min-height: 240px;
-    max-height: 42vh;
-    /* aspect-ratio: 16/9 继承自主样式，此处不覆盖 */
+    aspect-ratio: 16 / 9;
+    height: auto;       /* 覆盖主样式 height:100%，让 aspect-ratio 主导高度 */
+    min-height: 0;      /* 移除 240px 下限，避免小屏拉伸破坏比例 */
+    max-height: none;   /* 移除 42vh 上限，让 16:9 比例严格生效 */
   }
   .player__info {
     border-left: 0;
@@ -1679,6 +1728,13 @@
   .logo {
     padding-right: 0;
     border-right: 0;
+  }
+}
+
+/* 手机端：强制 2 列，避免窄屏触发 3 列导致卡片内容溢出被裁切 */
+@media (max-width: 510px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

@@ -6,6 +6,7 @@ import {
   Globe2,
   Tv2,
   ExternalLink,
+  Lock,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useChannel } from "../hooks/useChannels";
@@ -23,6 +24,7 @@ export function PlayerModal() {
 
   const url = channel?.streamUrl ?? null;
   const [latency, setLatency] = useState<number | null>(null);
+  const [playerState, setPlayerState] = useState<"idle" | "loading" | "ready" | "paused" | "error">("idle");
 
   // ESC 关闭
   useEffect(() => {
@@ -65,6 +67,14 @@ export function PlayerModal() {
             <span className="mono player__time">{broadcastDate()}</span>
             <span className="player__divider" />
             <LatencyTag ms={latency} className="player__ping" />
+            {playerState === "ready" && (
+              <>
+                <span className="player__divider" />
+                <span className="player__signal-lock mono">
+                  <Lock size={11} /> 信号已锁定 · {channel.country}
+                </span>
+              </>
+            )}
           </div>
           <button className="player__close" onClick={() => openChannel(null)} aria-label="关闭播放器">
             <X size={18} />
@@ -74,8 +84,8 @@ export function PlayerModal() {
         <div className="player__stage">
           <TvPlayer
             url={url}
-            country={channel.country}
             onLatencyChange={setLatency}
+            onStateChange={setPlayerState}
           />
 
           <aside className="player__info">
