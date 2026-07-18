@@ -57,6 +57,9 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
         </div>
 
         <LatencyTag ms={latency} className="card__ping" />
+        {channel.is_nsfw && (
+          <span className="card__nsfw">成人</span>
+        )}
       </div>
 
       <div className="card__body">

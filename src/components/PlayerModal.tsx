@@ -1,20 +1,17 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   X,
   Play,
-  Loader2,
-  AlertTriangle,
   Star,
   Globe2,
   Tv2,
   ExternalLink,
-  Volume2,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useChannel } from "../hooks/useChannels";
-import { useHls } from "../hooks/useHls";
 import { broadcastDate, channelPosition, flagUrl, prettyCategory } from "../lib/format";
 import { LatencyTag } from "./LatencyTag";
+import { TvPlayer } from "./TvPlayer";
 
 export function PlayerModal() {
   const activeId = useStore((s) => s.activeChannelId);
@@ -25,7 +22,7 @@ export function PlayerModal() {
   const channels = useStore((s) => s.channels);
 
   const url = channel?.streamUrl ?? null;
-  const { videoRef, state, message, latency } = useHls(url);
+  const [latency, setLatency] = useState<number | null>(null);
 
   // ESC 关闭
   useEffect(() => {
@@ -75,41 +72,11 @@ export function PlayerModal() {
         </header>
 
         <div className="player__stage">
-          <div className={`player__video ${state === "error" ? "is-error" : ""}`}>
-            <video
-              ref={videoRef}
-              playsInline
-              controls
-              autoPlay
-              className="player__el"
-            />
-
-            {state === "loading" && (
-              <div className="player__overlay">
-                <Loader2 size={28} className="spin" />
-                <p className="mono">正在获取信号…</p>
-              </div>
-            )}
-
-            {state === "error" && (
-              <div className="player__overlay player__overlay--error">
-                <AlertTriangle size={28} />
-                <h3 className="display">信号丢失。</h3>
-                <p>{message ?? "此直播流不可用。"}</p>
-                <p className="player__error-note mono">
-                  许多免费信号受地区限制或间歇性离线，请尝试同一电视网的其他频道。
-                </p>
-              </div>
-            )}
-
-            {state === "ready" && (
-              <div className="player__signaltv mono">
-                <Volume2 size={11} /> 信号已锁定 · {channel.country}
-              </div>
-            )}
-
-            <div className="player__scan" />
-          </div>
+          <TvPlayer
+            url={url}
+            country={channel.country}
+            onLatencyChange={setLatency}
+          />
 
           <aside className="player__info">
             <div className="player__channel-head">
