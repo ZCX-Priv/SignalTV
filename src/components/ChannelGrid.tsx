@@ -36,6 +36,18 @@ export function ChannelGrid() {
   }, [list.length]);
 
   const shown = useMemo(() => list.slice(0, limit), [list, limit]);
+  const probeLatencyForIds = useStore((s) => s.probeLatencyForIds);
+
+  // 可见性优先探测：shown 变化时 debounce 150ms 触发，
+  // 让首屏可见频道的延迟标签 1-3 秒内出现，而非等全量探测。
+  useEffect(() => {
+    if (shown.length === 0) return;
+    const ids = shown.map((c) => c.id);
+    const timer = setTimeout(() => {
+      void probeLatencyForIds(ids);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [shown, probeLatencyForIds]);
 
   if (list.length === 0) {
     return (

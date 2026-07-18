@@ -25,9 +25,29 @@ function App() {
     void init();
   }, [init]);
 
-  // 加载完成后后台批量探测流延迟
+  // 加载完成后后台批量探测流延迟（低优先级，延迟 2 秒让首屏可见性探测优先）
   useEffect(() => {
-    if (loaded) void runLatencyProbe();
+    if (!loaded) return;
+    let idleHandle: number | undefined;
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    const start = () => {
+      timeoutHandle = setTimeout(() => void runLatencyProbe(), 2000);
+    };
+    if ("requestIdleCallback" in window) {
+      idleHandle = (window as Window).requestIdleCallback(start, {
+        timeout: 5000,
+      });
+    } else {
+      start();
+    }
+    return () => {
+      if (idleHandle !== undefined && "cancelIdleCallback" in window) {
+        (window as Window).cancelIdleCallback(idleHandle);
+      }
+      if (timeoutHandle !== undefined) {
+        clearTimeout(timeoutHandle);
+      }
+    };
   }, [loaded, runLatencyProbe]);
 
   // 主题切换时同步到 <html data-theme>

@@ -12,6 +12,27 @@ import {
 } from "../lib/api";
 import { probeBatch } from "../lib/latency";
 
+// 批量节流更新 latency：200ms 窗口内合并多次 setLatency 为一次 set，
+// 避免 5000 频道 × new Map(s.latency) 的 O(n²) 开销。
+let pendingLatency = new Map<string, number>();
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+const LATENCY_FLUSH_MS = 200;
+
+function batchSetLatency(id: string, ms: number) {
+  pendingLatency.set(id, ms);
+  if (flushTimer) return;
+  flushTimer = setTimeout(() => {
+    const patch = pendingLatency;
+    pendingLatency = new Map();
+    flushTimer = null;
+    useStore.setState((s) => {
+      const next = new Map(s.latency);
+      for (const [k, v] of patch) next.set(k, v);
+      return { latency: next };
+    });
+  }, LATENCY_FLUSH_MS);
+}
+
 export type Theme = "dark" | "light";
 
 // 首次访问跟随系统 prefers-color-scheme；用户手动切换后持久化覆盖
@@ -82,6 +103,7 @@ interface State {
   pushRecent: (id: string) => void;
   setLatency: (id: string, ms: number) => void;
   runLatencyProbe: () => Promise<void>;
+  probeLatencyForIds: (ids: string[]) => Promise<void>;
   toggleSidebar: () => void;
   setMobileSidebar: (open: boolean) => void;
   setTheme: (t: Theme) => void;
@@ -155,25 +177,39 @@ export const useStore = create<State>()(
         set((s) => ({
           recents: [id, ...s.recents.filter((r) => r !== id)].slice(0, 24),
         })),
-      setLatency: (id, ms) =>
-        set((s) => {
-          const next = new Map(s.latency);
-          next.set(id, ms);
-          return { latency: next };
-        }),
+      setLatency: (id, ms) => {
+        // 单条接口转发到批量节流，避免高频调用导致 O(n²) Map 重建
+        batchSetLatency(id, ms);
+      },
       runLatencyProbe: async () => {
         if (get().latencyLoading) return;
         const channels = get().channels;
+        const existing = get().latency;
         const urls = new Map<string, string>();
         for (const [id, c] of channels) {
-          if (c.streamUrl) urls.set(id, c.streamUrl);
+          // 跳过已探测的频道，避免与 probeLatencyForIds 重复
+          if (c.streamUrl && !existing.has(id)) urls.set(id, c.streamUrl);
         }
         if (urls.size === 0) return;
         set({ latencyLoading: true });
-        await probeBatch(urls, 8, (id, ms) => {
-          get().setLatency(id, ms);
+        await probeBatch(urls, 16, (id, ms) => {
+          batchSetLatency(id, ms);
         });
         set({ latencyLoading: false });
+      },
+      probeLatencyForIds: async (ids) => {
+        const channels = get().channels;
+        const existing = get().latency;
+        const urls = new Map<string, string>();
+        for (const id of ids) {
+          const c = channels.get(id);
+          // 只探测有流且未探测过的频道
+          if (c?.streamUrl && !existing.has(id)) urls.set(id, c.streamUrl);
+        }
+        if (urls.size === 0) return;
+        await probeBatch(urls, 16, (id, ms) => {
+          batchSetLatency(id, ms);
+        });
       },
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setMobileSidebar: (open) => set({ mobileSidebarOpen: open }),
