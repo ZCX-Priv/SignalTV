@@ -1,7 +1,12 @@
+import { useEffect, useMemo } from "react";
 import { SlidersHorizontal, ArrowDownUp, Globe, Hash, ShieldAlert } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useFilteredChannels } from "../hooks/useChannels";
 import type { SortKey } from "../store/useStore";
+import { Select } from "./Select";
+
+/** Radix Select 中 value="" 等同未选；用哨兵值表示"全部" */
+const ALL = "_all";
 
 export function FilterBar() {
   const list = useFilteredChannels();
@@ -10,6 +15,27 @@ export function FilterBar() {
   const categories = useStore((s) => s.categories);
   const countries = useStore((s) => s.countries);
   const view = useStore((s) => s.view);
+
+  // 当 nsfw 关闭时，sort=nsfw-first 无意义（所有 nsfw 频道已被过滤），自动回退到 default
+  useEffect(() => {
+    if (!filter.nsfw && filter.sort === "nsfw-first") {
+      setFilter({ sort: "default" });
+    }
+  }, [filter.nsfw, filter.sort, setFilter]);
+
+  const sortOptions = useMemo(
+    () => [
+      { value: "default", label: "默认" },
+      { value: "country", label: "国家" },
+      { value: "recent", label: "最近观看" },
+      { value: "latency-asc", label: "延迟：低 → 高" },
+      { value: "latency-desc", label: "延迟：高 → 低" },
+      ...(filter.nsfw
+        ? [{ value: "nsfw-first", label: "成人内容优先" }]
+        : []),
+    ],
+    [filter.nsfw],
+  );
 
   const title = (() => {
     switch (view.kind) {
@@ -43,46 +69,41 @@ export function FilterBar() {
         </div>
 
         <div className="filterbar__controls">
-          <label className="select">
-            <Hash size={13} className="select__icon" />
-            <select
-              value={filter.categoryId ?? ""}
-              onChange={(e) => setFilter({ categoryId: e.target.value || null })}
-            >
-              <option value="">全部分类</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </label>
+          <Select
+            aria-label="分类筛选"
+            icon={<Hash size={13} />}
+            placeholder="全部分类"
+            value={filter.categoryId ?? ALL}
+            onValueChange={(v) => setFilter({ categoryId: v === ALL ? null : v })}
+            options={[
+              { value: ALL, label: "全部分类" },
+              ...categories.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+          />
 
-          <label className="select">
-            <Globe size={13} className="select__icon" />
-            <select
-              value={filter.countryCode ?? ""}
-              onChange={(e) => setFilter({ countryCode: e.target.value || null })}
-            >
-              <option value="">全部国家</option>
-              {countries.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}（{c.channelCount}）
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            aria-label="国家筛选"
+            icon={<Globe size={13} />}
+            placeholder="全部国家"
+            value={filter.countryCode ?? ALL}
+            onValueChange={(v) => setFilter({ countryCode: v === ALL ? null : v })}
+            options={[
+              { value: ALL, label: "全部国家" },
+              ...countries.map((c) => ({
+                value: c.code,
+                label: <>{c.name}（{c.channelCount}）</>,
+                textValue: c.name,
+              })),
+            ]}
+          />
 
-          <label className="select">
-            <ArrowDownUp size={13} className="select__icon" />
-            <select
-              value={filter.sort}
-              onChange={(e) => setFilter({ sort: e.target.value as SortKey })}
-            >
-              <option value="default">排序：默认</option>
-              <option value="name">排序：A → Z</option>
-              <option value="country">排序：国家</option>
-              <option value="recent">排序：最近观看</option>
-            </select>
-          </label>
+          <Select
+            aria-label="排序方式"
+            icon={<ArrowDownUp size={13} />}
+            value={filter.sort}
+            onValueChange={(v) => setFilter({ sort: v as SortKey })}
+            options={sortOptions}
+          />
 
           <button
             className={`toggle ${filter.nsfw ? "is-on" : ""}`}

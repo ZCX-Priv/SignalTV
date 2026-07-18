@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-select": "^2.3.3",
     "@vidstack/react": "^1.15.6",
     "hls.js": "^1.6.16",
     "lucide-react": "^1.23.0",

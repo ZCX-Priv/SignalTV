@@ -54,7 +54,13 @@ export function getInitialTheme(): Theme {
     : "dark";
 }
 
-export type SortKey = "default" | "name" | "country" | "recent";
+export type SortKey =
+  | "default"
+  | "country"
+  | "recent"
+  | "latency-asc"
+  | "latency-desc"
+  | "nsfw-first";
 
 export type Filter = {
   q: string;

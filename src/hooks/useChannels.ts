@@ -20,6 +20,7 @@ export function useFilteredChannels(): ChannelWithStream[] {
   const favorites = useStore((s) => s.favorites);
   const recents = useStore((s) => s.recents);
   const channelsMap = useStore((s) => s.channels);
+  const latency = useStore((s) => s.latency);
 
   return useMemo(() => {
     let list = all;
@@ -62,9 +63,6 @@ export function useFilteredChannels(): ChannelWithStream[] {
 
     // 排序
     switch (filter.sort) {
-      case "name":
-        list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-        break;
       case "country":
         list = [...list].sort(
           (a, b) => a.country.localeCompare(b.country) || a.name.localeCompare(b.name),
@@ -75,12 +73,37 @@ export function useFilteredChannels(): ChannelWithStream[] {
           (a, b) => recents.indexOf(b.id) - recents.indexOf(a.id),
         );
         break;
+      case "latency-asc":
+      case "latency-desc": {
+        const desc = filter.sort === "latency-desc";
+        list = [...list].sort((a, b) => {
+          const la = latency.get(a.id);
+          const lb = latency.get(b.id);
+          // -1（失败）和 undefined（未探测）统一放最后，彼此间按名称排
+          const aValid = la !== undefined && la >= 0;
+          const bValid = lb !== undefined && lb >= 0;
+          if (aValid && bValid) {
+            return desc ? lb! - la! : la! - lb!;
+          }
+          if (aValid) return -1;   // a 有效 → 排前
+          if (bValid) return 1;    // b 有效 → 排前
+          return a.name.localeCompare(b.name);  // 都无效 → 按名称
+        });
+        break;
+      }
+      case "nsfw-first":
+        list = [...list].sort(
+          (a, b) =>
+            Number(b.is_nsfw) - Number(a.is_nsfw) || a.name.localeCompare(b.name),
+        );
+        break;
+      case "default":
       default:
         break;
     }
 
     return list;
-  }, [all, view, filter, favorites, recents, channelsMap]);
+  }, [all, view, filter, favorites, recents, channelsMap, latency]);
 }
 
 function matchesQuery(c: ChannelWithStream, q: string): boolean {
