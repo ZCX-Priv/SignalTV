@@ -212,10 +212,13 @@
 .sidebar__scroll {
   height: 100%;
   overflow-y: auto;
-  padding: 18px 14px 0;
+  padding: 18px 14px 18px;
   display: flex;
   flex-direction: column;
   gap: 22px;
+}
+.sidebar__scroll > * {
+  flex-shrink: 0;
 }
 .sidebar__section {
   display: flex;
@@ -1125,6 +1128,7 @@
   position: relative;
   width: min(1180px, 100%);
   max-height: calc(100vh - 60px);
+  max-height: calc(100dvh - 60px);   /* 同步使用动态视口高度 */
   background: var(--bg-1);
   border: 1px solid var(--line-2);
   border-radius: 16px;
@@ -1232,6 +1236,16 @@
 .player__video .vds-buffering-indicator {
   display: none !important;
 }
+/* 隐藏 vidstack DefaultVideoSmallLayout 在未启动时显示的中心大播放按钮。
+   原因：移动端 autoPlay 失败时，项目自定义的 .player__overlay--paused
+   会作为"点击播放"覆盖层显示，同时 vidstack 也会在 small layout 下
+   渲染一个 45px 圆形 .vds-play-button，两者叠加造成视觉混乱。
+   仅命中 [data-sm] small layout 下的中心 play button，不影响：
+   - 桌面端 large layout（无此按钮）
+   - 底部 controls 中的小播放按钮（位于不同的 controls-group，且播放后仍需可用） */
+.player__video .vds-video-layout[data-sm] .vds-controls .vds-play-button {
+  display: none !important;
+}
 /*
  * 播放控制栏显示/收起动画优化
  * 覆盖 vidstack 默认的纯 opacity 0.2s 过渡：
@@ -1239,17 +1253,30 @@
  * - 时长对齐项目其它过渡（0.28s / 0.24s）
  * - 曲线统一使用 --ease (cubic-bezier(0.22, 1, 0.36, 1))
  *
- * 注意：vidstack 默认 transition 仅列出了 opacity，所以必须同时设置
+ * 关键：必须把 visibility 也列入 transition，否则淡出时
+ * visibility:visible→hidden 会立即生效（不参与过渡），元素瞬间消失，
+ * 用户看不到 opacity/transform 的淡出动画；淡入时也会因 visibility
+ * 立即切换 + 主线程繁忙（视频解码）而偶发卡顿。
+ *
+ * 采用标准"立即显示 + 延迟隐藏"模式：
+ * - 淡入：visibility 0s linear（无延迟，立即 visible，让 opacity/transform 有 0.28s 完成过渡）
+ * - 淡出：visibility 0s linear 0.24s（延迟 0.24s，等于淡出时长，过渡结束时才 hidden）
+ * 用 0s + delay 而非 visibility 0.24s ...，因为 visibility 是离散值，
+ * 浏览器对其连续过渡行为不一致，0s+delay 时机精确可靠。
+ *
+ * 另：vidstack 默认 transition 仅列出了 opacity，所以必须同时设置
  * transform 的初态（隐藏时 translateY(6px)）与终态（显示时 translateY(0)），
  * transform 才会真正参与过渡。
  */
 .player__video [data-view-type='video'] .vds-controls {
   --media-controls-in-transition:
     opacity 0.28s var(--ease),
-    transform 0.28s var(--ease);
+    transform 0.28s var(--ease),
+    visibility 0s linear;
   --media-controls-out-transition:
     opacity 0.24s var(--ease),
-    transform 0.24s var(--ease);
+    transform 0.24s var(--ease),
+    visibility 0s linear 0.24s;
   transform: translateY(6px);
 }
 .player__video [data-view-type='video'] .vds-controls[data-visible] {
@@ -1611,19 +1638,29 @@
     gap: 30px;
   }
   .player__stage {
-    grid-template-columns: 1fr;
+    /* 原 grid 布局在移动端存在缺陷：
+       主样式 grid-template-rows: 1fr 会让第一行（视频）占满 stage 全高，
+       把 .player__info 挤到滚动区外，且 align-items:stretch 让
+       .player__video 的 aspect-ratio:16/9 失效。
+       改用 flex column，让两个子项按内容自然堆叠，视频按 16:9 显示，
+       信息面板紧随其后，整体由 stage 的 overflow-y:auto 滚动。 */
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
   }
   .player__video {
     aspect-ratio: 16 / 9;
+    width: 100%;
     height: auto;       /* 覆盖主样式 height:100%，让 aspect-ratio 主导高度 */
     min-height: 0;      /* 移除 240px 下限，避免小屏拉伸破坏比例 */
     max-height: none;   /* 移除 42vh 上限，让 16:9 比例严格生效 */
+    flex-shrink: 0;     /* 防止视频被压缩，保证 16:9 比例严格生效 */
   }
   .player__info {
     border-left: 0;
     border-top: 1px solid var(--line);
     max-height: none;
+    flex-shrink: 0;     /* 信息面板按内容高度，不被压缩 */
   }
 }
 @media (max-width: 860px) {
@@ -1646,7 +1683,9 @@
     position: fixed;
     left: 0;
     top: var(--header-h);
-    bottom: 0;
+    /* 用 dvh 显式高度替代 bottom:0，避免 iOS Safari 100vh 把底部推到工具栏之下 */
+    bottom: auto;
+    height: calc(100dvh - var(--header-h));
     width: 248px;
     max-width: 80vw;
     transform: translateX(-100%);
@@ -1654,6 +1693,7 @@
     z-index: 1100;
     pointer-events: auto;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+    padding-bottom: env(safe-area-inset-bottom);
   }
   .sidebar.is-mobile-open {
     transform: translateX(0);
@@ -1664,6 +1704,7 @@
     right: 0;
     bottom: 0;
     left: 0;
+    pointer-events: auto;
   }
   .sidebar.is-collapsed {
     width: 248px;
