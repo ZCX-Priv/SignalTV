@@ -22,7 +22,12 @@ export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
   useEffect(() => {
     if (!open) return;
     setQ("");
-    const id = requestAnimationFrame(() => inputRef.current?.focus());
+    // 仅在非触摸设备上自动聚焦，避免移动端强制弹出虚拟键盘导致 panel 溢出可见区域
+    const id = requestAnimationFrame(() => {
+      if (!window.matchMedia("(pointer: coarse)").matches) {
+        inputRef.current?.focus();
+      }
+    });
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
@@ -94,7 +99,7 @@ export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
 
   return (
     <div className="country-picker" role="dialog" aria-modal="true" aria-label="全部国家">
-      <div className="country-picker__backdrop" onClick={onClose} />
+      <div className="country-picker__backdrop" />
       <div className="country-picker__panel">
         <header className="country-picker__header">
           <div className="country-picker__title">
@@ -144,7 +149,7 @@ export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
             <>
               {recentSection.length > 0 && (
                 <section>
-                  <div className="country-picker__section-label">最近使用</div>
+                  <div className="country-picker__section-label">最近点击</div>
                   {recentSection.map(renderItem)}
                 </section>
               )}

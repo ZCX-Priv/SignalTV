@@ -30,7 +30,12 @@ export function CategoryPickerModal({ open, onClose }: CategoryPickerModalProps)
     if (!open) return;
     setQ("");
     // 下一帧聚焦，确保 input 已挂载
-    const id = requestAnimationFrame(() => inputRef.current?.focus());
+    // 仅在非触摸设备上自动聚焦，避免移动端强制弹出虚拟键盘导致 panel 溢出可见区域
+    const id = requestAnimationFrame(() => {
+      if (!window.matchMedia("(pointer: coarse)").matches) {
+        inputRef.current?.focus();
+      }
+    });
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
@@ -115,7 +120,7 @@ export function CategoryPickerModal({ open, onClose }: CategoryPickerModalProps)
 
   return (
     <div className="category-picker" role="dialog" aria-modal="true" aria-label="全部分类">
-      <div className="category-picker__backdrop" onClick={onClose} />
+      <div className="category-picker__backdrop" />
       <div className="category-picker__panel">
         <header className="category-picker__header">
           <div className="category-picker__title">
@@ -165,7 +170,7 @@ export function CategoryPickerModal({ open, onClose }: CategoryPickerModalProps)
             <>
               {recentSection.length > 0 && (
                 <section>
-                  <div className="category-picker__section-label">最近使用</div>
+                  <div className="category-picker__section-label">最近点击</div>
                   {recentSection.map(renderItem)}
                 </section>
               )}

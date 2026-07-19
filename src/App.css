@@ -1219,7 +1219,6 @@
   position: absolute;
   inset: 0;
   background: rgba(5, 5, 9, 0.85);
-  backdrop-filter: blur(14px);
 }
 .player__panel {
   position: relative;
@@ -1321,7 +1320,7 @@
   position: absolute;
   inset: 0;
   background: rgba(5, 5, 9, 0.85);
-  backdrop-filter: blur(14px);
+  cursor: pointer;
 }
 .category-picker__panel {
   position: relative;
@@ -1390,6 +1389,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 8px;
 }
 .category-picker__section-label {
@@ -1468,7 +1468,7 @@
   position: absolute;
   inset: 0;
   background: rgba(5, 5, 9, 0.85);
-  backdrop-filter: blur(14px);
+  cursor: pointer;
 }
 .country-picker__panel {
   position: relative;
@@ -1537,6 +1537,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 8px;
 }
 .country-picker__section-label {
@@ -2120,26 +2121,6 @@
   .sidebar.is-collapsed .sidebar__scroll {
     padding: 18px 14px 0;
     align-items: stretch;
-  }
-  .category-picker {
-    padding: 0;
-  }
-  .category-picker__panel {
-    width: 100%;
-    max-height: 100dvh;
-    height: 100dvh;
-    border-radius: 0;
-    border: 0;
-  }
-  .country-picker {
-    padding: 0;
-  }
-  .country-picker__panel {
-    width: 100%;
-    max-height: 100dvh;
-    height: 100dvh;
-    border-radius: 0;
-    border: 0;
   }
   .hero {
     padding: 24px 18px 8px;

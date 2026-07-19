@@ -54,7 +54,7 @@ export function PlayerModal() {
 
   return (
     <div className="player" role="dialog" aria-modal="true" aria-label={`正在播放 ${channel.name}`}>
-      <div className="player__backdrop" onClick={() => openChannel(null)} />
+      <div className="player__backdrop" />
       <div className="player__panel">
         <header className="player__head">
           <div className="player__head-left">
