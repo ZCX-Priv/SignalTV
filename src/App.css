@@ -1315,6 +1315,7 @@
   place-items: center;
   padding: 30px;
   animation: fade-in 0.2s var(--ease);
+  pointer-events: auto;
 }
 .category-picker__backdrop {
   position: absolute;
@@ -1463,6 +1464,7 @@
   place-items: center;
   padding: 30px;
   animation: fade-in 0.2s var(--ease);
+  pointer-events: auto;
 }
 .country-picker__backdrop {
   position: absolute;
