@@ -77,7 +77,7 @@ export function Header() {
         <input
           className="search__input"
           type="text"
-          placeholder="搜索频道、电视网、国家…"
+          placeholder="搜索频道、电视台、国家…"
           value={filter.q}
           onChange={(e) => setFilter({ q: e.target.value })}
           aria-label="搜索频道"

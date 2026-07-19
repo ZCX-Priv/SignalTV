@@ -12,7 +12,7 @@ export function Loader() {
           SignalTV<em>·直播</em>
         </div>
         <div className="loader__sub mono">
-          正在建立上行链路 · IPTV-ORG 索引
+          正在建立上行链路 · 公共电视信号源
         </div>
 
         <div className="loader__bar">
@@ -20,9 +20,9 @@ export function Loader() {
         </div>
 
         <div className="loader__log mono">
-          <p>{"> 正在解析 iptv-org.github.io"}</p>
-          <p>{"> 正在获取 channels.json"}</p>
-          <p>{"> 正在获取 streams.json"}</p>
+          <p>{"> 正在连接信号源"}</p>
+          <p>{"> 正在拉取频道表"}</p>
+          <p>{"> 正在拉取信号流"}</p>
           <p>{"> 正在合并信号表"}</p>
           <p>{"> 正在同步广播网格"}<span className="loader__cursor">_</span></p>
         </div>

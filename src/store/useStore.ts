@@ -12,6 +12,7 @@ import {
 } from "../lib/api";
 import { probeBatch } from "../lib/latency";
 import { idbGet, idbStorage } from "../lib/idb";
+import { applySeo, describeView } from "../lib/seo";
 
 // 批量节流更新 latency：200ms 窗口内合并多次 setLatency 为一次 set，
 // 避免 5000 频道 × new Map(s.latency) 的 O(n²) 开销。
@@ -186,6 +187,15 @@ export const useStore = create<State>()(
         if (v.kind === "category") get().pushRecentCategory(v.id);
         if (v.kind === "country") get().pushRecentCountry(v.code);
         set({ view: v, filter: { ...get().filter, q: "", categoryId: null, countryCode: null } });
+        // 视图切换时同步 SEO 元信息（title/description/canonical/og:*）
+        const s = get();
+        applySeo(
+          describeView(v, s.filter, {
+            categories: s.categories,
+            countries: s.countries,
+            channels: s.channels,
+          }),
+        );
       },
       setFilter: (patch) => set({ filter: { ...get().filter, ...patch } }),
       openChannel: (id) => {

@@ -184,7 +184,7 @@ export function Sidebar() {
         <div className="sidebar__footer mono">
           <div className="sidebar__footer-row">
             <Radio size={11} />
-            <span>iptv-org · 公共信号源</span>
+            <span>公共电视信号源</span>
           </div>
           <div className="sidebar__footer-row sidebar__footer-row--dim">
             <span>上行链路已建立</span>

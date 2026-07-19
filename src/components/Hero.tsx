@@ -62,18 +62,9 @@ export function Hero() {
           </h1>
 
           <p className="hero__lede">
-            一个广播终端，聚合来自开源{" "}
-            <a
-              href="https://iptv-org.github.io"
-              target="_blank"
-              rel="noreferrer"
-              className="hero__link"
-            >
-              iptv-org <ArrowUpRight size={12} className="hero__link-icon" />
-            </a>{" "}
-            索引的{" "}
+            聚合全球{" "}
             <strong>{all.length.toLocaleString("en-US")}</strong>{" "}
-            路免费电视信号。随时随地，调频任一信号。
+            路免费电视频道，涵盖新闻、电影、体育、音乐、纪录片等分类，无需注册即开即看。
           </p>
 
           <div className="hero__actions">

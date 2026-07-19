@@ -38,6 +38,7 @@
 - 无限滚动：IntersectionObserver，每页 60 条
 - 播放器懒加载：`lazy()` + `Suspense`，hls.js 仅在打开频道时加载（约 250KB）
 - 频道号美学：基于频道 id 哈希生成稳定的 `100.0 ~ 999.9` 频道号
+- **PWA 支持**：可安装到桌面/主屏幕，离线访问已缓存的频道列表与静态资源（vite-plugin-pwa + Workbox）
 
 ## 技术栈
 
@@ -51,6 +52,7 @@
 | 图标 | lucide-react | 1.23 | 矢量图标 |
 | 路由 | react-router-dom | 7.18 | 导航（预留） |
 | Lint | Oxlint | 1.71 | 代码检查 |
+| PWA | vite-plugin-pwa | 1.3 | 离线缓存 + 可安装 |
 
 ## 快速开始
 
@@ -100,7 +102,10 @@ npm run lint
 ```text
 Signal-TV/
 ├── public/
-│   └── favicon.png              # 站点图标（Radio 信号塔）
+│   ├── favicon.png              # 站点图标（Radio 信号塔，1024×1024 源图）
+│   ├── pwa-192x192.png          # PWA 图标 192×192
+│   ├── pwa-512x512.png          # PWA 图标 512×512
+│   └── pwa-512x512-maskable.png # PWA maskable 图标（自适应裁剪）
 ├── src/
 │   ├── components/              # UI 组件
 │   │   ├── ChannelCard.tsx      # 频道卡片
@@ -185,6 +190,26 @@ iptv-org API ──▶ Zustand store ──▶ React 组件
 - 频道 logo 图片 `loading="lazy"`，加载失败时回退到占位符
 - 全局快捷键 ⌘K / Ctrl+K 通过 `document.querySelector` 直接聚焦搜索框
 
+### PWA 与离线缓存
+
+应用通过 [vite-plugin-pwa](https://vite-plugin-pwa.netlify.app/) 配置为渐进式 Web 应用：
+
+- **可安装**：支持添加到桌面/主屏幕，独立窗口运行（`display: standalone`）
+- **Service Worker**：`registerType: 'autoUpdate'`，新版本自动激活
+- **预缓存**：构建产物（JS/CSS/HTML/图标/字体文件）首次访问后离线可用
+- **运行时缓存策略**：
+
+  | 资源 | 策略 | 缓存时长 | 说明 |
+  |---|---|---|---|
+  | Google Fonts CSS/字体 | CacheFirst | 1 年 | 字体不变，长期缓存 |
+  | iptv-org API | StaleWhileRevalidate | 1 天 | 离线可读上次频道列表，在线时后台更新 |
+  | flagcdn 国旗 | CacheFirst | 30 天 | 国旗图片稳定 |
+  | 频道 logo | CacheFirst | 30 天 | 频道 logo 较稳定 |
+
+- **HLS 实时流不缓存**：.m3u8/.ts 不匹配任何缓存规则，避免占用存储
+- **主题色**：`#0a0a0f`（深广播黑），与 `index.html` 的 `<meta name="theme-color">` 一致
+- **开发模式支持**：`npm run dev` 下也启用开发用 Service Worker，便于实时调试 PWA 行为（生产构建用 `npm run build` 生成最终 SW）
+
 ## 数据源与致谢
 
 - [iptv-org](https://github.com/iptv-org) — 全球免费 IPTV 频道索引
@@ -195,6 +220,8 @@ iptv-org API ──▶ Zustand store ──▶ React 组件
   - [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) — 等宽 mono
   - [Noto Serif SC](https://fonts.google.com/specimen/Noto+Serif+SC) / [Noto Sans SC](https://fonts.google.com/specimen/Noto+Sans+SC) — 中文
 - [lucide-react](https://lucide.dev) — 矢量图标
+- [vite-plugin-pwa](https://vite-plugin-pwa.netlify.app/) — PWA 集成（Service Worker + Web App Manifest）
+- [Workbox](https://developer.chrome.com/docs/workbox) — 运行时缓存策略
 
 ## 许可证
 

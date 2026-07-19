@@ -3,16 +3,173 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0a0f" />
-    <meta name="description" content="SignalTV —  专业 IPTV 广播终端。浏览来自 iptv-org 的数千路直播频道。" />
+
+    <!-- 站点基础描述（面向搜索引擎与社交分享，去除专业术语） -->
+    <title>SignalTV - 免费在线看电视直播频道，全球数千路信号即开即看</title>
+    <meta
+      name="description"
+      content="SignalTV 是一个免费在线看电视直播的网站，聚合全球数千路电视频道，涵盖新闻、电影、体育、音乐、纪录片等分类，无需注册即开即看。"
+    />
+    <meta
+      name="keywords"
+      content="免费电视,在线看电视,电视直播,直播频道,全球电视,新闻频道,电影频道,体育频道,音乐频道,纪录片,网络电视,SignalTV"
+    />
+    <meta name="author" content="SignalTV" />
+    <meta name="publisher" content="SignalTV" />
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
+
+    <!-- PWA / 移动应用相关 -->
+    <meta name="application-name" content="SignalTV" />
+    <meta name="apple-mobile-web-app-title" content="SignalTV" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- Canonical：占位 URL，运行时由 src/lib/seo.ts 用 window.location.href 覆写为真实地址 -->
+    <link rel="canonical" href="https://signaltv.app/" />
+
+    <!-- 多语言后备（站点当前仅简体中文，声明默认与 x-default） -->
+    <link rel="alternate" hreflang="zh-CN" href="https://signaltv.app/" />
+    <link rel="alternate" hreflang="x-default" href="https://signaltv.app/" />
+
+    <!-- Open Graph：微信/微博/Twitter/Facebook 分享卡片 -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SignalTV" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:title" content="SignalTV - 免费在线看电视直播" />
+    <meta
+      property="og:description"
+      content="聚合全球数千路电视频道，涵盖新闻、电影、体育、音乐等分类，无需注册即开即看。"
+    />
+    <meta property="og:url" content="https://signaltv.app/" />
+    <meta property="og:image" content="https://signaltv.app/pwa-512x512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="SignalTV - 免费电视直播" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SignalTV - 免费在线看电视直播" />
+    <meta
+      name="twitter:description"
+      content="聚合全球数千路电视频道，涵盖新闻、电影、体育、音乐等分类，无需注册即开即看。"
+    />
+    <meta name="twitter:image" content="https://signaltv.app/pwa-512x512.png" />
+
+    <!-- JSON-LD：WebApplication（GEO 关键，声明实体类型与免费属性） -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "SignalTV",
+        "url": "https://signaltv.app/",
+        "description": "SignalTV 是一个免费在线看电视直播的网站，聚合全球数千路电视频道，涵盖新闻、电影、体育、音乐、纪录片等分类，无需注册即开即看。",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Any (Web Browser)",
+        "browserRequirements": "Requires JavaScript. Requires HTML5 video.",
+        "inLanguage": "zh-CN",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "featureList": [
+          "免费观看数千路全球电视直播频道",
+          "按分类筛选：新闻、电影、体育、音乐、纪录片等",
+          "按国家筛选：覆盖全球主要国家与地区",
+          "关键词搜索频道、电视台、国家",
+          "收藏与最近观看历史（仅本地保存）",
+          "流延迟实时探测",
+          "深色与浅色主题切换",
+          "可安装为桌面与移动端应用，离线访问已缓存的频道列表"
+        ],
+        "screenshot": "https://signaltv.app/pwa-512x512.png"
+      }
+    </script>
+
+    <!-- JSON-LD：Organization（发布者实体） -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "SignalTV",
+        "url": "https://signaltv.app/",
+        "logo": "https://signaltv.app/pwa-512x512.png",
+        "description": "SignalTV 提供免费在线看电视直播的 Web 应用，聚合全球数千路公共电视信号源。"
+      }
+    </script>
+
+    <!-- JSON-LD：FAQPage（GEO 关键，让 ChatGPT/Perplexity/Claude 等能直接抓取问答） -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "SignalTV 是什么？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "SignalTV 是一个免费在线看电视直播的网站，聚合全球数千路电视频道，涵盖新闻、电影、体育、音乐、纪录片等分类，无需注册即可在浏览器中直接观看。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "SignalTV 收费吗？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "SignalTV 完全免费，无需注册、无需登录，也没有广告插入。所有功能均可直接使用。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "SignalTV 需要安装吗？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "不需要安装即可使用。直接在浏览器中打开网站即可观看。同时也支持安装到桌面或手机主屏幕，作为应用使用并离线访问已缓存的频道列表。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "SignalTV 的频道来自哪里？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "频道数据来自公开的公共电视信号源索引 iptv-org 开源项目。SignalTV 本身不存储、不转发任何视频流，仅作为浏览器端的播放界面。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "为什么有些频道打不开？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "频道由全球各地公共信号源提供，部分源可能临时下线、地域受限或带宽不足。可以尝试切换该频道的其他流，或选择延迟更低的频道。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "SignalTV 会收集我的个人信息吗？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "不会。SignalTV 不收集任何用户数据，不使用 Cookie 进行跟踪，收藏与观看历史仅保存在用户本地浏览器中，无分析脚本、无广告追踪。"
+            }
+          }
+        ]
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Geist:wght@300..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@300..700&family=Noto+Sans+SC:wght@300..700&display=swap"
       rel="stylesheet"
     />
-    <title>SignalTV — IPTV 广播终端</title>
   </head>
   <body>
     <div id="root"></div>
