@@ -99,7 +99,7 @@ export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
 
   return (
     <div className="country-picker" role="dialog" aria-modal="true" aria-label="全部国家">
-      <div className="country-picker__backdrop" onClick={onClose} />
+      <div className="country-picker__backdrop" />
       <div className="country-picker__panel">
         <header className="country-picker__header">
           <div className="country-picker__title">

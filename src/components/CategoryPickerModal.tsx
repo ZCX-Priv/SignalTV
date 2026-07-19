@@ -120,7 +120,7 @@ export function CategoryPickerModal({ open, onClose }: CategoryPickerModalProps)
 
   return (
     <div className="category-picker" role="dialog" aria-modal="true" aria-label="全部分类">
-      <div className="category-picker__backdrop" onClick={onClose} />
+      <div className="category-picker__backdrop" />
       <div className="category-picker__panel">
         <header className="category-picker__header">
           <div className="category-picker__title">
