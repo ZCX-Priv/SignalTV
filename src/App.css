@@ -257,7 +257,7 @@
   flex-shrink: 0;
   opacity: 0.85;
 }
-.nav__item span:first-of-type {
+.nav__item:not(.nav__item--country) span:first-of-type {
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
