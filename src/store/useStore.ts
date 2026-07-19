@@ -20,6 +20,9 @@ let pendingLatency = new Map<string, number>();
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 const LATENCY_FLUSH_MS = 200;
 
+// runLatencyProbe 持有的 AbortController，用于组件卸载或视图切换时取消探测
+let latencyAbortController: AbortController | null = null;
+
 function batchSetLatency(id: string, ms: number) {
   pendingLatency.set(id, ms);
   if (flushTimer) return;
@@ -35,6 +38,21 @@ function batchSetLatency(id: string, ms: number) {
   }, LATENCY_FLUSH_MS);
 }
 
+// 弱网检测：navigator.connection.effectiveType 为 2g/slow-2g 或 saveData 时返回 true
+// Safari/Firefox 不支持 Network Information API 时返回 false（不阻断功能）
+function isWeakNetwork(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const conn = (
+    navigator as {
+      connection?: { effectiveType?: string; saveData?: boolean };
+    }
+  ).connection;
+  if (!conn) return false;
+  if (conn.saveData) return true;
+  const t = conn.effectiveType;
+  return t === "slow-2g" || t === "2g";
+}
+
 export type Theme = "dark" | "light";
 
 // 同步：跟随系统 prefers-color-scheme，用于 store 初始化（避免 Promise 赋给 Theme 字段）
@@ -43,6 +61,23 @@ function getSystemTheme(): Theme {
   return window.matchMedia?.("(prefers-color-scheme: light)").matches
     ? "light"
     : "dark";
+}
+
+// 同步写一份 theme 副本到 localStorage，供 index.html 内联脚本在下次首屏时同步读取，
+// 避免 React 挂载前 IndexedDB 异步 rehydrate 期间出现 dark→light 闪烁（FOUC）。
+// 同时同步 <html data-theme>，让所有 theme 变更点（setTheme/toggleTheme/onRehydrateStorage）
+// 统一走此函数，消除 App.tsx useEffect 重复设置。
+// localStorage 不可用（隐私模式）时静默失败，仍走 IDB persist 路径。
+function syncThemeCache(theme: Theme): void {
+  if (typeof document !== "undefined") {
+    document.documentElement.dataset.theme = theme;
+  }
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem("signaltv-theme-cache", theme);
+  } catch {
+    // localStorage 不可用（隐私模式/配额满）→ 忽略，IDB persist 仍是 source of truth
+  }
 }
 
 // 首次访问跟随系统 prefers-color-scheme；用户手动切换后持久化覆盖
@@ -121,7 +156,6 @@ interface State {
   pushRecent: (id: string) => void;
   pushRecentCategory: (id: string) => void;
   pushRecentCountry: (code: string) => void;
-  setLatency: (id: string, ms: number) => void;
   runLatencyProbe: () => Promise<void>;
   probeLatencyForIds: (ids: string[]) => Promise<void>;
   toggleSidebar: () => void;
@@ -220,12 +254,10 @@ export const useStore = create<State>()(
         set((s) => ({
           recentCountries: [code, ...s.recentCountries.filter((r) => r !== code)].slice(0, 24),
         })),
-      setLatency: (id, ms) => {
-        // 单条接口转发到批量节流，避免高频调用导致 O(n²) Map 重建
-        batchSetLatency(id, ms);
-      },
       runLatencyProbe: async () => {
         if (get().latencyLoading) return;
+        // 弱网（2g/slow-2g/saveData）下跳过全量探测，避免挤占首屏带宽
+        if (isWeakNetwork()) return;
         const channels = get().channels;
         const existing = get().latency;
         const urls = new Map<string, string>();
@@ -235,12 +267,26 @@ export const useStore = create<State>()(
         }
         if (urls.size === 0) return;
         set({ latencyLoading: true });
-        await probeBatch(urls, 16, (id, ms) => {
-          batchSetLatency(id, ms);
-        });
-        set({ latencyLoading: false });
+        // 持有 AbortController 引用，供取消使用（如组件卸载）
+        const controller = new AbortController();
+        latencyAbortController = controller;
+        try {
+          await probeBatch(
+            urls,
+            16,
+            (id, ms) => batchSetLatency(id, ms),
+            controller.signal,
+          );
+        } finally {
+          if (latencyAbortController === controller) {
+            latencyAbortController = null;
+          }
+          set({ latencyLoading: false });
+        }
       },
       probeLatencyForIds: async (ids) => {
+        // 弱网下跳过按需探测，latency 标签会显示"未探测"
+        if (isWeakNetwork()) return;
         const channels = get().channels;
         const existing = get().latency;
         const urls = new Map<string, string>();
@@ -250,31 +296,47 @@ export const useStore = create<State>()(
           if (c?.streamUrl && !existing.has(id)) urls.set(id, c.streamUrl);
         }
         if (urls.size === 0) return;
+        // 按需探测不持有全局 controller，调用方（ChannelGrid）通过
+        // useEffect cleanup 自动停止触发新批次，进行中的请求由 fetch 自身超时兜底
         await probeBatch(urls, 16, (id, ms) => {
           batchSetLatency(id, ms);
         });
       },
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setMobileSidebar: (open) => set({ mobileSidebarOpen: open }),
-      setTheme: (t) => set({ theme: t }),
+      setTheme: (t) => {
+        syncThemeCache(t);
+        set({ theme: t });
+      },
       toggleTheme: () => {
         // 切换前给 <html> 加 .theme-transitioning，禁用所有过渡/动画，
         // 避免 .header__menu / .search / .select / .toggle 等带 transition
         // 的元素缓慢过渡到新主题色（与主体瞬时切换形成扎眼时差）。
         // 双 RAF 后移除：第一帧 React 提交新 theme 到 DOM（data-theme 变化），
         // 第二帧浏览器完成重绘，此时再恢复过渡行为已无可见延迟。
+        // 兜底：100ms 后强制清理，防止 set 抛错或 RAF 被打断导致类永久残留
+        // （CSS html.theme-transitioning * 会禁用所有动画，永久残留会让应用视觉崩坏）
         if (typeof document !== "undefined") {
           const root = document.documentElement;
           root.classList.add("theme-transitioning");
           // 强制回流，确保 .theme-transitioning 类先生效再切换 data-theme
           void root.offsetHeight;
+          const fallback = setTimeout(
+            () => root.classList.remove("theme-transitioning"),
+            100,
+          );
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
+              clearTimeout(fallback);
               root.classList.remove("theme-transitioning");
             });
           });
         }
-        set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" }));
+        set((s) => {
+          const next = s.theme === "dark" ? "light" : "dark";
+          syncThemeCache(next);
+          return { theme: next };
+        });
       },
     }),
     {
@@ -293,6 +355,7 @@ export const useStore = create<State>()(
         // 避免 main.tsx 初始值与 rehydrated 值不一致时的时序窗口
         if (state?.theme) {
           document.documentElement.dataset.theme = state.theme;
+          syncThemeCache(state.theme);
         }
       },
     },

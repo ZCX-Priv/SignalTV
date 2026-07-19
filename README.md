@@ -29,7 +29,7 @@
 - 首屏 Hero：编辑式大字标题 + 精选频道卡片 + 滚动 ticker
 - 多视图导航：首页 / 分类 / 国家 / 收藏夹 / 搜索
 - 筛选与排序：分类、国家、A-Z、最近观看、NSFW 开关
-- 流延迟探测：no-cors GET + 批量并发 8 路，绿/黄/红/灰四级延迟标签
+- 流延迟探测：HLS 流用 cors fetch + `#EXTM3U` 校验真实延迟；非 HLS 流用 no-cors 但因无法验证状态码统一返回 -1（标记为"未知"）；批量并发 16 路，绿/黄/红/灰四级延迟标签
 - 双引擎播放器：hls.js 优先，原生 HLS 回退（Safari/iOS），ESC 关闭，相关频道推荐
 - 收藏与最近观看：IndexedDB 持久化（zustand persist，DB=`signaltv-db`，key=`signaltv-iptv`）
 - 深浅色主题：首次访问跟随系统 `prefers-color-scheme`，手动切换后持久化覆盖
@@ -50,7 +50,6 @@
 | 状态 | Zustand | 5.0 | 全局状态 + persist 持久化 |
 | 流媒体 | hls.js | 1.6 | HLS 直播流播放 |
 | 图标 | lucide-react | 1.23 | 矢量图标 |
-| 路由 | react-router-dom | 7.18 | 导航（预留） |
 | Lint | Oxlint | 1.71 | 代码检查 |
 | PWA | vite-plugin-pwa | 1.3 | 离线缓存 + 可安装 |
 
@@ -175,10 +174,11 @@ iptv-org API ──▶ Zustand store ──▶ React 组件
 
 ### 延迟探测
 
-`probeLatency` 使用 `fetch(url, { mode: "no-cors" })` 测量 TTFB 近似延迟：
+`probeLatency` 根据流类型走双路径探测：
 
-- 超时 5 秒返回 `-1`
-- `probeBatch` 维护一个并发为 8 的 worker 池，串行消费所有频道
+- HLS 流（`.m3u8`）：`fetch(url, { mode: "cors" })` 校验状态码 + 前 16 字节是否 `#EXTM3U`，超时 3 秒返回 `-1`
+- 非 HLS 流（`.mp4`/`.flv` 等）：`fetch(url, { mode: "no-cors" })`，因 opaque 响应无法区分 404/200，统一返回 `-1`（标记为"未知"），避免误导用户点击死链
+- `probeBatch` 维护一个并发为 16 的 worker 池，串行消费所有频道
 - 结果写入 `store.latency: Map<id, ms>`，由 `LatencyTag` 组件渲染为四级标签：
   - 绿 `< 300ms` / 黄 `300–1000ms` / 红 `> 1000ms` / 灰 `未知或失败`
 

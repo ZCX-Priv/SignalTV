@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Play, Star, Globe2, Tv2, ArrowUpRight } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useAllChannels } from "../hooks/useChannels";
@@ -33,12 +33,6 @@ export function Hero() {
       .filter((c) => !c.is_nsfw && c.logo)
       .slice(0, 6);
   }, [all]);
-
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setTick((i) => i + 1), 4500);
-    return () => clearInterval(t);
-  }, []);
 
   if (!featured) return null;
 
@@ -140,30 +134,29 @@ export function Hero() {
         </button>
       </div>
 
-      {/* 滚动 ticker */}
+      {/* 滚动 ticker：CSS animation 无限循环，2 份内容拼接实现无缝衔接 */}
       <div className="ticker" aria-hidden>
         <div className="ticker__label mono">
           <span className="dot" /> 正在播放
         </div>
-        <div className="ticker__track">
-          <div
-            className="ticker__inner"
-            style={{ transform: `translateX(-${(tick % ticker.length) * (100 / ticker.length)}%)` }}
-          >
-            {[...ticker, ...ticker, ...ticker].map((c, i) => (
-              <div className="ticker__item" key={`${c.id}-${i}`} onClick={() => openChannel(c.id)}>
-                {c.logo ? (
-                  <img src={c.logo} alt="" onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.opacity = "0";
-                  }} />
-                ) : (
-                  <span className="mono">{c.name}</span>
-                )}
-                <span className="ticker__name mono">{c.name}</span>
-              </div>
-            ))}
+        {ticker.length > 0 && (
+          <div className="ticker__track">
+            <div className="ticker__inner">
+              {[...ticker, ...ticker].map((c, i) => (
+                <div className="ticker__item" key={`${c.id}-${i}`} onClick={() => openChannel(c.id)}>
+                  {c.logo ? (
+                    <img src={c.logo} alt="" onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.opacity = "0";
+                    }} />
+                  ) : (
+                    <span className="mono">{c.name}</span>
+                  )}
+                  <span className="ticker__name mono">{c.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
         <button className="ticker__more" onClick={() => setView({ kind: "home" })}>
           <ArrowUpRight size={14} />
         </button>

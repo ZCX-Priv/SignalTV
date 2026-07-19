@@ -19,10 +19,26 @@ function isHlsUrl(url: string): boolean {
  * 收到响应头后立即 abort，不下载剩余 body。
  * @returns 延迟毫秒数；失败/超时/非 m3u8 返回 -1
  */
-function hlsProbe(url: string, timeoutMs: number): Promise<number> {
+function hlsProbe(url: string, timeoutMs: number, externalSignal?: AbortSignal): Promise<number> {
   return new Promise((resolve) => {
     const controller = new AbortController();
     let settled = false;
+
+    // 联动外部 signal：外部 abort 时同步 abort 内部 controller 并立即返回 -1
+    const onExternalAbort = () => {
+      if (settled) return;
+      settled = true;
+      controller.abort();
+      resolve(-1);
+    };
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        resolve(-1);
+        return;
+      }
+      externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+    }
+
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
@@ -62,9 +78,9 @@ function hlsProbe(url: string, timeoutMs: number): Promise<number> {
           .then(({ value }) => {
             if (settled) return;
             const ms = Math.round(performance.now() - start);
-            controller.abort(); // 立即中止，不下载剩余 body
             clearTimeout(timer);
             settled = true;
+            reader.cancel().catch(() => {}); // 主动释放 reader，让浏览器停止下载剩余 body
             const head = new TextDecoder().decode(
               value?.slice(0, 16) ?? new Uint8Array(),
             );
@@ -93,22 +109,37 @@ function hlsProbe(url: string, timeoutMs: number): Promise<number> {
 }
 
 /**
- * 用 fetch + no-cors 探测非 HLS 流的连通延迟（降级路径）。
- * 收到响应头后立即 abort，释放连接，避免下载 body。
- * 注意：no-cors 无法区分 404/200，此路径仅用于无法用 cors 处理的非 HLS 流。
- * @returns 延迟毫秒数；失败/超时返回 -1
+ * 用 fetch + no-cors 探测非 HLS 流（降级路径）。
+ * 注意：no-cors 响应是 opaque，无法区分 404/200/500，任何响应都被视为"不可信"。
+ * 因此此路径统一返回 -1（标记为"未知延迟"），避免把死链标记为低延迟误导用户。
+ * 仅保留探测动作以验证网络可达性（用于未来扩展），当前不产出有效延迟值。
+ * @returns 始终返回 -1（opaque 响应无法验证可用性）
  */
-function fetchProbe(url: string, timeoutMs: number): Promise<number> {
+function fetchProbe(url: string, timeoutMs: number, externalSignal?: AbortSignal): Promise<number> {
   return new Promise((resolve) => {
     const controller = new AbortController();
     let settled = false;
+
+    const onExternalAbort = () => {
+      if (settled) return;
+      settled = true;
+      controller.abort();
+      resolve(-1);
+    };
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        resolve(-1);
+        return;
+      }
+      externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+    }
+
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
       controller.abort();
       resolve(-1);
     }, timeoutMs);
-    const start = performance.now();
     fetch(url, {
       method: "GET",
       mode: "no-cors",
@@ -118,11 +149,11 @@ function fetchProbe(url: string, timeoutMs: number): Promise<number> {
     })
       .then(() => {
         if (settled) return;
-        const ms = Math.round(performance.now() - start);
-        controller.abort(); // 释放连接
         clearTimeout(timer);
         settled = true;
-        resolve(ms);
+        controller.abort(); // 释放连接
+        // no-cors 响应 opaque，无法区分 404/200，统一标记为不可用
+        resolve(-1);
       })
       .catch(() => {
         if (settled) return;
@@ -135,14 +166,19 @@ function fetchProbe(url: string, timeoutMs: number): Promise<number> {
 
 /**
  * 探测单个流 URL 的延迟。
- * HLS 流用 cors fetch + #EXTM3U 校验；非 HLS 流降级到 no-cors fetch + abort。
- * @returns 延迟毫秒数；失败/超时返回 -1
+ * HLS 流（.m3u8）用 cors fetch + #EXTM3U 校验真实延迟；
+ * 非 HLS 流用 no-cors 探测但因 opaque 响应无法验证可用性，统一返回 -1（标记为"未知"）。
+ * @returns 延迟毫秒数；失败/超时/非 HLS 流返回 -1
  */
-export function probeLatency(url: string, timeoutMs?: number): Promise<number> {
+export function probeLatency(
+  url: string,
+  timeoutMs?: number,
+  signal?: AbortSignal,
+): Promise<number> {
   if (isHlsUrl(url)) {
-    return hlsProbe(url, timeoutMs ?? HLS_TIMEOUT_MS);
+    return hlsProbe(url, timeoutMs ?? HLS_TIMEOUT_MS, signal);
   }
-  return fetchProbe(url, timeoutMs ?? FETCH_TIMEOUT_MS);
+  return fetchProbe(url, timeoutMs ?? FETCH_TIMEOUT_MS, signal);
 }
 
 /**
@@ -150,20 +186,27 @@ export function probeLatency(url: string, timeoutMs?: number): Promise<number> {
  * @param urls 频道id → streamUrl 的映射
  * @param concurrency 最大并发数（默认 16）
  * @param onResult 每条结果回调（id, 延迟ms）
+ * @param signal 外部 AbortSignal，触发后立即停止探测
  */
 export async function probeBatch(
   urls: Map<string, string>,
-  concurrency = DEFAULT_CONCURRENCY,
+  concurrency: number = DEFAULT_CONCURRENCY,
   onResult: (id: string, ms: number) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const entries = Array.from(urls.entries());
   let cursor = 0;
 
+  // 已 abort 直接返回
+  if (signal?.aborted) return;
+
   async function worker() {
     while (cursor < entries.length) {
+      if (signal?.aborted) return;
       const idx = cursor++;
       const [id, url] = entries[idx];
-      const ms = await probeLatency(url);
+      const ms = await probeLatency(url, undefined, signal);
+      if (signal?.aborted) return;
       onResult(id, ms);
     }
   }

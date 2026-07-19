@@ -683,8 +683,27 @@
 .ticker__inner {
   display: flex;
   gap: 28px;
-  transition: transform 0.9s var(--ease);
+  /* CSS animation 无限滚动：2 份内容拼接，translateX(-50%) 移动一份宽度 */
+  animation: ticker-scroll 30s linear infinite;
   width: max-content;
+  will-change: transform;
+}
+.ticker__inner:hover {
+  animation-play-state: paused;
+}
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+/* 尊重用户"减少动画"系统设置 */
+@media (prefers-reduced-motion: reduce) {
+  .ticker__inner {
+    animation: none;
+  }
 }
 .ticker__item {
   display: flex;

@@ -50,8 +50,6 @@
     />
     <meta property="og:url" content="https://signaltv.app/" />
     <meta property="og:image" content="https://signaltv.app/pwa-512x512.png" />
-    <meta property="og:image:width" content="512" />
-    <meta property="og:image:height" content="512" />
     <meta property="og:image:alt" content="SignalTV - 免费电视直播" />
 
     <!-- Twitter Card -->
@@ -170,6 +168,34 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Geist:wght@300..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@300..700&family=Noto+Sans+SC:wght@300..700&display=swap"
       rel="stylesheet"
     />
+    <!-- 首屏关键数据源 preconnect：iptv-org API（频道/流/分类/国家 JSON）+ flagcdn（国旗图片） -->
+    <link rel="preconnect" href="https://iptv-org.github.io" crossorigin />
+    <link rel="dns-prefetch" href="https://iptv-org.github.io" />
+    <link rel="preconnect" href="https://flagcdn.com" />
+    <!--
+      同步首屏主题：在 React 挂载前从 localStorage 读取主题缓存并写入 <html data-theme>。
+      必须同步执行，避免首帧 paint 时出现 dark→light 闪烁（FOUC）。
+      localStorage 不可用（隐私模式）时静默失败，回落到 prefers-color-scheme。
+      首次访问无缓存时也回落到 prefers-color-scheme。
+    -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("signaltv-theme-cache");
+          if (t === "light" || t === "dark") {
+            document.documentElement.dataset.theme = t;
+          } else {
+            var m =
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: light)");
+            document.documentElement.dataset.theme =
+              m && m.matches ? "light" : "dark";
+          }
+        } catch (e) {
+          /* localStorage 不可用，保持浏览器默认 */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

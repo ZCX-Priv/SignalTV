@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Home,
   Heart,
@@ -34,6 +34,12 @@ export function Sidebar() {
 
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
+
+  // 用 useCallback 稳定 onClose 引用，避免 Sidebar 重渲染时 Picker Modal 的
+  // useEffect([open, onClose]) 因 onClose 变化而重跑，导致搜索框被清空。
+  // useState 返回的 setter 引用永不变化，依赖数组可空。
+  const closeCategoryPicker = useCallback(() => setCategoryPickerOpen(false), []);
+  const closeCountryPicker = useCallback(() => setCountryPickerOpen(false), []);
 
   // 计算每个分类的频道数
   const catCounts = useMemo(() => {
@@ -204,11 +210,11 @@ export function Sidebar() {
     </aside>
       <CategoryPickerModal
         open={categoryPickerOpen}
-        onClose={() => setCategoryPickerOpen(false)}
+        onClose={closeCategoryPicker}
       />
       <CountryPickerModal
         open={countryPickerOpen}
-        onClose={() => setCountryPickerOpen(false)}
+        onClose={closeCountryPicker}
       />
     </>
   );

@@ -5,6 +5,7 @@ import {
   MediaProvider,
   type MediaPlayerInstance,
   type MediaAutoPlayFailEventDetail,
+  isHLSProvider,
 } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
 import { Loader2, AlertTriangle, Play } from "lucide-react";
@@ -93,6 +94,8 @@ export function TvPlayer({
   const playerRef = useRef<MediaPlayerInstance>(null);
   // 防止 onAutoPlayFail 与 onCanPlay 之间形成无限重试循环
   const autoPlayRetryRef = useRef(false);
+  // handleAutoPlayFail 的 setTimeout handle，用于卸载/切换时清理
+  const autoPlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 状态向上同步
   useEffect(() => {
@@ -124,6 +127,10 @@ export function TvPlayer({
         clearInterval(latencyTimerRef.current);
         latencyTimerRef.current = null;
       }
+      if (autoPlayTimeoutRef.current) {
+        clearTimeout(autoPlayTimeoutRef.current);
+        autoPlayTimeoutRef.current = null;
+      }
     };
   }, [url]);
 
@@ -133,6 +140,10 @@ export function TvPlayer({
       if (latencyTimerRef.current) {
         clearInterval(latencyTimerRef.current);
         latencyTimerRef.current = null;
+      }
+      if (autoPlayTimeoutRef.current) {
+        clearTimeout(autoPlayTimeoutRef.current);
+        autoPlayTimeoutRef.current = null;
       }
     };
   }, []);
@@ -149,8 +160,8 @@ export function TvPlayer({
       // 优先：通过 vidstack provider 获取 hls.js 实例，读取真实直播延迟
       // hls.latency = estimateLiveEdge() - currentTime（秒），加载前为 0
       const provider = playerRef.current?.provider;
-      if (provider?.type === "hls") {
-        const hls = (provider as { instance: Hls | null }).instance;
+      if (provider && isHLSProvider(provider)) {
+        const hls = provider.instance;
         const latencySec = hls?.latency ?? 0;
         if (latencySec > 0) {
           setLatency(Math.round(latencySec * 1000));
@@ -181,8 +192,14 @@ export function TvPlayer({
     const player = playerRef.current;
     if (!player) return;
 
+    // 清理上一个 timeout，避免快速连续触发时叠加
+    if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current);
     // 延迟到下一个事件循环，让 play() 的 promise 有机会 resolve
-    setTimeout(() => {
+    autoPlayTimeoutRef.current = setTimeout(() => {
+      autoPlayTimeoutRef.current = null;
+      // 组件已卸载或 url 已切换（player 实例变化）→ 不再操作
+      if (!playerRef.current || playerRef.current !== player) return;
+
       // 检查 player 实际状态：如果已经在播放，不要显示 paused 覆盖层
       if (!player.state.paused) {
         setState("ready");
@@ -245,9 +262,9 @@ export function TvPlayer({
         playsInline
         load="eager"
         onProviderChange={(provider) => {
-          if (provider?.type === "hls") {
+          if (isHLSProvider(provider)) {
             // 使用本地 hls.js,避免 vidstack 默认从 CDN 加载
-            (provider as any).library = Hls;
+            provider.library = Hls;
           }
         }}
         onError={(detail) => {

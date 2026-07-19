@@ -12,6 +12,9 @@ export function useAllChannels(): ChannelWithStream[] {
   }, [channels]);
 }
 
+// 非 latency 排序时返回的稳定空 Map，避免每 200ms flush 触发 useMemo 重算
+const EMPTY_LATENCY_MAP = new Map<string, number>();
+
 /** 经当前视图与筛选条件过滤后的频道。 */
 export function useFilteredChannels(): ChannelWithStream[] {
   const all = useAllChannels();
@@ -19,8 +22,20 @@ export function useFilteredChannels(): ChannelWithStream[] {
   const filter = useStore((s) => s.filter);
   const favorites = useStore((s) => s.favorites);
   const recents = useStore((s) => s.recents);
-  const channelsMap = useStore((s) => s.channels);
-  const latency = useStore((s) => s.latency);
+
+  // 条件订阅：仅 latency 排序时才订阅整个 Map，避免 200ms flush 引发 O(n²) 重渲染
+  const needLatency =
+    filter.sort === "latency-asc" || filter.sort === "latency-desc";
+  const latency = useStore((s) =>
+    needLatency ? s.latency : EMPTY_LATENCY_MAP,
+  );
+
+  // sort=recent 优化：用 Map 索引替代 indexOf O(n) 查找
+  const recentsIndex = useMemo(() => {
+    const m = new Map<string, number>();
+    for (let i = 0; i < recents.length; i++) m.set(recents[i], i);
+    return m;
+  }, [recents]);
 
   return useMemo(() => {
     let list = all;
@@ -69,9 +84,18 @@ export function useFilteredChannels(): ChannelWithStream[] {
         );
         break;
       case "recent":
-        list = [...list].sort(
-          (a, b) => recents.indexOf(b.id) - recents.indexOf(a.id),
-        );
+        list = [...list].sort((a, b) => {
+          const ia = recentsIndex.get(a.id);
+          const ib = recentsIndex.get(b.id);
+          // 都不在最近观看列表 → 按名称排
+          if (ia === undefined && ib === undefined) {
+            return a.name.localeCompare(b.name);
+          }
+          // 在最近观看列表的排前，越近越前
+          if (ia === undefined) return 1;
+          if (ib === undefined) return -1;
+          return ib - ia;
+        });
         break;
       case "latency-asc":
       case "latency-desc": {
@@ -103,7 +127,7 @@ export function useFilteredChannels(): ChannelWithStream[] {
     }
 
     return list;
-  }, [all, view, filter, favorites, recents, channelsMap, latency]);
+  }, [all, view, filter, favorites, recentsIndex, latency]);
 }
 
 function matchesQuery(c: ChannelWithStream, q: string): boolean {

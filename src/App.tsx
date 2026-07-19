@@ -5,6 +5,7 @@ import { Sidebar } from "./components/Sidebar";
 import { Hero } from "./components/Hero";
 import { FilterBar } from "./components/FilterBar";
 import { ChannelGrid } from "./components/ChannelGrid";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Loader, ErrorState } from "./components/Loader";
 
 // 懒加载播放器 + hls.js（约 250KB）——仅在打开频道时才需要
@@ -18,42 +19,19 @@ function App() {
   const loaded = useStore((s) => s.loaded);
   const error = useStore((s) => s.error);
   const view = useStore((s) => s.view);
-  const theme = useStore((s) => s.theme);
-  const runLatencyProbe = useStore((s) => s.runLatencyProbe);
 
   useEffect(() => {
     void init();
   }, [init]);
 
-  // 加载完成后后台批量探测流延迟（低优先级，延迟 2 秒让首屏可见性探测优先）
-  useEffect(() => {
-    if (!loaded) return;
-    let idleHandle: number | undefined;
-    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
-    const start = () => {
-      timeoutHandle = setTimeout(() => void runLatencyProbe(), 2000);
-    };
-    if ("requestIdleCallback" in window) {
-      idleHandle = (window as Window).requestIdleCallback(start, {
-        timeout: 5000,
-      });
-    } else {
-      start();
-    }
-    return () => {
-      if (idleHandle !== undefined && "cancelIdleCallback" in window) {
-        (window as Window).cancelIdleCallback(idleHandle);
-      }
-      if (timeoutHandle !== undefined) {
-        clearTimeout(timeoutHandle);
-      }
-    };
-  }, [loaded, runLatencyProbe]);
+  // 注：原 loaded 后自动触发 runLatencyProbe 的逻辑已移除。
+  // 全量探测会挤占弱网首屏带宽（5000 频道 × 16 并发 × 5s 超时），
+  // 改由 ChannelGrid 的 IntersectionObserver 调用 probeLatencyForIds
+  // 按需探测可见 + 预加载范围内的频道（store 层已加弱网检测跳过）。
 
-  // 主题切换时同步到 <html data-theme>
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
+  // 注：原主题 useEffect 已移除。
+  // syncThemeCache（store 内部函数）会在 setTheme/toggleTheme/onRehydrateStorage
+  // 三个变更点统一同步 <html data-theme>，无需 App.tsx 重复订阅。
 
   // 全局 ⌘K / Ctrl+K 聚焦搜索框
   useEffect(() => {
@@ -116,9 +94,19 @@ function App() {
         </main>
       </div>
 
-      <Suspense fallback={null}>
-        <PlayerModal />
-      </Suspense>
+      <ErrorBoundary
+        fallback={
+          <div className="loader">
+            <div className="loader__inner">
+              <div className="loader__sub mono">播放器加载失败，请关闭后重试。</div>
+            </div>
+          </div>
+        }
+      >
+        <Suspense fallback={null}>
+          <PlayerModal />
+        </Suspense>
+      </ErrorBoundary>
     </>
   );
 }

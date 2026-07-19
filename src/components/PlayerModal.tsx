@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   X,
   Play,
@@ -40,17 +40,20 @@ export function PlayerModal() {
     };
   }, [activeId, openChannel]);
 
+  // 推荐的关联频道（同主分类、不同 id）
+  // 必须在 early return 之前调用，遵守 React Hooks 规则
+  const channelId = channel?.id;
+  const primaryCat = channel?.categories[0];
+  const suggestions = useMemo(() => {
+    if (!channelId || !primaryCat) return [];
+    return Array.from(channels.values())
+      .filter((c) => c.id !== channelId && c.categories.includes(primaryCat) && !c.is_nsfw)
+      .slice(0, 6);
+  }, [channels, channelId, primaryCat]);
+
   if (!activeId || !channel) return null;
 
   const isFav = favorites.includes(channel.id);
-
-  // 推荐的关联频道（同主分类、不同 id）
-  const primaryCat = channel.categories[0];
-  const suggestions = primaryCat
-    ? Array.from(channels.values())
-        .filter((c) => c.id !== channel.id && c.categories.includes(primaryCat) && !c.is_nsfw)
-        .slice(0, 6)
-    : [];
 
   return (
     <div className="player" role="dialog" aria-modal="true" aria-label={`正在播放 ${channel.name}`}>
