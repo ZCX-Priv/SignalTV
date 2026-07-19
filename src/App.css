@@ -55,14 +55,28 @@
   height: 100%;
   padding: 0 22px;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(16, 16, 25, 0.6), rgba(10, 10, 15, 0.2));
+  background: linear-gradient(180deg, var(--overlay-1), var(--overlay-3));
   backdrop-filter: blur(8px);
   position: relative;
   z-index: 2;
 }
-/* 桌面端默认隐藏汉堡按钮（移动端在媒体查询内覆盖为 display: grid） */
+/* 汉堡按钮：全端显示，承担桌面端收起/展开侧栏 + 移动端抽屉开关 */
 .header__menu {
-  display: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  color: var(--ink-dim);
+  background: var(--bg-1);
+  border: 1px solid var(--line-2);
+  transition: background 0.13s var(--ease), color 0.13s var(--ease), border-color 0.13s var(--ease);
+}
+.header__menu:hover {
+  background: var(--bg-3);
+  color: var(--ink);
+  border-color: var(--line-strong);
 }
 
 .search {
@@ -163,22 +177,6 @@
   z-index: 1;
   transition: width 0.24s var(--ease);
 }
-.sidebar__toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-left: auto;
-  margin-bottom: 6px;
-  border-radius: 6px;
-  color: var(--ink-mute);
-  transition: background 0.13s, color 0.13s;
-}
-.sidebar__toggle:hover {
-  background: var(--bg-3);
-  color: var(--ink);
-}
 .sidebar__overlay {
   position: fixed;
   inset: 0;
@@ -205,9 +203,6 @@
 .sidebar.is-collapsed .nav__item {
   justify-content: center;
   padding: 8px;
-}
-.sidebar.is-collapsed .sidebar__toggle {
-  margin-left: 0;
 }
 .sidebar__scroll {
   height: 100%;
@@ -360,6 +355,7 @@
 .content {
   padding: 0 28px 60px;
   max-width: 1500px;
+  margin: 0 auto;
 }
 
 /* ============ 首屏 ============ */
@@ -548,7 +544,7 @@
   gap: 7px;
   padding: 5px 9px;
   border-radius: 6px;
-  background: rgba(10, 10, 15, 0.7);
+  background: var(--overlay-2);
   border: 1px solid var(--line-2);
   backdrop-filter: blur(6px);
   font-size: 10px;
@@ -955,7 +951,7 @@
   font-size: 9.5px;
   letter-spacing: 0.08em;
   color: var(--ink-dim);
-  background: rgba(10, 10, 15, 0.6);
+  background: var(--overlay-1);
   padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid var(--line);
@@ -968,7 +964,7 @@
   font-size: 9px;
   letter-spacing: 0.14em;
   color: var(--ink);
-  background: rgba(10, 10, 15, 0.7);
+  background: var(--overlay-2);
   padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid var(--line-2);
@@ -998,6 +994,11 @@
   backdrop-filter: blur(4px);
   z-index: 2;
 }
+[data-theme="light"] .card__nsfw {
+  background: rgba(255, 59, 48, 0.16);
+  border-color: rgba(255, 59, 48, 0.32);
+  color: #b3170d;
+}
 .card__ping {
   position: absolute;
   top: 31px;
@@ -1005,7 +1006,7 @@
   display: inline-flex;
   align-items: center;
   padding: 2px 6px;
-  background: rgba(10, 10, 15, 0.7);
+  background: var(--overlay-2);
   border: 1px solid var(--line-2);
   border-radius: 4px;
   backdrop-filter: blur(4px);
@@ -1766,7 +1767,8 @@
     transition: transform 0.28s var(--ease);
     z-index: 1100;
     pointer-events: auto;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+    /* 阴影只向右辐射，避免顶部阴影渗到顶栏下方造成层次感 */
+    box-shadow: 12px 0 32px -8px rgba(0, 0, 0, 0.4);
     padding-bottom: env(safe-area-inset-bottom);
   }
   .sidebar.is-mobile-open {
@@ -1798,21 +1800,6 @@
   .sidebar.is-collapsed .sidebar__scroll {
     padding: 18px 14px 0;
     align-items: stretch;
-  }
-  /* 汉堡按钮：仅移动端显示 */
-  .header__menu {
-    display: grid;
-    place-items: center;
-    width: 36px;
-    height: 36px;
-    flex-shrink: 0;
-    border-radius: 8px;
-    color: var(--ink-dim);
-    transition: background 0.13s, color 0.13s;
-  }
-  .header__menu:hover {
-    background: var(--bg-3);
-    color: var(--ink);
   }
   .hero {
     padding: 24px 18px 8px;
@@ -1859,6 +1846,12 @@
 [data-theme="light"] .sidebar__overlay {
   background: rgba(26, 26, 31, 0.35);
 }
+/* 白昼模式顶栏：使用不透明米色，比侧边栏(#efe9dc → #f5f1e8)更深一档，
+   对应深色模式下"顶栏比侧边栏更深"的层次关系；
+   避免半透明 overlay + backdrop-filter 透出 .app-bg 辉光导致偏白 */
+[data-theme="light"] .header {
+  background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-1) 100%);
+}
 [data-theme="light"] .feature__media {
   background:
     radial-gradient(120% 80% at 50% 30%, rgba(255, 59, 48, 0.1), transparent 60%),
@@ -1883,6 +1876,7 @@
 }
 @media (max-width: 768px) {
   [data-theme="light"] .sidebar {
-    box-shadow: 0 0 40px rgba(26, 26, 31, 0.18);
+    /* 阴影只向右辐射，与深色模式保持一致 */
+    box-shadow: 12px 0 32px -10px rgba(26, 26, 31, 0.18);
   }
 }

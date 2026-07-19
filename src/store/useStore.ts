@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   Category,
   ChannelWithStream,
@@ -11,6 +11,7 @@ import {
   buildCountryInfo,
 } from "../lib/api";
 import { probeBatch } from "../lib/latency";
+import { idbGet, idbStorage } from "../lib/idb";
 
 // 批量节流更新 latency：200ms 窗口内合并多次 setLatency 为一次 set，
 // 避免 5000 频道 × new Map(s.latency) 的 O(n²) 开销。
@@ -35,11 +36,21 @@ function batchSetLatency(id: string, ms: number) {
 
 export type Theme = "dark" | "light";
 
+// 同步：跟随系统 prefers-color-scheme，用于 store 初始化（避免 Promise 赋给 Theme 字段）
+function getSystemTheme(): Theme {
+  if (typeof window === "undefined") return "dark";
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches
+    ? "light"
+    : "dark";
+}
+
 // 首次访问跟随系统 prefers-color-scheme；用户手动切换后持久化覆盖
-export function getInitialTheme(): Theme {
+// 异步：从 IndexedDB 读取持久化的主题（main.tsx 在渲染前 await 此函数，
+// 拿到结果后会通过 useStore.setState 同步给 store）
+export async function getInitialTheme(): Promise<Theme> {
   if (typeof window === "undefined") return "dark";
   try {
-    const raw = localStorage.getItem("signaltv-iptv");
+    const raw = await idbGet("signaltv-iptv");
     if (raw) {
       const parsed = JSON.parse(raw) as { state?: { theme?: Theme } };
       if (parsed.state?.theme === "dark" || parsed.state?.theme === "light") {
@@ -49,9 +60,7 @@ export function getInitialTheme(): Theme {
   } catch {
     // 解析失败则回落到系统偏好
   }
-  return window.matchMedia?.("(prefers-color-scheme: light)").matches
-    ? "light"
-    : "dark";
+  return getSystemTheme();
 }
 
 export type SortKey =
@@ -135,7 +144,7 @@ export const useStore = create<State>()(
       latencyLoading: false,
       sidebarCollapsed: false,
       mobileSidebarOpen: false,
-      theme: getInitialTheme(),
+      theme: getSystemTheme(),
 
       init: async () => {
         if (get().loaded || get().loading) return;
@@ -220,17 +229,42 @@ export const useStore = create<State>()(
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setMobileSidebar: (open) => set({ mobileSidebarOpen: open }),
       setTheme: (t) => set({ theme: t }),
-      toggleTheme: () =>
-        set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
+      toggleTheme: () => {
+        // 切换前给 <html> 加 .theme-transitioning，禁用所有过渡/动画，
+        // 避免 .header__menu / .search / .select / .toggle 等带 transition
+        // 的元素缓慢过渡到新主题色（与主体瞬时切换形成扎眼时差）。
+        // 双 RAF 后移除：第一帧 React 提交新 theme 到 DOM（data-theme 变化），
+        // 第二帧浏览器完成重绘，此时再恢复过渡行为已无可见延迟。
+        if (typeof document !== "undefined") {
+          const root = document.documentElement;
+          root.classList.add("theme-transitioning");
+          // 强制回流，确保 .theme-transitioning 类先生效再切换 data-theme
+          void root.offsetHeight;
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              root.classList.remove("theme-transitioning");
+            });
+          });
+        }
+        set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" }));
+      },
     }),
     {
       name: "signaltv-iptv",
+      storage: createJSONStorage(() => idbStorage),
       partialize: (s) => ({
         favorites: s.favorites,
         recents: s.recents,
         sidebarCollapsed: s.sidebarCollapsed,
         theme: s.theme,
       }),
+      onRehydrateStorage: () => (state) => {
+        // persist rehydration 完成后立即同步 <html data-theme>，
+        // 避免 main.tsx 初始值与 rehydrated 值不一致时的时序窗口
+        if (state?.theme) {
+          document.documentElement.dataset.theme = state.theme;
+        }
+      },
     },
   ),
 );

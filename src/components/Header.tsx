@@ -12,14 +12,43 @@ export function Header() {
   const channels = useAllChannels();
   const mobileSidebarOpen = useStore((s) => s.mobileSidebarOpen);
   const setMobileSidebar = useStore((s) => s.setMobileSidebar);
+  const sidebarCollapsed = useStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useStore((s) => s.toggleSidebar);
   const [now, setNow] = useState(() => new Date());
+  // 响应式判定：≤860px 视为移动端，与 CSS 媒体查询断点一致
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 860px)").matches : false,
+  );
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 860px)");
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
   const liveCount = channels.length;
+
+  function onMenuClick() {
+    if (isMobile) {
+      setMobileSidebar(!mobileSidebarOpen);
+    } else {
+      toggleSidebar();
+    }
+  }
+
+  const menuLabel = isMobile
+    ? mobileSidebarOpen
+      ? "关闭菜单"
+      : "打开菜单"
+    : sidebarCollapsed
+      ? "展开侧边栏"
+      : "收起侧边栏";
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,8 +65,9 @@ export function Header() {
     <header className="header">
       <button
         className="header__menu"
-        onClick={() => setMobileSidebar(!mobileSidebarOpen)}
-        aria-label={mobileSidebarOpen ? "关闭菜单" : "打开菜单"}
+        onClick={onMenuClick}
+        aria-label={menuLabel}
+        aria-expanded={isMobile ? mobileSidebarOpen : !sidebarCollapsed}
       >
         <Menu size={18} />
       </button>

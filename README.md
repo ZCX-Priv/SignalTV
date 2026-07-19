@@ -31,7 +31,7 @@
 - 筛选与排序：分类、国家、A-Z、最近观看、NSFW 开关
 - 流延迟探测：no-cors GET + 批量并发 8 路，绿/黄/红/灰四级延迟标签
 - 双引擎播放器：hls.js 优先，原生 HLS 回退（Safari/iOS），ESC 关闭，相关频道推荐
-- 收藏与最近观看：localStorage 持久化（zustand persist，key=`signaltv-iptv`）
+- 收藏与最近观看：IndexedDB 持久化（zustand persist，DB=`signaltv-db`，key=`signaltv-iptv`）
 - 深浅色主题：首次访问跟随系统 `prefers-color-scheme`，手动切换后持久化覆盖
 - 响应式布局：桌面侧栏可折叠，移动端抽屉式侧栏
 - 全局快捷键：⌘K / Ctrl+K 一键聚焦搜索框
@@ -147,14 +147,16 @@ iptv-org API ──▶ Zustand store ──▶ React 组件
 
 ### 状态管理
 
-使用 Zustand + `persist` 中间件，仅持久化以下字段到 localStorage（key=`signaltv-iptv`）：
+使用 Zustand + `persist` 中间件，通过 `src/lib/idb.ts` 自定义 IndexedDB 适配器（DB=`signaltv-db`，store=`kv`），仅持久化以下字段（key=`signaltv-iptv`）：
 
 - `favorites` — 收藏的频道 id
 - `recents` — 最近观看（最多 24 条，最新在前）
 - `sidebarCollapsed` — 桌面端侧栏折叠状态
 - `theme` — 主题（dark / light）
 
-主题初始化逻辑：优先读取持久化值，否则跟随系统 `prefers-color-scheme`。
+主题初始化逻辑：`main.tsx` 在 React 渲染前 `await` 从 IndexedDB 读取持久化值并同步 `<html data-theme>`，避免首帧深色闪烁；若无持久化值则跟随系统 `prefers-color-scheme`。
+
+数据迁移：首次启动若检测到旧版 localStorage 数据（key=`signaltv-iptv`），自动迁移到 IndexedDB 并清理旧 key，老用户无感知升级。
 
 ### 播放器
 

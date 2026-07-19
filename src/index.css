@@ -12,6 +12,11 @@
   --bg-card: #14141d;
   --bg-elev: #1a1a26;
 
+  /* 叠加层（半透明深色 + backdrop-blur），用于顶栏渐变 / 卡片标签 / 徽章等浮于内容之上的元素 */
+  --overlay-1: rgba(16, 16, 25, 0.6);
+  --overlay-2: rgba(10, 10, 15, 0.7);
+  --overlay-3: rgba(10, 10, 15, 0.2);
+
   --ink: #f5f1e8;
   --ink-dim: #a39e92;
   --ink-mute: #6b6678;
@@ -303,6 +308,11 @@ textarea {
   --bg-card: #f0eadf;
   --bg-elev: #f3eee2;
 
+  /* 白昼模式叠加层：米色半透明，与 --bg 主背景统一，避免纯白割裂 */
+  --overlay-1: rgba(245, 241, 232, 0.72);
+  --overlay-2: rgba(245, 241, 232, 0.82);
+  --overlay-3: rgba(245, 241, 232, 0.35);
+
   --ink: #1a1a1f;
   --ink-dim: #4a4640;
   --ink-mute: #7a7468;
@@ -354,4 +364,27 @@ textarea {
 }
 [data-theme="light"] ::-webkit-scrollbar-thumb:hover {
   background: var(--ink-faint);
+}
+
+/* ============================================================
+   主题切换瞬间禁用所有过渡/动画
+   ============================================================
+   原因：data-theme 切换时，CSS 变量瞬间变化，但带 transition
+   的元素（.header__menu / .search / .select / .toggle / .nav__item
+   / .card / .btn 等 16 处）会按各自时长缓慢过渡到新主题色，
+   与主体内容的瞬时切换形成时差，视觉上非常扎眼。
+
+   方案：在 toggleTheme 中切换前给 <html> 加 .theme-transitioning
+   类，本规则把该类下所有元素的 transition-duration 与
+   animation-duration 强制为 0s，等效于"瞬时切换"。
+   双 RAF 后移除该类，恢复正常过渡行为。
+
+   注意：用 transition-duration:0s 而非 transition:none，以保留
+   transition-property 等其他属性，避免移除类时出现意外重排。 */
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
 }

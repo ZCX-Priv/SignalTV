@@ -20,8 +20,6 @@ import {
   UtensilsCrossed,
   Sprout,
   Activity,
-  PanelLeftClose,
-  PanelLeftOpen,
   Sun,
   Moon,
   type LucideIcon,
@@ -68,7 +66,6 @@ export function Sidebar() {
   const channels = useStore((s) => s.channels);
   const filter = useStore((s) => s.filter);
   const sidebarCollapsed = useStore((s) => s.sidebarCollapsed);
-  const toggleSidebar = useStore((s) => s.toggleSidebar);
   const mobileSidebarOpen = useStore((s) => s.mobileSidebarOpen);
   const setMobileSidebar = useStore((s) => s.setMobileSidebar);
   const theme = useStore((s) => s.theme);
@@ -110,20 +107,15 @@ export function Sidebar() {
       <aside
         className={`sidebar ${sidebarCollapsed ? "is-collapsed" : ""} ${mobileSidebarOpen ? "is-mobile-open" : ""}`}
         onClickCapture={(e) => {
-          if (mobileSidebarOpen && (e.target as HTMLElement).closest("button")) {
-            setMobileSidebar(false);
-          }
+          if (!mobileSidebarOpen) return;
+          const button = (e.target as HTMLElement).closest("button");
+          if (!button) return;
+          // 主题切换按钮不触发关闭，避免切换主题时侧边栏被收起
+          if (button.classList.contains("sidebar__theme-toggle")) return;
+          setMobileSidebar(false);
         }}
       >
         <div className="sidebar__scroll">
-          <button
-            className="sidebar__toggle"
-            onClick={toggleSidebar}
-            aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
-            title={sidebarCollapsed ? "展开" : "收起"}
-          >
-            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-          </button>
         <nav className="nav">
           <button
             className={`nav__item ${isActiveNav("home") && !filter.q ? "is-active" : ""}`}
