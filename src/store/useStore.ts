@@ -105,6 +105,8 @@ interface State {
   activeChannelId: string | null; // 播放器目标
   favorites: string[];
   recents: string[]; // 最近观看，最新在前
+  recentCategories: string[]; // 最近使用的分类，最新在前
+  recentCountries: string[]; // 最近使用的国家 code，最新在前
   sidebarCollapsed: boolean; // 桌面端侧边栏收起
   mobileSidebarOpen: boolean; // 移动端抽屉式侧边栏开关
   theme: Theme; // 深色 / 白昼模式
@@ -116,6 +118,8 @@ interface State {
   openChannel: (id: string | null) => void;
   toggleFavorite: (id: string) => void;
   pushRecent: (id: string) => void;
+  pushRecentCategory: (id: string) => void;
+  pushRecentCountry: (code: string) => void;
   setLatency: (id: string, ms: number) => void;
   runLatencyProbe: () => Promise<void>;
   probeLatencyForIds: (ids: string[]) => Promise<void>;
@@ -140,6 +144,8 @@ export const useStore = create<State>()(
       activeChannelId: null,
       favorites: [],
       recents: [],
+      recentCategories: [],
+      recentCountries: [],
       latency: new Map(),
       latencyLoading: false,
       sidebarCollapsed: false,
@@ -176,7 +182,11 @@ export const useStore = create<State>()(
         }
       },
 
-      setView: (v) => set({ view: v, filter: { ...get().filter, q: "", categoryId: null, countryCode: null } }),
+      setView: (v) => {
+        if (v.kind === "category") get().pushRecentCategory(v.id);
+        if (v.kind === "country") get().pushRecentCountry(v.code);
+        set({ view: v, filter: { ...get().filter, q: "", categoryId: null, countryCode: null } });
+      },
       setFilter: (patch) => set({ filter: { ...get().filter, ...patch } }),
       openChannel: (id) => {
         if (id) get().pushRecent(id);
@@ -191,6 +201,14 @@ export const useStore = create<State>()(
       pushRecent: (id) =>
         set((s) => ({
           recents: [id, ...s.recents.filter((r) => r !== id)].slice(0, 24),
+        })),
+      pushRecentCategory: (id) =>
+        set((s) => ({
+          recentCategories: [id, ...s.recentCategories.filter((r) => r !== id)].slice(0, 24),
+        })),
+      pushRecentCountry: (code) =>
+        set((s) => ({
+          recentCountries: [code, ...s.recentCountries.filter((r) => r !== code)].slice(0, 24),
         })),
       setLatency: (id, ms) => {
         // 单条接口转发到批量节流，避免高频调用导致 O(n²) Map 重建
@@ -255,6 +273,8 @@ export const useStore = create<State>()(
       partialize: (s) => ({
         favorites: s.favorites,
         recents: s.recents,
+        recentCategories: s.recentCategories,
+        recentCountries: s.recentCountries,
         sidebarCollapsed: s.sidebarCollapsed,
         theme: s.theme,
       }),

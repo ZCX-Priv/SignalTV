@@ -1,61 +1,20 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Home,
   Heart,
   LayoutGrid,
   Globe2,
-  Hash,
   Radio,
-  Tv,
-  Film,
-  Newspaper,
-  Trophy,
-  Music2,
-  Baby,
-  ShoppingBag,
-  GraduationCap,
-  Plane,
-  Cpu,
-  Camera,
-  UtensilsCrossed,
-  Sprout,
-  Activity,
+  ChevronRight,
   Sun,
   Moon,
-  type LucideIcon,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { fmt } from "../lib/format";
-
-// 将部分 iptv-org 分类映射到合适的图标
-const CAT_ICON: Record<string, LucideIcon> = {
-  news: Newspaper,
-  sports: Trophy,
-  movies: Film,
-  music: Music2,
-  kids: Baby,
-  entertainment: Tv,
-  documentary: Camera,
-  education: GraduationCap,
-  shopping: ShoppingBag,
-  travel: Plane,
-  cooking: UtensilsCrossed,
-  religious: Sprout,
-  business: Activity,
-  culture: Film,
-  auto: Cpu,
-  family: Baby,
-  general: Tv,
-  legislative: Hash,
-  outdoor: Plane,
-  relax: Music2,
-  series: Film,
-  weather: Globe2,
-};
-
-function catIcon(id: string): LucideIcon {
-  return CAT_ICON[id] ?? Hash;
-}
+import { catIcon } from "../lib/categoryIcon";
+import { CategoryPickerModal } from "./CategoryPickerModal";
+import { CountryPickerModal } from "./CountryPickerModal";
+import type { CountryInfo } from "../types";
 
 export function Sidebar() {
   const view = useStore((s) => s.view);
@@ -65,11 +24,16 @@ export function Sidebar() {
   const favorites = useStore((s) => s.favorites);
   const channels = useStore((s) => s.channels);
   const filter = useStore((s) => s.filter);
+  const recentCategories = useStore((s) => s.recentCategories);
+  const recentCountries = useStore((s) => s.recentCountries);
   const sidebarCollapsed = useStore((s) => s.sidebarCollapsed);
   const mobileSidebarOpen = useStore((s) => s.mobileSidebarOpen);
   const setMobileSidebar = useStore((s) => s.setMobileSidebar);
   const theme = useStore((s) => s.theme);
   const toggleTheme = useStore((s) => s.toggleTheme);
+
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
 
   // 计算每个分类的频道数
   const catCounts = useMemo(() => {
@@ -83,14 +47,29 @@ export function Sidebar() {
 
   // 按数量取热门分类
   const topCats = useMemo(() => {
-    return categories
+    const ranked = categories
       .map((c) => ({ ...c, count: catCounts.get(c.id) ?? 0 }))
       .filter((c) => c.count > 0)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 14);
-  }, [categories, catCounts]);
+      .sort((a, b) => b.count - a.count);
 
-  const topCountries = useMemo(() => countries.slice(0, 14), [countries]);
+    // 最近使用的分类（按使用时间倒序）排到最前，并保持最多 14 项
+    const recentInRanked = recentCategories
+      .map((id) => ranked.find((c) => c.id === id))
+      .filter((c): c is { id: string; name: string; count: number } => !!c);
+    const recentIds = new Set(recentInRanked.map((c) => c.id));
+    const rest = ranked.filter((c) => !recentIds.has(c.id));
+    return [...recentInRanked, ...rest].slice(0, 14);
+  }, [categories, catCounts, recentCategories]);
+
+  const topCountries = useMemo(() => {
+    // countries 已按 channelCount 降序、已过滤 channelCount === 0
+    const recentInList = recentCountries
+      .map((code) => countries.find((c) => c.code === code))
+      .filter((c): c is CountryInfo => !!c);
+    const recentCodes = new Set(recentInList.map((c) => c.code));
+    const rest = countries.filter((c) => !recentCodes.has(c.code));
+    return [...recentInList, ...rest].slice(0, 14);
+  }, [countries, recentCountries]);
 
   const activeCat = view.kind === "category" ? view.id : filter.categoryId;
   const activeCountry = view.kind === "country" ? view.code : filter.countryCode;
@@ -138,6 +117,16 @@ export function Sidebar() {
           <div className="sidebar__label">
             <LayoutGrid size={11} />
             <span>分类</span>
+            <button
+              type="button"
+              className="sidebar__label-action"
+              onClick={() => setCategoryPickerOpen(true)}
+              aria-label="查看全部分类"
+              title="全部分类"
+            >
+              <span>全部</span>
+              <ChevronRight size={11} />
+            </button>
           </div>
           <div className="nav">
             {topCats.map((c) => {
@@ -162,6 +151,16 @@ export function Sidebar() {
           <div className="sidebar__label">
             <Globe2 size={11} />
             <span>国家</span>
+            <button
+              type="button"
+              className="sidebar__label-action"
+              onClick={() => setCountryPickerOpen(true)}
+              aria-label="查看全部国家"
+              title="全部国家"
+            >
+              <span>全部</span>
+              <ChevronRight size={11} />
+            </button>
           </div>
           <div className="nav nav--countries">
             {topCountries.map((c) => {
@@ -203,6 +202,14 @@ export function Sidebar() {
         </div>
       </div>
     </aside>
+      <CategoryPickerModal
+        open={categoryPickerOpen}
+        onClose={() => setCategoryPickerOpen(false)}
+      />
+      <CountryPickerModal
+        open={countryPickerOpen}
+        onClose={() => setCountryPickerOpen(false)}
+      />
     </>
   );
 }
