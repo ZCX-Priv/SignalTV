@@ -80,10 +80,7 @@ export function describeView(
       const cat = ctx.categories.find((c) => c.id === view.id);
       const name = cat?.name ?? view.id;
       const count = countByCategory(view.id, ctx.channels);
-      const title =
-        count > 0
-          ? `${name}频道 - 免费在线看${name}电视直播 | ${SITE_NAME}`
-          : `${name}频道 - 免费在线看电视直播 | ${SITE_NAME}`;
+      const title = `${SITE_NAME} | ${name}频道`;
       const description =
         count > 0
           ? `在线观看 ${fmtCount(count)} 路${name}电视直播频道，免费即开即看，覆盖全球${name}内容。`
@@ -95,10 +92,7 @@ export function describeView(
       const country = ctx.countries.find((c) => c.code === view.code);
       const name = country?.name ?? view.code;
       const count = countByCountry(view.code, ctx.channels);
-      const title =
-        count > 0
-          ? `${name}电视频道 - 在线看${name}直播电视 | ${SITE_NAME}`
-          : `${name}电视频道 - 在线看电视直播 | ${SITE_NAME}`;
+      const title = `${SITE_NAME} | ${name}电视频道`;
       const description =
         count > 0
           ? `在线观看来自${name}的 ${fmtCount(count)} 路电视直播频道，免费即开即看。`
@@ -108,7 +102,7 @@ export function describeView(
 
     case "favorites": {
       return {
-        title: `我的收藏频道 | ${SITE_NAME}`,
+        title: `${SITE_NAME} | 我的收藏频道`,
         description: `在 ${SITE_NAME} 收藏的电视频道列表，可一键继续观看。`,
         canonical,
       };
@@ -117,7 +111,7 @@ export function describeView(
     case "search": {
       const q = view.q.trim().slice(0, 60);
       return {
-        title: q ? `搜索"${q}"的电视频道结果 | ${SITE_NAME}` : `${SITE_NAME} - 免费在线看电视直播`,
+        title: q ? `${SITE_NAME} | 搜索"${q}"的电视频道结果` : `${SITE_NAME} - 免费在线看电视直播`,
         description: q
           ? `在 ${SITE_NAME} 中搜索"${q}"匹配的电视直播频道，免费在线观看。`
           : HOME_DESCRIPTION,
@@ -127,7 +121,7 @@ export function describeView(
 
     case "status": {
       return {
-        title: `信号源状态 | ${SITE_NAME}`,
+        title: `${SITE_NAME} | 信号源状态`,
         description: `${SITE_NAME} 信号源状态：连接状态、频道统计、延迟探测进度与数据源说明。`,
         canonical,
       };
@@ -135,7 +129,7 @@ export function describeView(
 
     case "settings": {
       return {
-        title: `设置 | ${SITE_NAME}`,
+        title: `${SITE_NAME} | 设置`,
         description: `${SITE_NAME} 设置中心：主题模式（跟随系统 / 白昼 / 夜间）与应用信息。`,
         canonical,
       };
