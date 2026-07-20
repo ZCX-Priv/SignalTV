@@ -62,6 +62,11 @@
 - 无限滚动：IntersectionObserver，每页 60 条
 - 播放器懒加载：`lazy()` + `Suspense`，hls.js 仅在打开频道时加载（约 250KB）
 - 频道号美学：基于频道 id 哈希生成稳定的 `100.0 ~ 999.9` 频道号
+- 频道卡片视觉：纯 CSS 背景叠加实现「渐变底色 + 国旗暗纹水印」（多层 background，由 `mediaStyle` 在 `ChannelCard.tsx` 内联生成）
+  - 底色：`countryGradient` 由国家代码哈希生成稳定的双色 HSL 渐变（非法代码回退中性高级灰），纯 CSS、无额外请求
+  - 暗纹：`flagSvgUrl` 取 flagcdn 的国旗 **SVG 矢量图（远程加载，额外图片请求）**，作为中间层配合 `background-blend-mode: overlay` 融入底色，隐约透出星条/米字/三色旗纹理
+  - 顶层信号红径向高光叠加，保证文字可读性
+  - 无 logo（`.card__media:not(:has(.card__logo))`）或 logo 加载失败时（`.card__media--empty`）回退显示频道名 + 国家占位文字（`.card__placeholder`，见 `App.css`）
 - 启动期 Fraunces italic 字体加载监听：消除伪斜体→真斜体的视觉跳变，带 2s 超时 fallback
 - 首次访问欢迎 Toast（用独立 localStorage key 与 zustand persist 解耦，读取同步无时序问题）
 - **PWA 支持**：可安装到桌面/主屏幕，离线访问已缓存的频道列表与静态资源（vite-plugin-pwa + Workbox）
@@ -137,6 +142,7 @@ Signal-TV/
 │   ├── robots.txt               # 爬虫指令
 │   └── sitemap.xml              # 站点地图
 ├── src/
+│   ├── assets/                      # 静态资源目录（预留）
 │   ├── components/
 │   │   ├── CategoryPickerModal.tsx  # 分类选择模态（带搜索）
 │   │   ├── ChannelCard.tsx          # 频道卡片
@@ -161,7 +167,7 @@ Signal-TV/
 │   ├── lib/
 │   │   ├── api.ts                   # iptv-org API 封装（超时 + 重试 + 指数退避）
 │   │   ├── categoryIcon.ts          # 分类 id → lucide 图标映射
-│   │   ├── format.ts                # 格式化（时钟 / 国旗 / 频道号 / 分类名）
+│   │   ├── format.ts                # 格式化（时钟 / 国旗 / 频道号 / 分类名 / 国旗 SVG 暗纹 / 国家渐变）
 │   │   ├── idb.ts                   # IndexedDB 适配器 + 一次性数据迁移
 │   │   ├── latency.ts               # 流延迟探测（HLS cors + 非 HLS no-cors）
 │   │   ├── seo.ts                   # 运行时 SEO（动态 meta + JSON-LD 覆写）

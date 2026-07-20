@@ -14,6 +14,31 @@ export function flagUrlLg(code: string): string | null {
   return `${FLAG_BASE}/w80/${code.toLowerCase()}.png`;
 }
 
+/** 获取国旗 SVG 矢量图（用于背景暗纹水印），非 2 位代码返回 null。 */
+export function flagSvgUrl(code: string): string | null {
+  if (!code || code.length !== 2) return null;
+  return `${FLAG_BASE}/${code.toLowerCase()}.svg`;
+}
+
+/**
+ * 由国家代码哈希生成稳定的双色高级渐变。
+ * 非法代码回退为中性高级灰渐变。
+ */
+export function countryGradient(code: string): string {
+  if (!code || code.length !== 2) {
+    return "linear-gradient(135deg, #2a2a33 0%, #16161c 100%)";
+  }
+  const a = code.charCodeAt(0);
+  const b = code.charCodeAt(1);
+  let h = (a * 73856093) ^ (b * 19349663);
+  h = h >>> 0;
+  const hue = h % 360;
+  const hue2 = (hue + 28) % 360; // 相近色相，保证协调
+  const c1 = `hsl(${hue} 34% 22%)`;
+  const c2 = `hsl(${hue2} 30% 14%)`;
+  return `linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`;
+}
+
 /** 将分类 id（如 "movies"）转为展示名。 */
 export function prettyCategory(id: string): string {
   return id

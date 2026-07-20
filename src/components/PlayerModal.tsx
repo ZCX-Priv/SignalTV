@@ -65,8 +65,7 @@ export function PlayerModal() {
             <span className="player__ch mono">频道 {channelPosition(channel.id)}</span>
             <span className="player__divider" />
             <span className="player__live mono">
-              <span className="dot" />
-              <span className="player__live-text">直播中</span>
+              <span className="dot" /> 直播中
             </span>
             <span className="player__divider" />
             <span className="mono player__time">{broadcastDate()}</span>
@@ -76,8 +75,7 @@ export function PlayerModal() {
               <>
                 <span className="player__divider" />
                 <span className="player__signal-lock mono">
-                  <Lock size={11} />
-                  <span className="player__signal-lock-text">信号已锁定 · {channel.country}</span>
+                  <Lock size={11} /> 信号已锁定 · {channel.country}
                 </span>
               </>
             )}

@@ -984,20 +984,49 @@
 .card__media {
   position: relative;
   aspect-ratio: 16 / 10;
-  background:
-    radial-gradient(120% 80% at 50% 30%, rgba(255, 59, 48, 0.08), transparent 60%),
-    linear-gradient(160deg, #16161f 0%, #0c0c14 100%);
+  background: linear-gradient(160deg, #16161f 0%, #0c0c14 100%);
   display: grid;
   place-items: center;
   overflow: hidden;
 }
-.card__media--empty::before {
-  content: "TV";
+/* 占位文字：默认隐藏，无 logo 或加载失败时显示 */
+.card__placeholder {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  z-index: 1;
+  text-align: center;
+  padding: 8px 12px;
+  pointer-events: none;
+}
+.card__media:not(:has(.card__logo)) .card__placeholder {
+  display: flex;
+}
+.card__media--empty .card__placeholder {
+  display: flex;
+}
+.card__placeholder-name {
   font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 360;
-  color: var(--ink-faint);
-  letter-spacing: 0.05em;
+  font-size: 16px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card__placeholder-country {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
 }
 .card__noise {
   position: absolute;
@@ -1374,11 +1403,6 @@
   .player__ping + .player__divider {
     display: none;
   }
-  /* 直播中、信号已锁定：仅保留图标（dot / Lock svg），隐藏文字 */
-  .player__live-text,
-  .player__signal-lock-text {
-    display: none;
-  }
 }
 
 /* —— 全部分类选择弹窗 —— */
@@ -1699,6 +1723,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 12px;
   /* vidstack 主题色适配：信号红主色 */
   --media-brand: var(--signaltv, #ff3b30);
   --media-controls-color: #f5f5f5;
@@ -1708,14 +1733,12 @@
 .player__video .vds-buffering-indicator {
   display: none !important;
 }
-/* 隐藏 vidstack DefaultVideoSmallLayout 在未启动时显示的中心大播放按钮。
-   原因：移动端 autoPlay 失败时，项目自定义的 .player__overlay--paused
-   会作为"点击播放"覆盖层显示，同时 vidstack 也会在 small layout 下
-   渲染一个 45px 圆形 .vds-play-button，两者叠加造成视觉混乱。
-   仅命中 [data-sm] small layout 下的中心 play button，不影响：
-   - 桌面端 large layout（无此按钮）
-   - 底部 controls 中的小播放按钮（位于不同的 controls-group，且播放后仍需可用） */
-.player__video .vds-video-layout[data-sm] .vds-controls .vds-play-button {
+/* 隐藏 vidstack 在所有布局下的中心播放按钮，避免与项目自定义覆盖层叠加。
+   原因：autoPlay 失败时，项目自定义的 .player__overlay--paused
+   会作为"点击播放"覆盖层显示，同时 vidstack 也会渲染中心播放按钮，
+   两者叠加造成视觉混乱。隐藏 .vds-center-controls 容器不影响：
+   - 底部控制栏中的播放/暂停按钮（位于不同的容器） */
+.player__video .vds-video-layout .vds-center-controls {
   display: none !important;
 }
 /*
@@ -1782,6 +1805,9 @@
   margin: 0;
   font-size: 12px;
 }
+.player__overlay .spin {
+  color: var(--signaltv);
+}
 .player__overlay h3 {
   font-size: 30px;
   margin: 0;
@@ -1812,6 +1838,13 @@
   font-size: 11px;
   color: var(--ink-mute);
   margin-top: -4px;
+}
+/* 白昼模式：暂停覆盖层背景始终是深色的，文字强制白色以保证可读性 */
+[data-theme="light"] .player__overlay--paused {
+  color: #ffffff;
+}
+[data-theme="light"] .player__overlay--paused .mono {
+  color: rgba(255, 255, 255, 0.75);
 }
 .player__error-note {
   margin-top: 8px !important;
@@ -2766,9 +2799,7 @@
     linear-gradient(160deg, var(--bg-elev) 0%, var(--bg-2) 100%);
 }
 [data-theme="light"] .card__media {
-  background:
-    radial-gradient(120% 80% at 50% 30%, rgba(255, 59, 48, 0.05), transparent 60%),
-    linear-gradient(160deg, var(--bg-2) 0%, var(--bg-3) 100%);
+  background: linear-gradient(160deg, var(--bg-2) 0%, var(--bg-3) 100%);
 }
 [data-theme="light"] .feature__logo {
   filter: drop-shadow(0 8px 30px rgba(26, 26, 31, 0.18));
@@ -2781,6 +2812,14 @@
 }
 [data-theme="light"] .player__panel {
   box-shadow: 0 40px 120px -30px rgba(26, 26, 31, 0.35), 0 0 0 1px rgba(255, 59, 48, 0.08);
+}
+/* 排除 --paused：paused 覆盖层由前文 1843-1848 行的专属规则接管（纯白文字），
+   此处通用规则只作用于 loading/error 态，避免同特异度下靠后声明覆盖纯白 */
+[data-theme="light"] .player__overlay:not(.player__overlay--paused) {
+  color: rgba(255, 255, 255, 0.8);
+}
+[data-theme="light"] .player__overlay:not(.player__overlay--paused) p {
+  color: rgba(255, 255, 255, 0.6);
 }
 @media (max-width: 768px) {
   [data-theme="light"] .sidebar {

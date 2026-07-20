@@ -1,8 +1,8 @@
-import { memo } from "react";
+import { memo, type CSSProperties } from "react";
 import { Play, Star, Tv2 } from "lucide-react";
 import type { ChannelWithStream } from "../types";
 import { useStore } from "../store/useStore";
-import { channelPosition, flagUrl, prettyCategory } from "../lib/format";
+import { channelPosition, flagUrl, flagSvgUrl, countryGradient, prettyCategory } from "../lib/format";
 import { toast } from "../lib/toast";
 import { LatencyTag } from "./LatencyTag";
 
@@ -21,13 +21,34 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
   const cat = channel.categories[0];
   const pos = channelPosition(channel.id);
 
+  const flagSvg = flagSvgUrl(channel.country);
+  const mediaBackground = flagSvg
+    ? [
+        "radial-gradient(120% 80% at 50% 30%, rgba(255, 59, 48, 0.10), transparent 60%)",
+        `url("${flagSvg}")`,
+        countryGradient(channel.country),
+      ]
+    : [
+        "radial-gradient(120% 80% at 50% 30%, rgba(255, 59, 48, 0.10), transparent 60%)",
+        countryGradient(channel.country),
+      ];
+  const mediaBlend = flagSvg ? "normal, overlay, normal" : "normal, normal";
+  const mediaStyle: CSSProperties = {
+    backgroundImage: mediaBackground.join(", "),
+    backgroundSize: flagSvg ? "cover, cover, cover" : "cover, cover",
+    backgroundPosition: "center, center, center",
+    backgroundRepeat: "no-repeat, no-repeat, no-repeat",
+    backgroundBlendMode: mediaBlend,
+    backgroundColor: "#16161c",
+  };
+
   return (
     <article
       className="card"
       style={{ animationDelay: `${Math.min(index, 24) * 28}ms` }}
       onClick={() => openChannel(channel.id)}
     >
-      <div className="card__media">
+      <div className="card__media" style={mediaStyle}>
         <div className="card__noise" />
         {channel.logo ? (
           <img
@@ -41,9 +62,11 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
               img.parentElement?.classList.add("card__media--empty");
             }}
           />
-        ) : (
-          <div className="card__media--empty" />
-        )}
+        ) : null}
+        <div className="card__placeholder">
+          <span className="card__placeholder-name">{channel.name}</span>
+          <span className="card__placeholder-country">{channel.country}</span>
+        </div>
 
         <span className="card__pos mono">频道 {pos}</span>
 
