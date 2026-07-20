@@ -6,8 +6,7 @@ import {
   Globe2,
   Radio,
   ChevronRight,
-  Sun,
-  Moon,
+  Settings,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { fmt } from "../lib/format";
@@ -29,8 +28,6 @@ export function Sidebar() {
   const sidebarCollapsed = useStore((s) => s.sidebarCollapsed);
   const mobileSidebarOpen = useStore((s) => s.mobileSidebarOpen);
   const setMobileSidebar = useStore((s) => s.setMobileSidebar);
-  const theme = useStore((s) => s.theme);
-  const toggleTheme = useStore((s) => s.toggleTheme);
 
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
@@ -95,8 +92,6 @@ export function Sidebar() {
           if (!mobileSidebarOpen) return;
           const button = (e.target as HTMLElement).closest("button");
           if (!button) return;
-          // 主题切换按钮不触发关闭，避免切换主题时侧边栏被收起
-          if (button.classList.contains("sidebar__theme-toggle")) return;
           setMobileSidebar(false);
         }}
       >
@@ -188,22 +183,24 @@ export function Sidebar() {
         </div>
 
         <div className="sidebar__footer mono">
-          <div className="sidebar__footer-row">
-            <Radio size={11} />
-            <span>公共电视信号源</span>
-          </div>
-          <div className="sidebar__footer-row sidebar__footer-row--dim">
-            <span>上行链路已建立</span>
-            <span className="dot" />
-          </div>
           <button
-            className="sidebar__theme-toggle"
-            onClick={toggleTheme}
-            aria-label={theme === "dark" ? "切换到白昼模式" : "切换到夜间模式"}
-            title={theme === "dark" ? "白昼模式" : "夜间模式"}
+            className={`sidebar__settings-btn sidebar__status-btn ${view.kind === "status" ? "is-active" : ""}`}
+            onClick={() => setView({ kind: "status" })}
+            aria-label="状态"
+            title="状态"
           >
-            {theme === "dark" ? <Sun size={13} /> : <Moon size={13} />}
-            <span>{theme === "dark" ? "白昼模式" : "夜间模式"}</span>
+            <Radio size={13} />
+            <span>状态</span>
+            <span className="dot" aria-hidden />
+          </button>
+          <button
+            className={`sidebar__settings-btn ${view.kind === "settings" ? "is-active" : ""}`}
+            onClick={() => setView({ kind: "settings" })}
+            aria-label="设置"
+            title="设置"
+          >
+            <Settings size={13} />
+            <span>设置</span>
           </button>
         </div>
       </div>

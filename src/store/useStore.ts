@@ -55,6 +55,11 @@ function isWeakNetwork(): boolean {
 
 export type Theme = "dark" | "light";
 
+// 用户主题偏好：system 表示跟随系统 prefers-color-scheme；
+// light/dark 为用户显式选择，会覆盖系统偏好并持久化。
+// theme 字段保留为实际渲染值（dark|light），由 themeMode 派生。
+export type ThemeMode = "system" | "light" | "dark";
+
 // 同步：跟随系统 prefers-color-scheme，用于 store 初始化（避免 Promise 赋给 Theme 字段）
 function getSystemTheme(): Theme {
   if (typeof window === "undefined") return "dark";
@@ -65,7 +70,7 @@ function getSystemTheme(): Theme {
 
 // 同步写一份 theme 副本到 localStorage，供 index.html 内联脚本在下次首屏时同步读取，
 // 避免 React 挂载前 IndexedDB 异步 rehydrate 期间出现 dark→light 闪烁（FOUC）。
-// 同时同步 <html data-theme>，让所有 theme 变更点（setTheme/toggleTheme/onRehydrateStorage）
+// 同时同步 <html data-theme>，让所有 theme 变更点（setTheme/setThemeMode/onRehydrateStorage）
 // 统一走此函数，消除 App.tsx useEffect 重复设置。
 // localStorage 不可用（隐私模式）时静默失败，仍走 IDB persist 路径。
 function syncThemeCache(theme: Theme): void {
@@ -88,7 +93,13 @@ export async function getInitialTheme(): Promise<Theme> {
   try {
     const raw = await idbGet("signaltv-iptv");
     if (raw) {
-      const parsed = JSON.parse(raw) as { state?: { theme?: Theme } };
+      const parsed = JSON.parse(raw) as {
+        state?: { theme?: Theme; themeMode?: ThemeMode };
+      };
+      // 优先按 themeMode 推导实际渲染值（兼容旧版只有 theme 字段的持久化）
+      const mode = parsed.state?.themeMode;
+      if (mode === "system") return getSystemTheme();
+      if (mode === "light" || mode === "dark") return mode;
       if (parsed.state?.theme === "dark" || parsed.state?.theme === "light") {
         return parsed.state.theme;
       }
@@ -97,6 +108,31 @@ export async function getInitialTheme(): Promise<Theme> {
     // 解析失败则回落到系统偏好
   }
   return getSystemTheme();
+}
+
+// 主题切换瞬间禁用所有过渡/动画：在 <html> 上加 .theme-transitioning 类，
+// CSS 规则把该类下所有元素的 transition-duration / animation-duration 强制为 0s，
+// 等效于"瞬时切换"，避免带 transition 的元素缓慢过渡到新主题色形成扎眼时差。
+// 双 RAF 后移除：第一帧 React 提交新 theme 到 DOM（data-theme 变化），
+// 第二帧浏览器完成重绘，此时再恢复过渡行为已无可见延迟。
+// 兜底：100ms 后强制清理，防止 set 抛错或 RAF 被打断导致类永久残留
+// （CSS html.theme-transitioning * 会禁用所有动画，永久残留会让应用视觉崩坏）
+function disableTransitionsBriefly(): void {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  root.classList.add("theme-transitioning");
+  // 强制回流，确保 .theme-transitioning 类先生效再切换 data-theme
+  void root.offsetHeight;
+  const fallback = setTimeout(
+    () => root.classList.remove("theme-transitioning"),
+    100,
+  );
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      clearTimeout(fallback);
+      root.classList.remove("theme-transitioning");
+    });
+  });
 }
 
 export type SortKey =
@@ -120,7 +156,9 @@ export type View =
   | { kind: "category"; id: string }
   | { kind: "country"; code: string }
   | { kind: "favorites" }
-  | { kind: "search"; q: string };
+  | { kind: "search"; q: string }
+  | { kind: "status" }
+  | { kind: "settings" };
 
 interface State {
   // 数据
@@ -145,7 +183,8 @@ interface State {
   recentCountries: string[]; // 最近使用的国家 code，最新在前
   sidebarCollapsed: boolean; // 桌面端侧边栏收起
   mobileSidebarOpen: boolean; // 移动端抽屉式侧边栏开关
-  theme: Theme; // 深色 / 白昼模式
+  theme: Theme; // 实际渲染主题（dark|light），由 themeMode 派生
+  themeMode: ThemeMode; // 用户主题偏好（system|light|dark），持久化
 
   // 动作
   init: () => Promise<void>;
@@ -161,7 +200,7 @@ interface State {
   toggleSidebar: () => void;
   setMobileSidebar: (open: boolean) => void;
   setTheme: (t: Theme) => void;
-  toggleTheme: () => void;
+  setThemeMode: (m: ThemeMode) => void;
 }
 
 export const useStore = create<State>()(
@@ -186,6 +225,7 @@ export const useStore = create<State>()(
       sidebarCollapsed: false,
       mobileSidebarOpen: false,
       theme: getSystemTheme(),
+      themeMode: "system",
 
       init: async () => {
         if (get().loaded || get().loading) return;
@@ -308,35 +348,13 @@ export const useStore = create<State>()(
         syncThemeCache(t);
         set({ theme: t });
       },
-      toggleTheme: () => {
-        // 切换前给 <html> 加 .theme-transitioning，禁用所有过渡/动画，
-        // 避免 .header__menu / .search / .select / .toggle 等带 transition
-        // 的元素缓慢过渡到新主题色（与主体瞬时切换形成扎眼时差）。
-        // 双 RAF 后移除：第一帧 React 提交新 theme 到 DOM（data-theme 变化），
-        // 第二帧浏览器完成重绘，此时再恢复过渡行为已无可见延迟。
-        // 兜底：100ms 后强制清理，防止 set 抛错或 RAF 被打断导致类永久残留
-        // （CSS html.theme-transitioning * 会禁用所有动画，永久残留会让应用视觉崩坏）
-        if (typeof document !== "undefined") {
-          const root = document.documentElement;
-          root.classList.add("theme-transitioning");
-          // 强制回流，确保 .theme-transitioning 类先生效再切换 data-theme
-          void root.offsetHeight;
-          const fallback = setTimeout(
-            () => root.classList.remove("theme-transitioning"),
-            100,
-          );
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              clearTimeout(fallback);
-              root.classList.remove("theme-transitioning");
-            });
-          });
-        }
-        set((s) => {
-          const next = s.theme === "dark" ? "light" : "dark";
-          syncThemeCache(next);
-          return { theme: next };
-        });
+      setThemeMode: (m) => {
+        // themeMode === "system" 时根据当前 prefers-color-scheme 推导实际渲染值，
+        // 否则直接使用 light/dark 作为渲染值
+        const actualTheme: Theme = m === "system" ? getSystemTheme() : m;
+        disableTransitionsBriefly();
+        syncThemeCache(actualTheme);
+        set({ themeMode: m, theme: actualTheme });
       },
     }),
     {
@@ -349,15 +367,38 @@ export const useStore = create<State>()(
         recentCountries: s.recentCountries,
         sidebarCollapsed: s.sidebarCollapsed,
         theme: s.theme,
+        themeMode: s.themeMode,
       }),
       onRehydrateStorage: () => (state) => {
-        // persist rehydration 完成后立即同步 <html data-theme>，
-        // 避免 main.tsx 初始值与 rehydrated 值不一致时的时序窗口
-        if (state?.theme) {
-          document.documentElement.dataset.theme = state.theme;
-          syncThemeCache(state.theme);
+        if (!state) return;
+        // 旧版持久化数据没有 themeMode → 从 theme 推断（保留旧用户的实际偏好），
+        // 否则新字段缺失会导致"跟随系统"语义意外覆盖用户已选主题
+        if (!state.themeMode) {
+          state.themeMode = state.theme === "light" ? "light" : "dark";
         }
+        // 根据 themeMode + 系统偏好重算实际渲染 theme
+        const actual: Theme =
+          state.themeMode === "system" ? getSystemTheme() : state.themeMode;
+        state.theme = actual;
+        // 同步 <html data-theme> + localStorage 缓存，避免 main.tsx 初始值
+        // 与 rehydrated 值不一致的时序窗口
+        document.documentElement.dataset.theme = actual;
+        syncThemeCache(actual);
       },
     },
   ),
 );
+
+// 跟随系统模式：监听 prefers-color-scheme 变化，仅在 themeMode === "system" 时
+// 自动同步实际渲染 theme。light/dark 显式偏好不受系统切换影响。
+if (typeof window !== "undefined" && window.matchMedia) {
+  const mql = window.matchMedia("(prefers-color-scheme: light)");
+  mql.addEventListener("change", (e) => {
+    const s = useStore.getState();
+    if (s.themeMode !== "system") return;
+    const next: Theme = e.matches ? "light" : "dark";
+    disableTransitionsBriefly();
+    syncThemeCache(next);
+    useStore.setState({ theme: next });
+  });
+}

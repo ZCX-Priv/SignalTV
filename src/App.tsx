@@ -5,6 +5,8 @@ import { Sidebar } from "./components/Sidebar";
 import { Hero } from "./components/Hero";
 import { FilterBar } from "./components/FilterBar";
 import { ChannelGrid } from "./components/ChannelGrid";
+import { SettingsPanel } from "./components/SettingsPanel";
+import { StatusPanel } from "./components/StatusPanel";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Loader, ErrorState } from "./components/Loader";
 
@@ -30,7 +32,7 @@ function App() {
   // 按需探测可见 + 预加载范围内的频道（store 层已加弱网检测跳过）。
 
   // 注：原主题 useEffect 已移除。
-  // syncThemeCache（store 内部函数）会在 setTheme/toggleTheme/onRehydrateStorage
+  // syncThemeCache（store 内部函数）会在 setTheme/setThemeMode/onRehydrateStorage
   // 三个变更点统一同步 <html data-theme>，无需 App.tsx 重复订阅。
 
   // 全局 ⌘K / Ctrl+K 聚焦搜索框
@@ -70,6 +72,9 @@ function App() {
   }
 
   const showHero = view.kind === "home";
+  const isSettings = view.kind === "settings";
+  const isStatus = view.kind === "status";
+  const isPanel = isSettings || isStatus;
 
   return (
     <>
@@ -88,8 +93,14 @@ function App() {
         <main className="app__main">
           {showHero && <Hero />}
           <div className="content">
-            <FilterBar />
-            <ChannelGrid />
+            {isPanel ? (
+              isStatus ? <StatusPanel /> : <SettingsPanel />
+            ) : (
+              <>
+                <FilterBar />
+                <ChannelGrid />
+              </>
+            )}
           </div>
         </main>
       </div>

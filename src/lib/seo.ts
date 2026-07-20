@@ -124,6 +124,22 @@ export function describeView(
         canonical,
       };
     }
+
+    case "status": {
+      return {
+        title: `信号源状态 | ${SITE_NAME}`,
+        description: `${SITE_NAME} 信号源状态：连接状态、频道统计、延迟探测进度与数据源说明。`,
+        canonical,
+      };
+    }
+
+    case "settings": {
+      return {
+        title: `设置 | ${SITE_NAME}`,
+        description: `${SITE_NAME} 设置中心：主题模式（跟随系统 / 白昼 / 夜间）与应用信息。`,
+        canonical,
+      };
+    }
   }
 }
 
