@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { fmt } from "../lib/format";
+import { toast } from "../lib/toast";
 import { catIcon } from "../lib/categoryIcon";
 import { CategoryPickerModal } from "./CategoryPickerModal";
 import { CountryPickerModal } from "./CountryPickerModal";
@@ -99,14 +100,20 @@ export function Sidebar() {
         <nav className="nav">
           <button
             className={`nav__item ${isActiveNav("home") && !filter.q ? "is-active" : ""}`}
-            onClick={() => setView({ kind: "home" })}
+            onClick={() => {
+              setView({ kind: "home" });
+              toast.info("已返回首页");
+            }}
           >
             <Home size={15} />
             <span>首页</span>
           </button>
           <button
             className={`nav__item ${isActiveNav("favorites") ? "is-active" : ""}`}
-            onClick={() => setView({ kind: "favorites" })}
+            onClick={() => {
+              setView({ kind: "favorites" });
+              toast.info("已切换至收藏页");
+            }}
           >
             <Heart size={15} />
             <span>收藏夹</span>
@@ -137,7 +144,10 @@ export function Sidebar() {
                 <button
                   key={c.id}
                   className={`nav__item ${active ? "is-active" : ""}`}
-                  onClick={() => setView({ kind: "category", id: c.id })}
+                  onClick={() => {
+                    setView({ kind: "category", id: c.id });
+                    toast.info(`已切换至${c.name}频道`);
+                  }}
                 >
                   <Icon size={14} />
                   <span>{c.name}</span>
@@ -170,7 +180,10 @@ export function Sidebar() {
                 <button
                   key={c.code}
                   className={`nav__item nav__item--country ${active ? "is-active" : ""}`}
-                  onClick={() => setView({ kind: "country", code: c.code })}
+                  onClick={() => {
+                    setView({ kind: "country", code: c.code });
+                    toast.info(`已切换至${c.name}频道`);
+                  }}
                   title={c.name}
                 >
                   <span className="nav__flag">{c.flag}</span>
@@ -185,7 +198,10 @@ export function Sidebar() {
         <div className="sidebar__footer mono">
           <button
             className={`sidebar__settings-btn sidebar__status-btn ${view.kind === "status" ? "is-active" : ""}`}
-            onClick={() => setView({ kind: "status" })}
+            onClick={() => {
+              setView({ kind: "status" });
+              toast.info("已切换至状态页");
+            }}
             aria-label="状态"
             title="状态"
           >
@@ -195,7 +211,10 @@ export function Sidebar() {
           </button>
           <button
             className={`sidebar__settings-btn ${view.kind === "settings" ? "is-active" : ""}`}
-            onClick={() => setView({ kind: "settings" })}
+            onClick={() => {
+              setView({ kind: "settings" });
+              toast.info("已切换至设置页");
+            }}
             aria-label="设置"
             title="设置"
           >

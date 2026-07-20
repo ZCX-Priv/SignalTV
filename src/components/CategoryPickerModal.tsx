@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LayoutGrid, Search, X } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { fmt } from "../lib/format";
+import { toast } from "../lib/toast";
 import { catIcon } from "../lib/categoryIcon";
 
 interface CategoryPickerModalProps {
@@ -94,8 +95,9 @@ export function CategoryPickerModal({ open, onClose }: CategoryPickerModalProps)
 
   const activeCatId = view.kind === "category" ? view.id : null;
 
-  function handlePick(id: string) {
-    setView({ kind: "category", id });
+  function handlePick(c: CatWithCount) {
+    setView({ kind: "category", id: c.id });
+    toast.info(`已切换至${c.name}频道`);
     onClose();
   }
 
@@ -107,7 +109,7 @@ export function CategoryPickerModal({ open, onClose }: CategoryPickerModalProps)
         key={c.id}
         type="button"
         className={`category-picker__item ${active ? "is-active" : ""}`}
-        onClick={() => handlePick(c.id)}
+        onClick={() => handlePick(c)}
       >
         <Icon size={14} />
         <span>{c.name}</span>

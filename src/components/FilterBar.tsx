@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { SlidersHorizontal, ArrowDownUp, Globe, Hash, ShieldAlert } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useFilteredChannels } from "../hooks/useChannels";
+import { toast } from "../lib/toast";
 import type { SortKey } from "../store/useStore";
 import { Select } from "./Select";
 
@@ -74,7 +75,14 @@ export function FilterBar() {
             icon={<Hash size={13} />}
             placeholder="全部分类"
             value={filter.categoryId ?? ALL}
-            onValueChange={(v) => setFilter({ categoryId: v === ALL ? null : v })}
+            onValueChange={(v) => {
+              setFilter({ categoryId: v === ALL ? null : v });
+              if (v === ALL) toast.info("已清除分类筛选");
+              else {
+                const c = categories.find((x) => x.id === v);
+                if (c) toast.info(`分类：${c.name}`);
+              }
+            }}
             options={[
               { value: ALL, label: "全部分类" },
               ...categories.map((c) => ({ value: c.id, label: c.name })),
@@ -86,7 +94,14 @@ export function FilterBar() {
             icon={<Globe size={13} />}
             placeholder="全部国家"
             value={filter.countryCode ?? ALL}
-            onValueChange={(v) => setFilter({ countryCode: v === ALL ? null : v })}
+            onValueChange={(v) => {
+              setFilter({ countryCode: v === ALL ? null : v });
+              if (v === ALL) toast.info("已清除国家筛选");
+              else {
+                const c = countries.find((x) => x.code === v);
+                if (c) toast.info(`国家：${c.name}`);
+              }
+            }}
             options={[
               { value: ALL, label: "全部国家" },
               ...countries.map((c) => ({
@@ -101,13 +116,22 @@ export function FilterBar() {
             aria-label="排序方式"
             icon={<ArrowDownUp size={13} />}
             value={filter.sort}
-            onValueChange={(v) => setFilter({ sort: v as SortKey })}
+            onValueChange={(v) => {
+              setFilter({ sort: v as SortKey });
+              const opt = sortOptions.find((o) => o.value === v);
+              if (opt) toast.info(`排序：${opt.label}`);
+            }}
             options={sortOptions}
           />
 
           <button
             className={`toggle ${filter.nsfw ? "is-on" : ""}`}
-            onClick={() => setFilter({ nsfw: !filter.nsfw })}
+            onClick={() => {
+              const next = !filter.nsfw;
+              setFilter({ nsfw: next });
+              if (next) toast.warning("已开启成人内容显示");
+              else toast.info("已隐藏成人内容");
+            }}
             title="包含成人内容"
           >
             <ShieldAlert size={13} />

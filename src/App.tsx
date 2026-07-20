@@ -9,6 +9,8 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import { StatusPanel } from "./components/StatusPanel";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Loader, ErrorState } from "./components/Loader";
+import { Toaster } from "./components/Toaster";
+import { toast } from "./lib/toast";
 
 // 懒加载播放器 + hls.js（约 250KB）——仅在打开频道时才需要
 const PlayerModal = lazy(() =>
@@ -25,6 +27,21 @@ function App() {
   useEffect(() => {
     void init();
   }, [init]);
+
+  // 首次访问欢迎提示：loaded 后检测 localStorage 标记，仅首次显示。
+  // 用独立 key "signaltv-welcomed" 与 zustand persist 解耦，读取同步无时序问题。
+  // localStorage 不可用（隐私模式）时静默失败，不阻塞渲染。
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      if (!localStorage.getItem("signaltv-welcomed")) {
+        toast.success("欢迎来到 SignalTV");
+        localStorage.setItem("signaltv-welcomed", "1");
+      }
+    } catch {
+      // localStorage 不可用 → 静默失败
+    }
+  }, [loaded]);
 
   // 注：原 loaded 后自动触发 runLatencyProbe 的逻辑已移除。
   // 全量探测会挤占弱网首屏带宽（5000 频道 × 16 并发 × 5s 超时），
@@ -56,6 +73,7 @@ function App() {
         <div className="grain" />
         <div className="scanlines" />
         <Loader />
+        <Toaster />
       </>
     );
   }
@@ -67,6 +85,7 @@ function App() {
         <div className="grain" />
         <div className="scanlines" />
         <ErrorState message={error} />
+        <Toaster />
       </>
     );
   }
@@ -118,6 +137,8 @@ function App() {
           <PlayerModal />
         </Suspense>
       </ErrorBoundary>
+
+      <Toaster />
     </>
   );
 }

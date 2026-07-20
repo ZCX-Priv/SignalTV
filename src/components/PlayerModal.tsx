@@ -11,6 +11,7 @@ import {
 import { useStore } from "../store/useStore";
 import { useChannel } from "../hooks/useChannels";
 import { broadcastDate, channelPosition, flagUrl, prettyCategory } from "../lib/format";
+import { toast } from "../lib/toast";
 import { LatencyTag } from "./LatencyTag";
 import { TvPlayer } from "./TvPlayer";
 
@@ -120,7 +121,11 @@ export function PlayerModal() {
             <div className="player__actions">
               <button
                 className={`btn btn--ghost btn--sm ${isFav ? "is-fav" : ""}`}
-                onClick={() => toggleFavorite(channel.id)}
+                onClick={() => {
+                  toggleFavorite(channel.id);
+                  if (!isFav) toast.success("已加入收藏");
+                  else toast.info("已移出收藏");
+                }}
               >
                 <Star size={13} fill={isFav ? "currentColor" : "none"} />
                 {isFav ? "已收藏" : "收藏"}

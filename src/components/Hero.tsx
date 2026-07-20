@@ -3,6 +3,7 @@ import { Play, Star, Globe2, Tv2, ArrowUpRight } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useAllChannels } from "../hooks/useChannels";
 import { broadcastDate, channelPosition, flagUrlLg, prettyCategory } from "../lib/format";
+import { toast } from "../lib/toast";
 
 // 精选分类列表——每次加载从这些分类中随机挑一个频道作为首屏主推
 const FEATURE_CATEGORIES = ["movies", "news", "sports", "music", "documentary", "entertainment"];
@@ -72,7 +73,11 @@ export function Hero() {
             </button>
             <button
               className={`btn btn--ghost ${isFav ? "is-fav" : ""}`}
-              onClick={() => toggleFavorite(featured.id)}
+              onClick={() => {
+                toggleFavorite(featured.id);
+                if (!isFav) toast.success("已加入收藏");
+                else toast.info("已移出收藏");
+              }}
               aria-label={isFav ? "移出收藏" : "加入收藏"}
             >
               <Star size={15} fill={isFav ? "currentColor" : "none"} />

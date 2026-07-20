@@ -10,6 +10,7 @@ import {
 import { useStore } from "../store/useStore";
 import type { ThemeMode } from "../store/useStore";
 import { fmt } from "../lib/format";
+import { toast } from "../lib/toast";
 
 // 主题模式选项：跟随系统 / 白昼 / 夜间，每项配 SVG 图标 + 名称 + 简短描述
 const THEME_OPTIONS: {
@@ -64,7 +65,10 @@ export function SettingsPanel() {
               <button
                 key={opt.value}
                 className={`settings__option ${active ? "is-active" : ""}`}
-                onClick={() => setThemeMode(opt.value)}
+                onClick={() => {
+                  setThemeMode(opt.value);
+                  toast.success(`已切换至${opt.label}模式`);
+                }}
                 aria-pressed={active}
               >
                 <span className="settings__option-icon">{opt.icon}</span>

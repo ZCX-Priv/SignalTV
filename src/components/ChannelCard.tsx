@@ -3,6 +3,7 @@ import { Play, Star, Tv2 } from "lucide-react";
 import type { ChannelWithStream } from "../types";
 import { useStore } from "../store/useStore";
 import { channelPosition, flagUrl, prettyCategory } from "../lib/format";
+import { toast } from "../lib/toast";
 import { LatencyTag } from "./LatencyTag";
 
 interface Props {
@@ -70,6 +71,8 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
             onClick={(e) => {
               e.stopPropagation();
               toggleFavorite(channel.id);
+              if (!isFav) toast.success("已加入收藏");
+              else toast.info("已移出收藏");
             }}
             aria-label={isFav ? "移出收藏" : "加入收藏"}
           >

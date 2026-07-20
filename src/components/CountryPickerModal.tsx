@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Globe2, Search, X } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { fmt } from "../lib/format";
+import { toast } from "../lib/toast";
 import type { CountryInfo } from "../types";
 
 interface CountryPickerModalProps {
@@ -74,8 +75,9 @@ export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
 
   const activeCountryCode = view.kind === "country" ? view.code : null;
 
-  function handlePick(code: string) {
-    setView({ kind: "country", code });
+  function handlePick(c: CountryInfo) {
+    setView({ kind: "country", code: c.code });
+    toast.info(`已切换至${c.name}频道`);
     onClose();
   }
 
@@ -86,7 +88,7 @@ export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
         key={c.code}
         type="button"
         className={`country-picker__item ${active ? "is-active" : ""}`}
-        onClick={() => handlePick(c.code)}
+        onClick={() => handlePick(c)}
       >
         <span className="country-picker__flag">{c.flag}</span>
         <span className="country-picker__country-name">{c.name}</span>
