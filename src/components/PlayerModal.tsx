@@ -65,7 +65,8 @@ export function PlayerModal() {
             <span className="player__ch mono">频道 {channelPosition(channel.id)}</span>
             <span className="player__divider" />
             <span className="player__live mono">
-              <span className="dot" /> 直播中
+              <span className="dot" />
+              <span className="player__live-text">直播中</span>
             </span>
             <span className="player__divider" />
             <span className="mono player__time">{broadcastDate()}</span>
@@ -75,7 +76,8 @@ export function PlayerModal() {
               <>
                 <span className="player__divider" />
                 <span className="player__signal-lock mono">
-                  <Lock size={11} /> 信号已锁定 · {channel.country}
+                  <Lock size={11} />
+                  <span className="player__signal-lock-text">信号已锁定 · {channel.country}</span>
                 </span>
               </>
             )}
@@ -126,8 +128,8 @@ export function PlayerModal() {
                 className={`btn btn--ghost btn--sm ${isFav ? "is-fav" : ""}`}
                 onClick={() => {
                   toggleFavorite(channel.id);
-                  if (!isFav) toast.success("已加入收藏");
-                  else toast.info("已移出收藏");
+                  if (!isFav) toast.success("已加入收藏夹");
+                  else toast.info("已移出收藏夹");
                 }}
               >
                 <Star size={13} fill={isFav ? "currentColor" : "none"} />

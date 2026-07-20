@@ -71,8 +71,8 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
             onClick={(e) => {
               e.stopPropagation();
               toggleFavorite(channel.id);
-              if (!isFav) toast.success("已加入收藏");
-              else toast.info("已移出收藏");
+              if (!isFav) toast.success("已加入收藏夹");
+              else toast.info("已移出收藏夹");
             }}
             aria-label={isFav ? "移出收藏" : "加入收藏"}
           >

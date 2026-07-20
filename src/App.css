@@ -1299,6 +1299,7 @@
   gap: 12px;
   font-size: 11px;
   color: var(--ink-dim);
+  min-width: 0;        /* 允许 flex 子项收缩到内容以下，避免侵占右侧叉号 */
 }
 .player__ch {
   color: var(--amber);
@@ -1350,10 +1351,34 @@
   border-radius: 8px;
   color: var(--ink-dim);
   transition: all 0.15s;
+  flex-shrink: 0;      /* 固定尺寸不被压缩 */
 }
 .player__close:hover {
   background: var(--bg-3);
   color: var(--ink);
+}
+
+/* —— 播放器头部状态条：手机端精简（510px = 项目最小手机断点，避免误伤平板）—— */
+@media (max-width: 510px) {
+  /* 隐藏时间与延迟标签 */
+  .player__time,
+  .player__ping {
+    display: none;
+  }
+  /* 同步隐藏因隐藏项而产生孤立竖线的 divider：
+     - divider 后紧跟 time（divider 在 live 与 time 之间）
+     - divider 后紧跟 ping（divider 在 time 与 ping 之间）
+     - divider 紧跟 ping 之后（divider 在 ping 与 signal-lock 之间，仅 ready 态存在） */
+  .player__divider:has(+ .player__time),
+  .player__divider:has(+ .player__ping),
+  .player__ping + .player__divider {
+    display: none;
+  }
+  /* 直播中、信号已锁定：仅保留图标（dot / Lock svg），隐藏文字 */
+  .player__live-text,
+  .player__signal-lock-text {
+    display: none;
+  }
 }
 
 /* —— 全部分类选择弹窗 —— */

@@ -75,8 +75,8 @@ export function Hero() {
               className={`btn btn--ghost ${isFav ? "is-fav" : ""}`}
               onClick={() => {
                 toggleFavorite(featured.id);
-                if (!isFav) toast.success("已加入收藏");
-                else toast.info("已移出收藏");
+                if (!isFav) toast.success("已加入收藏夹");
+                else toast.info("已移出收藏夹");
               }}
               aria-label={isFav ? "移出收藏" : "加入收藏"}
             >

@@ -105,21 +105,13 @@ textarea {
   color: inherit;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+/* 全局隐藏滚动条（覆盖 Chromium/WebKit、Firefox、旧 IE 三套引擎） */
+* {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* 旧 IE / Edge Legacy */
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--line-2);
-  border-radius: 10px;
-  border: 2px solid var(--bg);
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--line-strong);
+*::-webkit-scrollbar {
+  display: none;                  /* Chrome / Safari / Edge Chromium */
 }
 
 /* ============ 全局背景氛围 ============ */
@@ -356,14 +348,6 @@ textarea {
 }
 [data-theme="light"] .dot {
   animation-name: pulse-light;
-}
-/* 滚动条在浅底下的表现 */
-[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: var(--line-strong);
-  border-color: var(--bg);
-}
-[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-  background: var(--ink-faint);
 }
 
 /* ============================================================
