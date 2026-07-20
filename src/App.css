@@ -2569,31 +2569,67 @@
 }
 
 /* ============================================================
-   Toast —— sonner 主题覆写（Broadcast Noir）
+   Toast —— 自实现（Broadcast Noir）
    ============================================================
    设计要点：
-   - 复用项目 CSS 变量，dark/light 自动跟随
-   - 左侧 3px 彩色色条区分类型（success/error/warning/info/loading）
+   - 复用项目 CSS 变量，dark/light 自动跟随（挂在 <html data-theme>）
+   - 左侧 3px 彩色色条区分类型（success/error/warning/info/loading/message）
    - 标题用 sans 字体，描述用 mono 字体（与 .card__meta / .player__facts 风格一致）
-   - 选择器优先级：[data-sonner-toast].signaltv-toast = (0,2,0)，
-     与 sonner 默认 [data-sonner-toast][data-styled='true'] = (0,2,0) 平级，
-     靠源顺序（App.css 在 sonner styles.css 之后被 main.tsx 导入）取胜。
-   - 移除 sonner 默认的 16px padding-left，为色条留位 */
-[data-sonner-toast].signaltv-toast {
-  font-family: var(--font-sans);
+   - 关闭按钮在 toast 内部右侧（flex 布局，与内容同行），非浮在角上
+   - 细腻动画：进入（淡入 + 下滑 + 微缩放，0.28s）、退出（淡出 + 微上滑，0.18s）
+   - 容器 pointer-events:none，单个 toast pointer-events:auto，避免遮挡下层交互 */
+.signaltv-toaster {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  max-width: min(92vw, 440px);
+  width: max-content;
+}
+
+.signaltv-toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 240px;
+  max-width: 100%;
+  padding: 10px 12px 10px 20px; /* 左 20px 给色条让位 */
   background: var(--bg-elev);
   border: 1px solid var(--line-2);
   border-radius: var(--radius-sm);
-  color: var(--ink);
   box-shadow: var(--shadow-1);
-  padding-left: 20px;       /* 默认 16px + 4px 为色条让位 */
-  position: relative;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.4;
   overflow: hidden;
+  pointer-events: auto;
+  animation: signaltv-toast-in 0.28s var(--ease) both;
 }
 
-/* 左侧色条：用 ::before 伪元素，避免改 sonner 内部 DOM */
-[data-sonner-toast].signaltv-toast::before {
-  content: "";
+.signaltv-toast[data-closing="true"] {
+  animation: signaltv-toast-out 0.18s var(--ease-soft) both;
+}
+
+@keyframes signaltv-toast-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes signaltv-toast-out {
+  from { opacity: 1; transform: translateY(0)    scale(1); }
+  to   { opacity: 0; transform: translateY(-8px) scale(0.98); }
+}
+
+/* 左侧色条 */
+.signaltv-toast__bar {
   position: absolute;
   left: 0;
   top: 0;
@@ -2601,48 +2637,89 @@
   width: 3px;
   background: var(--ink-mute); /* 默认值，被下方各类型规则覆盖 */
 }
-[data-sonner-toast].signaltv-toast[data-type="success"]::before { background: var(--lime); }
-[data-sonner-toast].signaltv-toast[data-type="error"]::before   { background: var(--signaltv); }
-[data-sonner-toast].signaltv-toast[data-type="warning"]::before { background: var(--amber); }
-[data-sonner-toast].signaltv-toast[data-type="info"]::before    { background: var(--cyan); }
-[data-sonner-toast].signaltv-toast[data-type="loading"]::before { background: var(--ink-mute); }
+.signaltv-toast[data-type="success"] .signaltv-toast__bar { background: var(--lime); }
+.signaltv-toast[data-type="error"]   .signaltv-toast__bar { background: var(--signaltv); }
+.signaltv-toast[data-type="warning"] .signaltv-toast__bar { background: var(--amber); }
+.signaltv-toast[data-type="info"]    .signaltv-toast__bar { background: var(--cyan); }
+.signaltv-toast[data-type="loading"] .signaltv-toast__bar { background: var(--ink-mute); }
+.signaltv-toast[data-type="message"] .signaltv-toast__bar { background: var(--ink-mute); }
 
-/* 标题：13.5px / 500，与 .btn 字号一致 */
-[data-sonner-toast].signaltv-toast [data-title] {
+/* toast 图标：按类型着色，颜色与左侧色条一致 */
+.signaltv-toast__icon {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  color: var(--ink-mute); /* 默认值，被下方各类型规则覆盖 */
+}
+.signaltv-toast[data-type="success"] .signaltv-toast__icon { color: var(--lime); }
+.signaltv-toast[data-type="error"]   .signaltv-toast__icon { color: var(--signaltv); }
+.signaltv-toast[data-type="warning"] .signaltv-toast__icon { color: var(--amber); }
+.signaltv-toast[data-type="info"]    .signaltv-toast__icon { color: var(--cyan); }
+.signaltv-toast[data-type="loading"] .signaltv-toast__icon { color: var(--signaltv); }
+.signaltv-toast[data-type="message"] .signaltv-toast__icon { color: var(--ink-mute); }
+
+/* 旋转动画仅 loading 类型 */
+.signaltv-toast[data-type="loading"] .signaltv-toast__icon svg {
+  animation: signaltv-toast-spin 0.9s linear infinite;
+}
+@keyframes signaltv-toast-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 内容区：title + description */
+.signaltv-toast__content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.signaltv-toast__title {
   font-size: 13.5px;
   font-weight: 500;
   color: var(--ink);
   line-height: 1.4;
 }
-
-/* 描述：12px mono，与 .card__meta 风格一致 */
-[data-sonner-toast].signaltv-toast [data-description] {
+.signaltv-toast__desc {
   font-size: 12px;
   color: var(--ink-dim);
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
 }
 
-/* 关闭按钮：默认低对比，hover 提亮（与 .search__clear 一致） */
-[data-sonner-toast].signaltv-toast [data-close-button] {
+/* 关闭按钮：toast 内部右侧（flex 布局，与内容同行） */
+.signaltv-toast__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: 4px;
+  padding: 0;
   background: transparent;
   border: 0;
+  border-radius: 4px;
   color: var(--ink-mute);
+  cursor: pointer;
   transition: background 0.15s var(--ease), color 0.15s var(--ease);
 }
-[data-sonner-toast].signaltv-toast [data-close-button]:hover {
+.signaltv-toast__close:hover {
   background: var(--bg-3);
   color: var(--ink);
 }
-
-/* loader 图标颜色：用 signaltv 红，呼应"信号"主题 */
-[data-sonner-toast].signaltv-toast[data-type="loading"] [data-icon] svg {
-  color: var(--signaltv);
+.signaltv-toast__close:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 1px;
 }
 
-/* 容器：限制最大宽度，避免长描述 toast 过宽 */
-[data-sonner-toaster][data-x-position="center"] {
-  max-width: min(92vw, 440px);
+/* 无障碍：尊重用户的减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .signaltv-toast,
+  .signaltv-toast[data-closing="true"],
+  .signaltv-toast[data-type="loading"] .signaltv-toast__icon svg {
+    animation: none;
+  }
 }
 
 /* ============================================================
