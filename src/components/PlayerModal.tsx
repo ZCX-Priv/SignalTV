@@ -113,6 +113,9 @@ export function PlayerModal() {
                     <img src={flagUrl(channel.country)!} alt="" className="player__flag" />
                   )}
                   {channel.country} · {channel.network ?? "独立"}
+                  {channel.categories.map((c) => (
+                    <span className="tag" key={c}>{prettyCategory(c)}</span>
+                  ))}
                 </div>
                 <h2 className="player__name display">{channel.name}</h2>
               </div>
@@ -162,14 +165,6 @@ export function PlayerModal() {
                 </div>
               )}
             </dl>
-
-            {channel.categories.length > 0 && (
-              <div className="player__cats">
-                {channel.categories.map((c) => (
-                  <span className="tag" key={c}>{prettyCategory(c)}</span>
-                ))}
-              </div>
-            )}
 
             {suggestions.length > 0 && (
               <div className="player__related">

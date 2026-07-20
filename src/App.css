@@ -442,13 +442,16 @@
   animation: fade-up 0.7s var(--ease) 0.05s both;
 }
 .hero__title em {
-  font-style: italic;
+  font-style: normal; /* 字体未就绪时不显示伪斜体，消除中间态 */
   font-weight: 300;
   color: var(--signaltv-soft);
   background: linear-gradient(180deg, var(--amber), var(--signaltv));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+.fonts-fraunces-italic-ready .hero__title em {
+  font-style: italic; /* Fraunces italic 就绪后显示真斜体 */
 }
 .hero__lede {
   font-size: 16px;
@@ -1897,11 +1900,6 @@
   color: var(--ink);
   margin: 0;
 }
-.player__cats {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
 .player__related {
   display: flex;
   flex-direction: column;
@@ -2011,8 +2009,11 @@
   letter-spacing: 0.01em;
 }
 .loader__title em {
-  font-style: italic;
+  font-style: normal; /* 字体未就绪时不显示伪斜体，消除中间态 */
   color: var(--signaltv);
+}
+.fonts-fraunces-italic-ready .loader__title em {
+  font-style: italic; /* Fraunces italic 就绪后显示真斜体 */
 }
 .loader__sub {
   font-size: 11px;

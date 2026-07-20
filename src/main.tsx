@@ -22,7 +22,36 @@ import { initSeo } from "./lib/seo";
 //    同步 <html data-theme> + localStorage，所有 theme 变更点走统一路径）
 // 4) 初始化运行时 SEO：用真实 origin 覆写 JSON-LD 占位 URL，写入首页默认 meta
 // 5) 挂载 React（全局 ErrorBoundary 捕获致命渲染异常，避免整页白屏）
+
+/**
+ * 主动加载 Fraunces italic 字体，就绪后给 <html> 添加标记类，
+ * 触发 .loader__title em / .hero__title em 从 normal 切换为 italic。
+ * 消除"伪斜体→真斜体"的视觉跳变，只保留"normal→真斜体"一次切换。
+ * 带 2s 超时 fallback：超时后也添加类（可能显示伪斜体，但避免永不显示斜体）。
+ */
+function initFrauncesItalic() {
+  const html = document.documentElement;
+  if (!("fonts" in document) || typeof document.fonts.load !== "function") {
+    // 不支持 Font Loading API，直接显示斜体（fallback）
+    html.classList.add("fonts-fraunces-italic-ready");
+    return;
+  }
+  Promise.race([
+    document.fonts.load('italic 360 52px "Fraunces"'),
+    new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+  ])
+    .then(() => {
+      html.classList.add("fonts-fraunces-italic-ready");
+    })
+    .catch(() => {
+      // 加载失败也添加类（fallback，可能显示伪斜体）
+      html.classList.add("fonts-fraunces-italic-ready");
+    });
+}
+
 async function bootstrap() {
+  // 尽早启动 Fraunces italic 字体加载监听，与后续初始化并行，不阻塞渲染
+  initFrauncesItalic();
   const [, theme] = await Promise.all([
     migrateFromLocalStorage(),
     getInitialTheme(),
