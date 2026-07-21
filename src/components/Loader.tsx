@@ -9,7 +9,7 @@ export function Loader() {
           <span className="dot" />
         </div>
         <div className="loader__title display">
-          SignalTV<em>·直播</em>
+          SignalTV
         </div>
         <div className="loader__sub mono">
           正在建立上行链路 · 公共电视信号源

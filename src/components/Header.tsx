@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search, X, Command, Menu } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useAllChannels } from "../hooks/useChannels";
@@ -19,6 +19,8 @@ export function Header() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 860px)").matches : false,
   );
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -31,6 +33,19 @@ export function Header() {
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
   }, []);
+
+  // 退出移动端时重置展开状态，避免残留 is-search-open 影响桌面端
+  useEffect(() => {
+    if (!isMobile) setSearchOpen(false);
+  }, [isMobile]);
+
+  // 展开搜索框时自动聚焦输入框（setTimeout 等待 display 切换生效）
+  useEffect(() => {
+    if (isMobile && searchOpen) {
+      const t = setTimeout(() => searchInputRef.current?.focus(), 0);
+      return () => clearTimeout(t);
+    }
+  }, [isMobile, searchOpen]);
 
   const liveCount = channels.length;
 
@@ -59,10 +74,24 @@ export function Header() {
   function clear() {
     setFilter({ q: "" });
     setView({ kind: "home" });
+    // 移动端清除时同步收起：清除按钮点击时 input 先失焦（此时仍有值，blur 不收起），
+    // 随后 clear 才执行，若不在此处收起会卡在"展开但空内容"状态
+    if (isMobile) setSearchOpen(false);
+  }
+
+  function onSearchBlur() {
+    // 失焦时若无搜索词则自动收起；有搜索词时保持展开（用户明确要求）
+    if (isMobile && !filter.q.trim()) {
+      setSearchOpen(false);
+    }
+  }
+
+  function openSearch() {
+    setSearchOpen(true);
   }
 
   return (
-    <header className="header">
+    <header className={`header${isMobile && searchOpen ? " is-search-open" : ""}`}>
       <button
         className="header__menu"
         onClick={onMenuClick}
@@ -80,7 +109,9 @@ export function Header() {
           placeholder="搜索频道、电视台、国家…"
           value={filter.q}
           onChange={(e) => setFilter({ q: e.target.value })}
+          onBlur={onSearchBlur}
           aria-label="搜索频道"
+          ref={searchInputRef}
         />
         {filter.q ? (
           <button type="button" className="search__clear" onClick={clear} aria-label="清除搜索">
@@ -94,6 +125,17 @@ export function Header() {
       </form>
 
       <div className="header__meta">
+        {isMobile && (
+          <button
+            type="button"
+            className="header__search-toggle"
+            onClick={openSearch}
+            aria-label="搜索"
+            aria-expanded={searchOpen}
+          >
+            <Search size={18} />
+          </button>
+        )}
         <div className="header__live">
           <span className="bars" aria-hidden>
             <span /><span /><span /><span />
