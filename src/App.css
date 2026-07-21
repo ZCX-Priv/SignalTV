@@ -202,6 +202,17 @@
   z-index: 1099;
   animation: fade-in 0.2s var(--ease);
 }
+/* 桌面端：侧栏收起时，grid 第一列从 var(--sidebar-w) 变 56px，
+   主区域 main 自动扩展占满剩余空间。
+   - 用 :has() 感知 sidebar 收起状态，无需改 React 代码
+   - 用 @media (min-width: 861px) 限定桌面端，不影响移动端抽屉式侧栏
+     （移动端断点 860px，sidebar 改为 fixed 定位 + transform 过渡，不走 grid 列宽路径）
+   - 与 .app { transition: grid-template-columns 0.24s var(--ease) } 配合产生过渡 */
+@media (min-width: 861px) {
+  .app:has(.sidebar.is-collapsed) {
+    grid-template-columns: 56px 1fr;
+  }
+}
 /* 桌面端收起：折叠为图标栏 */
 .sidebar.is-collapsed {
   width: 56px;
@@ -417,6 +428,16 @@
 /* 折叠态：隐藏文字与 dot，只留图标（与 settings-btn 一致） */
 .sidebar.is-collapsed .sidebar__status-btn span {
   display: none;
+}
+
+/* 尊重用户"减少动画"系统设置：禁用侧栏宽度过渡、grid 列宽过渡与移动端抽屉 transform 过渡。
+   - .app: 禁用 grid-template-columns 过渡
+   - .sidebar: 同时覆盖桌面端 width 过渡与移动端 transform 过渡 */
+@media (prefers-reduced-motion: reduce) {
+  .app,
+  .sidebar {
+    transition: none;
+  }
 }
 
 /* ============ 主内容区 ============ */
@@ -2300,6 +2321,9 @@
   .header.is-search-open .search {
     display: flex;
     flex: 1;
+    /* 与 .header__menu 的 margin-right 一致，给右侧 header__meta 留出间距。
+       搜索框 flex:1 会自动扣除 margin，宽度相应缩小。 */
+    margin-right: clamp(8px, 2vw, 12px);
   }
   .header.is-search-open .logo {
     display: none;

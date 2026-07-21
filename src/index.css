@@ -190,6 +190,9 @@ textarea {
   height: 100vh;
   height: 100dvh;   /* 动态视口高度，移动端浏览器 UI 显示/隐藏时自适应 */
   width: 100vw;
+  /* grid 列宽过渡：桌面端侧栏收起/展开时主区域平滑联动。
+     配合 App.css 中 .app:has(.sidebar.is-collapsed) 规则切换列宽。 */
+  transition: grid-template-columns 0.24s var(--ease);
 }
 
 .app__header {
