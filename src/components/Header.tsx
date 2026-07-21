@@ -19,6 +19,10 @@ export function Header() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 860px)").matches : false,
   );
+  // 手机端判定：≤510px，用于搜索框内 bars 替代 ⌘K 提示
+  const [isPhone, setIsPhone] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 510px)").matches : false,
+  );
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -30,6 +34,13 @@ export function Header() {
   useEffect(() => {
     const mql = window.matchMedia("(max-width: 860px)");
     const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 510px)");
+    const onChange = (e: MediaQueryListEvent) => setIsPhone(e.matches);
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
   }, []);
@@ -74,9 +85,6 @@ export function Header() {
   function clear() {
     setFilter({ q: "" });
     setView({ kind: "home" });
-    // 移动端清除时同步收起：清除按钮点击时 input 先失焦（此时仍有值，blur 不收起），
-    // 随后 clear 才执行，若不在此处收起会卡在"展开但空内容"状态
-    if (isMobile) setSearchOpen(false);
   }
 
   function onSearchBlur() {
@@ -117,6 +125,10 @@ export function Header() {
           <button type="button" className="search__clear" onClick={clear} aria-label="清除搜索">
             <X size={14} />
           </button>
+        ) : isPhone ? (
+          <span className="bars search__bars" aria-hidden>
+            <span /><span /><span /><span />
+          </span>
         ) : (
           <span className="search__kbd kbd">
             <Command size={11} /> K

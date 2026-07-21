@@ -312,7 +312,7 @@ export function TvPlayer({
       {state === "error" && (
         <div className="player__overlay player__overlay--error">
           <AlertTriangle size={28} />
-          <h3 className="display">信号丢失。</h3>
+          <h3 className="display">信号丢失</h3>
           <p>{message ?? "此直播流不可用。"}</p>
           <p className="player__error-note mono">
             许多免费信号受地区限制或间歇性离线，请尝试同一电视台的其他频道。
