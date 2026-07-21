@@ -40,15 +40,16 @@
   font-size: clamp(13px, 4vw, 19px);
   letter-spacing: 0.01em;
   color: var(--ink);
+  white-space: nowrap;
 }
 
 /* ============ 顶栏 ============ */
 .header {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: clamp(12px, 3vw, 24px);
   height: 100%;
-  padding: 0 22px;
+  padding: 0 clamp(12px, 3vw, 22px);
   border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, var(--overlay-1), var(--overlay-3));
   backdrop-filter: blur(8px);
@@ -173,14 +174,15 @@
   font-weight: 700;
 }
 .header__clock {
-  font-size: 13px;
+  font-size: clamp(10px, 3vw, 13px);
   font-weight: 500;
   letter-spacing: 0.08em;
   color: var(--ink);
-  padding: 6px 10px;
+  padding: clamp(4px, 1.5vw, 6px) clamp(6px, 2vw, 10px);
   border: 1px solid var(--line-2);
   border-radius: 7px;
   background: var(--bg-1);
+  white-space: nowrap;
 }
 
 /* ============ 侧栏 ============ */
@@ -2263,9 +2265,19 @@
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 12px;
   }
+  /* 移动端：移除 .header 固定 gap，避免 logo 与 meta 之间固定间距导致挤压。
+     改用 margin 控制分布：menu 用 margin-right 保持与 logo 间距，
+     meta 用 margin-left:auto 与 logo 之间形成弹性间距。 */
+  .header {
+    gap: 0;
+  }
+  .header__menu {
+    margin-right: clamp(8px, 2vw, 12px);
+  }
   .header__meta {
     gap: 12px;
     margin-left: auto;
+    flex-shrink: 0;
   }
   .header__live-text {
     display: none;
@@ -2274,6 +2286,7 @@
   .logo {
     padding-right: 0;
     border-right: 0;
+    flex-shrink: 0;
   }
 
   /* === 移动端搜索表单：默认收起为图标按钮，点击展开 === */
@@ -2307,6 +2320,15 @@
   /* 搜索框内 bars 防挤压（与 .search__kbd 行为一致） */
   .search__bars {
     flex-shrink: 0;
+  }
+}
+
+/* 极窄屏（≤360px）：logo 与 meta 弹性间距归零，两个 div 叠在一起。
+   此时隐藏 "SignalTV" 字样（只保留图标），保证 meta 不被挤出右边框。
+   360px 以上正常显示完整字样。 */
+@media (max-width: 360px) {
+  .logo__word {
+    display: none;
   }
 }
 

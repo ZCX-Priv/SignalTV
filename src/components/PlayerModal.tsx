@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   X,
   Play,
@@ -26,6 +26,7 @@ export function PlayerModal() {
   const url = channel?.streamUrl ?? null;
   const [latency, setLatency] = useState<number | null>(null);
   const [playerState, setPlayerState] = useState<"idle" | "loading" | "ready" | "paused" | "error">("idle");
+  const stageRef = useRef<HTMLDivElement>(null);
 
   // ESC 关闭
   useEffect(() => {
@@ -85,7 +86,7 @@ export function PlayerModal() {
           </button>
         </header>
 
-        <div className="player__stage">
+        <div className="player__stage" ref={stageRef}>
           <TvPlayer
             url={url}
             onLatencyChange={setLatency}
@@ -176,7 +177,13 @@ export function PlayerModal() {
                     <button
                       key={c.id}
                       className="related"
-                      onClick={() => openChannel(c.id)}
+                      onClick={() => {
+                        openChannel(c.id);
+                        // 移动端播放页是单列布局，相关信号在底部、视频在顶部。
+                        // 切换频道后把滚动容器平滑带回顶部，让用户立刻看到新视频加载。
+                        // 桌面端 .player__stage 是 overflow:hidden，scrollTo 无副作用，无需特判。
+                        stageRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
                     >
                       <span className="related__logo">
                         {c.logo ? (
