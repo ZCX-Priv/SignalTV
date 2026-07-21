@@ -77,9 +77,8 @@ export function Header() {
       : "收起侧边栏";
 
   function onSubmit(e: React.FormEvent) {
+    // 回车不再触发二次搜索：实时过滤已由 onChange 完成，此处仅阻止表单默认提交
     e.preventDefault();
-    const q = filter.q.trim();
-    if (q) setView({ kind: "search", q });
   }
 
   function clear() {

@@ -4,7 +4,6 @@ import {
   MediaPlayer,
   MediaProvider,
   type MediaPlayerInstance,
-  type MediaAutoPlayFailEventDetail,
   isHLSProvider,
 } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
@@ -92,9 +91,7 @@ export function TvPlayer({
   const [latency, setLatency] = useState<number | null>(null);
   const latencyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playerRef = useRef<MediaPlayerInstance>(null);
-  // 防止 onAutoPlayFail 与 onCanPlay 之间形成无限重试循环
-  const autoPlayRetryRef = useRef(false);
-  // handleAutoPlayFail 的 setTimeout handle，用于卸载/切换时清理
+  // handlePlayFail 的 setTimeout handle，用于卸载/切换时清理
   const autoPlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 状态向上同步
@@ -115,13 +112,11 @@ export function TvPlayer({
     if (!url) {
       setState("idle");
       setLatency(null);
-      autoPlayRetryRef.current = false;
       return;
     }
     setState("loading");
     setMessage(null);
     setLatency(null);
-    autoPlayRetryRef.current = false;
     return () => {
       if (latencyTimerRef.current) {
         clearInterval(latencyTimerRef.current);
@@ -180,15 +175,22 @@ export function TvPlayer({
     }, 1000);
   }
 
-  // canPlay 触发后仅更新状态并启动延迟采样
-  // 不主动调用 play()，避免与 vidstack autoPlay 机制冲突导致 onAutoPlayFail 误触发
+  // canPlay 触发后主动调用 play()：绕过 vidstack autoPlay 的 reduced motion 拦截，
+  // 直接走浏览器原生自动播放策略（依赖用户点击 ChannelCard 产生的粘性激活 hasBeenActive）。
+  // 失败由 onPlayFail 处理（注意不是 onAutoPlayFail，因为 autoPlaying signal 始终为 false）。
   function handleCanPlay() {
     setState("ready");
     startLatencySampling();
+    const player = playerRef.current;
+    if (!player) return;
+    // remoteControl.play() 仅 dispatch media-play-request 事件（返回 void），
+    // 实际 play() 由 vidstack 内部异步执行，失败时触发 play-fail 事件 → onPlayFail
+    player.remoteControl.play();
   }
 
-  // 自动播放失败时：延迟检查 player 实际状态，避免"播放成功但 onAutoPlayFail 仍被触发"的误判
-  function handleAutoPlayFail(detail: MediaAutoPlayFailEventDetail) {
+  // play() 失败（非 autoPlay 流程）：直接显示"点击播放"覆盖层。
+  // 依据 CCTV 报告 §3.3：不自动静音重试，等用户点击覆盖层后带声音播放。
+  function handlePlayFail() {
     const player = playerRef.current;
     if (!player) return;
 
@@ -200,32 +202,13 @@ export function TvPlayer({
       // 组件已卸载或 url 已切换（player 实例变化）→ 不再操作
       if (!playerRef.current || playerRef.current !== player) return;
 
-      // 检查 player 实际状态：如果已经在播放，不要显示 paused 覆盖层
-      if (!player.state.paused) {
+      // 误判保护：如果 player 实际已经在播放，不显示 paused 覆盖层
+      if (!playerRef.current.state.paused) {
         setState("ready");
         return;
       }
 
-      // 真的没在播放，执行重试逻辑
-      if (autoPlayRetryRef.current) {
-        setState("paused");
-        return;
-      }
-      autoPlayRetryRef.current = true;
-
-      // 未静音失败 → 强制静音后重试
-      if (!detail.muted) {
-        try {
-          player.remoteControl.mute();
-          player.remoteControl.play();
-          return;
-        } catch {
-          setState("paused");
-          return;
-        }
-      }
-
-      // 已静音仍失败 → 等待用户手动点击
+      // 真的没在播放 → 显示"点击播放"覆盖层
       setState("paused");
     }, 0);
   }
@@ -257,8 +240,10 @@ export function TvPlayer({
         ref={playerRef}
         src={url ?? ""}
         streamType="live"
-        autoPlay
-        muted
+        // 不设 autoPlay：绕过 vidstack 内部的 throwIfAutoplayingWithReducedMotion 检测
+        // （vidstack 1.15.6 在 prefers-reduced-motion: reduce 时会直接抛 "[vidstack] autoplay blocked"）。
+        // 改在 onCanPlay 中手动调用 player.remoteControl.play()，走浏览器原生自动播放策略，
+        // 等价于 CCTV 报告 §3.1 中 video.autoplay = true 的乐观策略。
         playsInline
         load="eager"
         onProviderChange={(provider) => {
@@ -276,7 +261,7 @@ export function TvPlayer({
           }
         }}
         onCanPlay={handleCanPlay}
-        onAutoPlayFail={handleAutoPlayFail}
+        onPlayFail={handlePlayFail}
         onPlay={() => {
           // 用户手动播放成功后，从 paused 状态恢复到 ready
           if (state === "paused") setState("ready");

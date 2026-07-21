@@ -39,6 +39,8 @@ export function FilterBar() {
   );
 
   const title = (() => {
+    // 输入即搜索：有搜索词时动态显示 "xxxx 的搜索结果"（与受控输入框内容一致）
+    if (filter.q.trim()) return `“${filter.q.trim()}” 的搜索结果`;
     switch (view.kind) {
       case "home": return "全部频道";
       case "category": {
