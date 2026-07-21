@@ -142,7 +142,6 @@ Signal-TV/
 │   ├── robots.txt               # 爬虫指令
 │   └── sitemap.xml              # 站点地图
 ├── src/
-│   ├── assets/                      # 静态资源目录（预留）
 │   ├── components/
 │   │   ├── CategoryPickerModal.tsx  # 分类选择模态（带搜索）
 │   │   ├── ChannelCard.tsx          # 频道卡片
