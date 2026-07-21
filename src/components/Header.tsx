@@ -85,6 +85,8 @@ export function Header() {
   function clear() {
     setFilter({ q: "" });
     setView({ kind: "home" });
+    // 清空后把焦点还给输入框：用户可继续输入；且后续点击空白处能触发 onBlur 收起搜索框
+    searchInputRef.current?.focus();
   }
 
   function onSearchBlur() {

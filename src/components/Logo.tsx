@@ -9,7 +9,6 @@ export function Logo() {
       </span>
       <span className="logo__word">
         <span className="logo__name">SignalTV</span>
-        <span className="logo__sub mono">直播</span>
       </span>
     </div>
   );

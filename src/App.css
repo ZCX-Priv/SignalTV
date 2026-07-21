@@ -7,7 +7,7 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: clamp(6px, 2vw, 10px);
   padding: 0 18px 0 0;
   border-right: 1px solid var(--line);
 }
@@ -15,8 +15,8 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: clamp(22px, 5vw, 30px);
+  height: clamp(22px, 5vw, 30px);
   border: 1px solid var(--line-strong);
   border-radius: 7px;
   color: var(--ink);
@@ -37,14 +37,9 @@
 .logo__name {
   font-family: var(--font-display);
   font-weight: 560;
-  font-size: 19px;
+  font-size: clamp(13px, 4vw, 19px);
   letter-spacing: 0.01em;
   color: var(--ink);
-}
-.logo__sub {
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  color: var(--signaltv);
 }
 
 /* ============ 顶栏 ============ */
@@ -2275,10 +2270,7 @@
   .header__live-text {
     display: none;
   }
-  /* 移动端：Logo 只显示图标标记，隐藏文字，节省空间 */
-  .logo__word {
-    display: none;
-  }
+  /* 移动端：Logo 文字通过主样式 clamp() 自适应缩放，仍显示 SignalTV */
   .logo {
     padding-right: 0;
     border-right: 0;
