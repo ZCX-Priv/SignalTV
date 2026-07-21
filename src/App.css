@@ -1147,6 +1147,7 @@
   background: linear-gradient(180deg, transparent 40%, rgba(255, 59, 48, 0.18) 100%);
   opacity: 0;
   transition: opacity 0.2s var(--ease);
+  z-index: 1;
 }
 .card:hover .card__hover {
   opacity: 1;
