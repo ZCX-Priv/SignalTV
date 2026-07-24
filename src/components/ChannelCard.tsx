@@ -103,6 +103,12 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
           </button>
         </div>
 
+        {channel.alt_names && channel.alt_names.length > 0 && (
+          <div className="card__alt" title={channel.alt_names.join(" · ")}>
+            {channel.alt_names.join(" · ")}
+          </div>
+        )}
+
         <div className="card__meta mono">
           {flagUrl(channel.country) && (
             <img src={flagUrl(channel.country)!} alt="" className="card__flag" />

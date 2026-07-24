@@ -27,6 +27,8 @@ export function PlayerModal() {
   const [latency, setLatency] = useState<number | null>(null);
   const [playerState, setPlayerState] = useState<"idle" | "loading" | "ready" | "paused" | "error">("idle");
   const stageRef = useRef<HTMLDivElement>(null);
+  const headRef = useRef<HTMLDivElement>(null);
+  const titlesRef = useRef<HTMLDivElement>(null);
 
   // ESC 关闭
   useEffect(() => {
@@ -41,6 +43,22 @@ export function PlayerModal() {
       document.body.style.overflow = "";
     };
   }, [activeId, openChannel]);
+
+  // 自适应正方形 logo：测量标题区高度，通过 CSS 变量驱动 logo 尺寸
+  // 纯 CSS 的 aspect-ratio + align-self:stretch 在 flex 中失效（stretch 非 definite size），
+  // 改用 ResizeObserver 测量 titles 实际高度，写入 --logo-size 变量
+  useEffect(() => {
+    const head = headRef.current;
+    const titles = titlesRef.current;
+    if (!head || !titles) return;
+    const update = () => {
+      head.style.setProperty("--logo-size", `${titles.offsetHeight}px`);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(titles);
+    return () => ro.disconnect();
+  }, [activeId]);
 
   // 推荐的关联频道（同主分类、不同 id）
   // 必须在 early return 之前调用，遵守 React Hooks 规则
@@ -94,7 +112,7 @@ export function PlayerModal() {
           />
 
           <aside className="player__info">
-            <div className="player__channel-head">
+            <div className="player__channel-head" ref={headRef}>
               <div className="player__logo">
                 {channel.logo ? (
                   <img
@@ -108,7 +126,7 @@ export function PlayerModal() {
                   <Tv2 size={22} />
                 )}
               </div>
-              <div className="player__channel-titles">
+              <div className="player__channel-titles" ref={titlesRef}>
                 <div className="eyebrow">
                   {flagUrl(channel.country) && (
                     <img src={flagUrl(channel.country)!} alt="" className="player__flag" />
@@ -119,6 +137,11 @@ export function PlayerModal() {
                   ))}
                 </div>
                 <h2 className="player__name display">{channel.name}</h2>
+                {channel.alt_names && channel.alt_names.length > 0 && (
+                  <div className="player__alt" title={channel.alt_names.join(" · ")}>
+                    {channel.alt_names.join(" · ")}
+                  </div>
+                )}
               </div>
             </div>
 
