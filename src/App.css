@@ -2311,8 +2311,9 @@
     flex-shrink: 0;
   }
 
-  /* === 移动端搜索表单：默认收起为图标按钮，点击展开 === */
-  .search {
+  /* === 移动端搜索表单：默认收起为图标按钮，点击展开 ===
+     限定到 .header 内，避免误伤模态窗（category-picker / country-picker）中的 .search */
+  .header .search {
     display: none;            /* 默认隐藏搜索表单 */
     margin: 0;                /* 取消 auto 居中，让展开后紧贴左侧 */
     max-width: none;          /* 取消 560px 上限，完全占据中部 */
@@ -2501,11 +2502,23 @@
   flex: 1;
 }
 .settings__about-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 560;
   color: var(--ink);
   margin-bottom: 4px;
+}
+.settings__about-github {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-mute);
+  transition: color 0.15s var(--ease);
+}
+.settings__about-github:hover {
+  color: var(--ink);
 }
 .settings__about-tagline {
   font-size: 10.5px;

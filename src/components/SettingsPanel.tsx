@@ -12,6 +12,26 @@ import type { ThemeMode } from "../store/useStore";
 import { fmt } from "../lib/format";
 import { toast } from "../lib/toast";
 
+// lucide-react 1.x 移除了品牌图标，此处内联 GitHub 图标 SVG（来自 lucide 旧版品牌图标）
+function GithubIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+    </svg>
+  );
+}
+
 // 主题模式选项：跟随系统 / 白昼 / 夜间，每项配 SVG 图标 + 名称 + 简短描述
 const THEME_OPTIONS: {
   value: ThemeMode;
@@ -97,7 +117,18 @@ export function SettingsPanel() {
             <span className="dot" aria-hidden />
           </div>
           <div className="settings__about-body">
-            <div className="settings__about-name">SignalTV</div>
+            <div className="settings__about-name">
+              <span>SignalTV</span>
+              <a
+                href="https://github.com/ZCX-Priv/SignalTV"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="settings__about-github"
+                aria-label="GitHub 仓库"
+              >
+                <GithubIcon size={18} />
+              </a>
+            </div>
             <div className="settings__about-tagline mono">
               公共电视信号源 · 免费在线直播
             </div>
