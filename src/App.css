@@ -2072,12 +2072,15 @@
   margin: 0;
   animation: fade-in 0.4s var(--ease) both;
 }
-/* 入场错峰延迟：仅首次挂载时重放（各行不重挂载，[OK] 原地追加） */
-.loader__log p:nth-child(1) { animation-delay: 0.2s; }
-.loader__log p:nth-child(2) { animation-delay: 0.5s; }
-.loader__log p:nth-child(3) { animation-delay: 0.8s; }
-.loader__log p:nth-child(4) { animation-delay: 1.1s; }
-.loader__log p:nth-child(5) { animation-delay: 1.4s; }
+/* 入场错峰延迟：按类名绑定而非 nth-child（合并行会替换第 4/5 行位置，
+   不能受位置影响）；仅首次挂载时重放（各行不重挂载，[OK] 原地追加）；
+   延迟值若调整，需同步 index.css 减弱动效豁免区的对应值，
+   以及 Loader.tsx 中门控合并行的 LOG_STAGGER_END_MS */
+.loader__l1 { animation-delay: 0.2s; }
+.loader__l2 { animation-delay: 0.5s; }
+.loader__l3 { animation-delay: 0.8s; }
+.loader__l4 { animation-delay: 1.1s; }
+.loader__l5 { animation-delay: 1.4s; }
 /* 数据集就绪标记 */
 .loader__ok { color: var(--lime); }
 .loader__cursor {
