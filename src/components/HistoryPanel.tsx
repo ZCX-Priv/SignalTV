@@ -4,6 +4,7 @@ import { useStore } from "../store/useStore";
 import type { HistoryEntry } from "../store/useStore";
 import { clock, historyDayLabel } from "../lib/format";
 import { toast } from "../lib/toast";
+import { useI18n } from "../i18n";
 import { Select } from "./Select";
 import { EmptyState } from "./EmptyState";
 
@@ -23,6 +24,7 @@ interface HistoryGroup {
  * 筛选结果实时作用于时间线。
  */
 export function HistoryPanel() {
+  const { t } = useI18n();
   const history = useStore((s) => s.history);
   const channels = useStore((s) => s.channels);
   const categories = useStore((s) => s.categories);
@@ -65,51 +67,51 @@ export function HistoryPanel() {
         <div className="filterbar__head">
           <div>
             <div className="eyebrow">
-              <History size={11} /> 播放记录
+              <History size={11} /> {t("history.eyebrow")}
             </div>
             <h2 className="filterbar__title display">
-              播放历史
+              {t("history.title")}
               <span className="filterbar__count mono">
-                {filtered.length.toLocaleString("en-US")} 条记录
+                {t("history.countRecords", { count: filtered.length })}
               </span>
             </h2>
           </div>
 
           <div className="filterbar__controls">
             <Select
-              aria-label="分类筛选"
+              aria-label={t("filter.categoryAria")}
               icon={<Hash size={13} />}
-              placeholder="全部分类"
+              placeholder={t("filter.allCategories")}
               value={categoryId ?? ALL}
               onValueChange={(v) => {
                 setCategoryId(v === ALL ? null : v);
-                if (v === ALL) toast.info("已清除分类筛选");
+                if (v === ALL) toast.info(t("toast.categoryCleared"));
                 else {
                   const c = categories.find((x) => x.id === v);
-                  if (c) toast.info(`分类：${c.name}`);
+                  if (c) toast.info(t("toast.categorySet", { name: c.name }));
                 }
               }}
               options={[
-                { value: ALL, label: "全部分类" },
+                { value: ALL, label: t("filter.allCategories") },
                 ...categories.map((c) => ({ value: c.id, label: c.name })),
               ]}
             />
 
             <Select
-              aria-label="国家筛选"
+              aria-label={t("filter.countryAria")}
               icon={<Globe size={13} />}
-              placeholder="全部国家"
+              placeholder={t("filter.allCountries")}
               value={countryCode ?? ALL}
               onValueChange={(v) => {
                 setCountryCode(v === ALL ? null : v);
-                if (v === ALL) toast.info("已清除国家筛选");
+                if (v === ALL) toast.info(t("toast.countryCleared"));
                 else {
                   const c = countries.find((x) => x.code === v);
-                  if (c) toast.info(`国家：${c.name}`);
+                  if (c) toast.info(t("toast.countrySet", { name: c.name }));
                 }
               }}
               options={[
-                { value: ALL, label: "全部国家" },
+                { value: ALL, label: t("filter.allCountries") },
                 ...countries.map((c) => ({
                   value: c.code,
                   label: <>{c.name}（{c.channelCount}）</>,
@@ -124,10 +126,10 @@ export function HistoryPanel() {
                 className="btn btn--ghost btn--sm"
                 onClick={() => {
                   clearHistory();
-                  toast.info("已清空播放历史");
+                  toast.info(t("toast.historyCleared"));
                 }}
               >
-                <Trash2 size={13} /> 清空历史
+                <Trash2 size={13} /> {t("history.clear")}
               </button>
             )}
           </div>
@@ -137,11 +139,11 @@ export function HistoryPanel() {
       {filtered.length === 0 ? (
         <EmptyState
           icon={<History size={28} />}
-          title={history.length === 0 ? "暂无播放记录。" : "无匹配记录。"}
+          title={history.length === 0 ? t("history.emptyTitle") : t("history.noMatchTitle")}
           desc={
             history.length === 0
-              ? "播放任意频道后，这里会以时间线形式实时记录每一次收看。"
-              : "没有播放记录匹配当前筛选条件，请尝试更换分类或国家。"
+              ? t("history.emptyDesc")
+              : t("history.noMatchDesc")
           }
         />
       ) : (
@@ -160,7 +162,7 @@ export function HistoryPanel() {
                       if (ch) openChannel(e.id);
                     }}
                     disabled={!ch}
-                    title={ch ? `重新播放 ${ch.name}` : "频道已下线"}
+                    title={ch ? t("history.replay", { name: ch.name }) : t("history.gone")}
                   >
                     <span className="history__dot" aria-hidden />
                     <span className="history__time mono">
@@ -182,7 +184,7 @@ export function HistoryPanel() {
                       )}
                     </span>
                     <span className="history__name">
-                      {ch?.name ?? "频道已下线"}
+                      {ch?.name ?? t("history.gone")}
                     </span>
                     {ch && (
                       <span className="history__country mono">{ch.country}</span>

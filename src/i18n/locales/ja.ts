@@ -1,0 +1,346 @@
+// 日本語ロケール。キーは zh-CN ソース辞書に対して型チェックされる。
+import type { Dict, VidstackDict } from "./zh-CN";
+
+export const dict: Dict = {
+  // ── 共通 ──
+  "common.channelPos": "CH {pos}",
+  "common.live": "生放送",
+  "common.liveNow": "放送中",
+  "common.favAdd": "お気に入りに追加",
+  "common.favRemove": "お気に入りから削除",
+  "common.fav": "お気に入り",
+  "common.faved": "登録済み",
+  "common.independent": "独立系",
+  "common.retry": "再試行",
+  "common.close": "閉じる",
+  "common.clear": "クリア",
+  "common.channel": "チャンネル",
+
+  // ── ヘッダー ──
+  "header.menuClose": "メニューを閉じる",
+  "header.menuOpen": "メニューを開く",
+  "header.sidebarExpand": "サイドバーを展開",
+  "header.sidebarCollapse": "サイドバーを折りたたむ",
+  "header.searchPlaceholder": "チャンネル・放送局・国を検索…",
+  "header.searchAria": "チャンネルを検索",
+  "header.searchClear": "検索をクリア",
+  "header.search": "検索",
+  "header.liveCountSuffix": "の信号が放送中",
+
+  // ── サイドバー ──
+  "sidebar.home": "ホーム",
+  "sidebar.favorites": "お気に入り",
+  "sidebar.history": "視聴履歴",
+  "sidebar.categories": "カテゴリー",
+  "sidebar.countries": "国",
+  "sidebar.all": "すべて",
+  "sidebar.allCategoriesAria": "すべてのカテゴリーを表示",
+  "sidebar.allCountriesAria": "すべての国を表示",
+  "sidebar.status": "ステータス",
+  "sidebar.settings": "設定",
+
+  // ── トースト ──
+  "toast.backHome": "ホームに戻りました",
+  "toast.gotoFavorites": "お気に入りに切り替えました",
+  "toast.gotoHistory": "視聴履歴に切り替えました",
+  "toast.gotoStatus": "ステータスページに切り替えました",
+  "toast.gotoSettings": "設定に切り替えました",
+  "toast.switchedChannel": "{name}チャンネルに切り替えました",
+  "toast.favAdded": "お気に入りに追加しました",
+  "toast.favRemoved": "お気に入りから削除しました",
+  "toast.categoryCleared": "カテゴリーフィルターを解除しました",
+  "toast.categorySet": "カテゴリー：{name}",
+  "toast.countryCleared": "国フィルターを解除しました",
+  "toast.countrySet": "国：{name}",
+  "toast.sortSet": "並び替え：{name}",
+  "toast.nsfwOn": "アダルトコンテンツを表示しました",
+  "toast.nsfwOff": "アダルトコンテンツを非表示にしました",
+  "toast.historyCleared": "視聴履歴を消去しました",
+  "toast.themeSwitched": "{name}モードに切り替えました",
+  "toast.langSwitched": "言語を{name}に切り替えました",
+  "toast.streamFailover": "現在のストリームが利用できないため、予備信号に切り替えました",
+  "toast.welcome": "SignalTV へようこそ",
+  "toast.loading": "読み込み中",
+
+  // ── ヒーロー ──
+  "hero.title1": "世界を、",
+  "hero.title2": "リアルタイムで。",
+  "hero.lede1": "世界中の",
+  "hero.lede2":
+    "の無料テレビチャンネルを集約。ニュース・映画・スポーツ・音楽・ドキュメンタリーなど、登録不要ですぐ視聴できます。",
+  "hero.tuneIn": "おすすめにチューニング",
+  "hero.featured": "おすすめ",
+  "hero.rec": "● 録画",
+  "hero.nowPlaying": "再生中",
+
+  // ── フィルターバー ──
+  "filter.eyebrow": "番組ガイド",
+  "filter.searchResults": "「{q}」の検索結果",
+  "filter.allChannels": "すべてのチャンネル",
+  "filter.categoryFallback": "カテゴリー",
+  "filter.countryFallback": "国",
+  "filter.favorites": "お気に入り",
+  "filter.countFavorites": "{count} 件のお気に入り",
+  "filter.countSignals": "{count} の信号",
+  "filter.categoryAria": "カテゴリーで絞り込み",
+  "filter.countryAria": "国で絞り込み",
+  "filter.sortAria": "並び順",
+  "filter.allCategories": "すべてのカテゴリー",
+  "filter.allCountries": "すべての国",
+  "filter.nsfwTitle": "アダルトコンテンツを含める",
+  "filter.nsfwShown": "アダルトコンテンツ表示中",
+  "filter.nsfwHidden": "アダルトコンテンツ非表示",
+
+  // ── 並び替え ──
+  "sort.default": "デフォルト",
+  "sort.country": "国",
+  "sort.recent": "最近視聴した順",
+  "sort.latencyAsc": "遅延：低 → 高",
+  "sort.latencyDesc": "遅延：高 → 低",
+  "sort.nsfwFirst": "アダルトコンテンツ優先",
+
+  // ── チャンネルグリッド ──
+  "grid.emptyTitle": "信号なし。",
+  "grid.emptyDesc": "現在の条件に一致するチャンネルがありません。検索範囲を広げてみてください。",
+  "grid.loadingMore": "さらに {count} の信号を読み込み中…",
+  "grid.footer": "{total} の信号のうち {shown} を表示中",
+
+  // ── チャンネルカード ──
+  "card.nsfw": "18+",
+
+  // ── 視聴履歴 ──
+  "history.eyebrow": "視聴ログ",
+  "history.title": "視聴履歴",
+  "history.countRecords": "{count} 件の記録",
+  "history.clear": "履歴を消去",
+  "history.emptyTitle": "視聴履歴はまだありません。",
+  "history.emptyDesc": "チャンネルを再生すると、すべての視聴がタイムラインとしてここに記録されます。",
+  "history.noMatchTitle": "一致する記録がありません。",
+  "history.noMatchDesc":
+    "現在の条件に一致する記録がありません。別のカテゴリーや国を試してください。",
+  "history.replay": "{name} をもう一度再生",
+  "history.gone": "チャンネル停波中",
+
+  // ── ステータスページ ──
+  "status.eyebrow": "信号源",
+  "status.title": "ステータス",
+  "status.connError": "アップリンク異常",
+  "status.connLoading": "アップリンク確立中",
+  "status.connOk": "アップリンク確立済み",
+  "status.connIdle": "待機中",
+  "status.connection": "接続",
+  "status.connectionDesc": "現在の信号源データの読み込み状態。",
+  "status.connSub": "公共テレビ信号源 · iptv-org",
+  "status.data": "データ",
+  "status.dataDesc": "読み込み済みのチャンネル・カテゴリー・国の数。",
+  "status.statChannels": "チャンネル",
+  "status.statCategories": "カテゴリー",
+  "status.statCountries": "か国",
+  "status.probe": "遅延プローブ",
+  "status.probeDesc": "表示中のチャンネルの遅延を測定し、遅延順の並び替えに使用します。",
+  "status.probeStatus": "状態",
+  "status.probeReady": "準備完了",
+  "status.probeIdle": "未開始",
+  "status.probed": "測定済み",
+  "status.probedCount": "{count} 件",
+  "status.reachable": "到達可能",
+  "status.reachableValue": "{count} 件（{pct}%）",
+
+  // ── 設定ページ ──
+  "settings.eyebrow": "コンソール",
+  "settings.title": "設定",
+  "settings.appearance": "外観",
+  "settings.appearanceDesc": "テーマモードを選択して、全体の配色と雰囲気を変更します。",
+  "settings.language": "言語",
+  "settings.languageDesc": "画面の表示言語を選択します。既定ではブラウザーの言語を自動検出します。",
+  "settings.langAuto": "自動検出",
+  "settings.langAutoDesc": "ブラウザーの言語に従う（現在：{name}）",
+  "settings.about": "このアプリについて",
+  "settings.githubAria": "GitHub リポジトリ",
+  "settings.tagline": "公共テレビ信号 · 無料ライブ配信",
+  "settings.channelsCount": "{count} チャンネル",
+  "settings.noSignup": "登録不要 · 広告なし · トラッキングなし",
+  "settings.dataSource":
+    "チャンネルデータは公開のオープンソースプロジェクト iptv-org に由来します。本サイトは映像ストリームの保存・中継を一切行いません。",
+
+  // ── テーマ ──
+  "theme.system": "システムに従う",
+  "theme.systemDesc": "OS の設定に合わせて自動切り替え",
+  "theme.light": "デイライト",
+  "theme.lightDesc": "温かみのあるクリーム地、明るく快適",
+  "theme.dark": "ナイト",
+  "theme.darkDesc": "放送ブラック、没入感のある雰囲気",
+
+  // ── 言語名 ──
+  "lang.zh-CN": "中国語（簡体字）",
+  "lang.en": "英語",
+  "lang.de": "ドイツ語",
+  "lang.fr": "フランス語",
+  "lang.ja": "日本語",
+  "lang.ru": "ロシア語",
+  "lang.es": "スペイン語",
+  "lang.ko": "韓国語",
+
+  // ── プレーヤーモーダル ──
+  "player.dialogAria": "{name} を再生中",
+  "player.signalLocked": "信号ロック済み",
+  "player.closeAria": "プレーヤーを閉じる",
+  "player.website": "公式サイト",
+  "player.factChannel": "チャンネル番号",
+  "player.factCountry": "国",
+  "player.factStreams": "ストリーム数",
+  "player.factLaunched": "開局",
+  "player.related": "関連する信号",
+  "player.loadFailed": "プレーヤーの読み込みに失敗しました。閉じてから再試行してください。",
+
+  // ── プレーヤーオーバーレイ ──
+  "tv.acquiring": "信号を取得中…",
+  "tv.tapToPlayAria": "タップして再生を開始",
+  "tv.tapToPlay": "タップして再生",
+  "tv.tapToPlayHint": "ブラウザーのポリシーにより手動での開始が必要です",
+  "tv.signalLost": "信号ロスト",
+  "tv.mixedContent":
+    "ブラウザーのセキュリティポリシーにより、非暗号化（http）の信号源がブロックされたため、このページでは再生できません。",
+  "tv.unavailable": "このライブストリームは利用できません。",
+  "tv.triedStreams": "{tried}/{total} のストリームを試しましたが、いずれも再生できませんでした。",
+  "tv.regionHint":
+    "無料の信号の多くは地域制限があるか断続的にオフラインになります。同じ放送局の別チャンネルをお試しください。",
+  "tv.startFailed": "再生を開始できませんでした。再試行するかチャンネルを切り替えてください。",
+
+  // ── 通知 ──
+  "toaster.region": "通知",
+  "toaster.closeAria": "通知を閉じる",
+
+  // ── ローダー ──
+  "loader.sub": "アップリンク確立中 · 公共テレビ信号源",
+  "loader.logConnect": "信号源に接続中",
+  "loader.logChannels": "チャンネルテーブルを取得中",
+  "loader.logStreams": "ストリームテーブルを取得中",
+  "loader.logSync": "放送グリッドを同期中",
+  "loader.failTitle1": "アップリンク",
+  "loader.failTitle2": "失敗",
+  "loader.retryConnection": "接続を再試行",
+
+  // ── 読み込みステージ ──
+  "stage.connecting": "信号源に接続中…",
+  "stage.ready": "{label}の準備完了 ({done}/4)",
+  "stage.pulling": "{label}を取得中 · {size}",
+  "stage.merging": "信号テーブルを結合中…",
+
+  // ── データセット名 ──
+  "data.channels": "チャンネルテーブル",
+  "data.streams": "ストリームテーブル",
+  "data.categories": "カテゴリーテーブル",
+  "data.countries": "国テーブル",
+
+  // ── ErrorBoundary ──
+  "errb.title1": "信号",
+  "errb.title2": "中断",
+  "errb.unknown": "不明なレンダリングエラー",
+
+  // ── 選択モーダル ──
+  "picker.recent": "最近の選択",
+  "picker.searchCategories": "カテゴリーを検索…",
+  "picker.searchCategoriesAria": "カテゴリーを検索",
+  "picker.noCategories": "一致するカテゴリーがありません",
+  "picker.searchCountries": "国名または地域コードを検索…",
+  "picker.searchCountriesAria": "国を検索",
+  "picker.noCountries": "一致する国がありません",
+
+  // ── API エラー ──
+  "api.requestFailed": "リクエスト失敗 {url}: {status}",
+  "api.timeout": "リクエストタイムアウト {url}",
+  "api.cancelled": "リクエストがキャンセルされました",
+  "api.readFailed": "レスポンスの読み取りに失敗 {url}",
+  "api.parseFailed": "レスポンスの解析に失敗 {url}（JSON ではありません）",
+  "api.loadFailed": "放送データの読み込みに失敗しました。",
+
+  // ── 日付フォーマット ──
+  "format.today": "今日",
+  "format.yesterday": "昨日",
+
+  // ── SEO ──
+  "seo.homeTitle": "SignalTV - 無料でテレビのライブ配信をオンライン視聴",
+  "seo.homeDesc":
+    "SignalTV はテレビのライブ配信を無料でオンライン視聴できるサイトです。世界中の数千チャンネルを集約し、ニュース・映画・スポーツ・音楽・ドキュメンタリーなどを登録不要ですぐ視聴できます。",
+  "seo.categoryTitle": "SignalTV | {name}チャンネル",
+  "seo.categoryDescCount":
+    "{count} の{name}テレビチャンネルを無料でオンライン視聴。すぐ再生でき、世界中の{name}コンテンツをカバー。",
+  "seo.categoryDesc":
+    "{name}テレビチャンネルを無料でオンライン視聴。すぐ再生でき、世界中の{name}コンテンツをカバー。",
+  "seo.countryTitle": "SignalTV | {name}のテレビチャンネル",
+  "seo.countryDescCount": "{name}の {count} のテレビライブチャンネルを無料でオンライン視聴。",
+  "seo.countryDesc": "{name}のテレビライブチャンネルを無料でオンライン視聴。",
+  "seo.favoritesTitle": "SignalTV | お気に入りチャンネル",
+  "seo.favoritesDesc": "SignalTV に登録したお気に入りチャンネル一覧。ワンクリックで視聴を再開。",
+  "seo.historyTitle": "SignalTV | 視聴履歴",
+  "seo.historyDesc":
+    "SignalTV の視聴履歴タイムライン。視聴したチャンネルを振り返って再生できます（ローカル保存のみ）。",
+  "seo.statusTitle": "SignalTV | 信号源ステータス",
+  "seo.statusDesc":
+    "SignalTV の信号源ステータス：接続状態、チャンネル統計、遅延プローブの進行状況、データソースの説明。",
+  "seo.settingsTitle": "SignalTV | 設定",
+  "seo.settingsDesc": "SignalTV 設定：テーマモード、表示言語、アプリ情報。",
+  "seo.searchTitle": "SignalTV | 「{q}」のテレビチャンネル検索結果",
+  "seo.searchDesc": "SignalTV で「{q}」に一致するテレビライブチャンネルを無料でオンライン視聴。",
+};
+
+// vidstack DefaultVideoLayout 日本語翻訳
+export const vidstack: VidstackDict = {
+  "Announcements": "お知らせ",
+  "Accessibility": "アクセシビリティ",
+  "AirPlay": "AirPlay",
+  "Audio": "音声",
+  "Auto": "自動",
+  "Boost": "ブースト",
+  "Captions": "字幕",
+  "Caption Styles": "字幕スタイル",
+  "Captions look like this": "字幕はこのように表示されます",
+  "Chapters": "チャプター",
+  "Closed-Captions Off": "字幕オフ",
+  "Closed-Captions On": "字幕オン",
+  "Connected": "接続済み",
+  "Continue": "続行",
+  "Connecting": "接続中",
+  "Default": "デフォルト",
+  "Disabled": "無効",
+  "Disconnected": "切断済み",
+  "Display Background": "表示背景",
+  "Download": "ダウンロード",
+  "Enter Fullscreen": "全画面表示",
+  "Enter PiP": "ピクチャーインピクチャー開始",
+  "Exit Fullscreen": "全画面を終了",
+  "Exit PiP": "ピクチャーインピクチャー終了",
+  "Font": "フォント",
+  "Family": "フォントファミリー",
+  "Fullscreen": "全画面",
+  "Google Cast": "Google Cast",
+  "Keyboard Animations": "キーボードアニメーション",
+  "LIVE": "生放送",
+  "Loop": "ループ",
+  "Mute": "ミュート",
+  "Normal": "標準",
+  "Off": "オフ",
+  "Pause": "一時停止",
+  "Play": "再生",
+  "Playback": "再生",
+  "PiP": "ピクチャーインピクチャー",
+  "Quality": "画質",
+  "Replay": "リプレイ",
+  "Reset": "リセット",
+  "Seek Backward": "巻き戻し",
+  "Seek Forward": "早送り",
+  "Seek": "シーク",
+  "Settings": "設定",
+  "Skip To Live": "ライブへ移動",
+  "Speed": "速度",
+  "Size": "サイズ",
+  "Color": "色",
+  "Opacity": "不透明度",
+  "Shadow": "影",
+  "Text": "テキスト",
+  "Text Background": "テキスト背景",
+  "Track": "トラック",
+  "Unmute": "ミュート解除",
+  "Volume": "音量",
+};

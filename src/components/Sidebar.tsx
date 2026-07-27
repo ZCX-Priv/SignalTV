@@ -13,11 +13,13 @@ import { useStore } from "../store/useStore";
 import { fmt } from "../lib/format";
 import { toast } from "../lib/toast";
 import { catIcon } from "../lib/categoryIcon";
+import { useI18n } from "../i18n";
 import { CategoryPickerModal } from "./CategoryPickerModal";
 import { CountryPickerModal } from "./CountryPickerModal";
 import type { CountryInfo } from "../types";
 
 export function Sidebar() {
+  const { t } = useI18n();
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const categories = useStore((s) => s.categories);
@@ -104,32 +106,32 @@ export function Sidebar() {
             className={`nav__item ${isActiveNav("home") && !filter.q ? "is-active" : ""}`}
             onClick={() => {
               setView({ kind: "home" });
-              toast.info("已返回首页");
+              toast.info(t("toast.backHome"));
             }}
           >
             <Home size={15} />
-            <span>首页</span>
+            <span>{t("sidebar.home")}</span>
           </button>
           <button
             className={`nav__item ${isActiveNav("favorites") ? "is-active" : ""}`}
             onClick={() => {
               setView({ kind: "favorites" });
-              toast.info("已切换至收藏页");
+              toast.info(t("toast.gotoFavorites"));
             }}
           >
             <Heart size={15} />
-            <span>收藏夹</span>
+            <span>{t("sidebar.favorites")}</span>
             {favorites.length > 0 && <span className="nav__count mono">{favorites.length}</span>}
           </button>
           <button
             className={`nav__item ${isActiveNav("history") ? "is-active" : ""}`}
             onClick={() => {
               setView({ kind: "history" });
-              toast.info("已切换至播放历史");
+              toast.info(t("toast.gotoHistory"));
             }}
           >
             <History size={15} />
-            <span>播放历史</span>
+            <span>{t("sidebar.history")}</span>
             {historyCount > 0 && <span className="nav__count mono">{historyCount}</span>}
           </button>
         </nav>
@@ -137,15 +139,15 @@ export function Sidebar() {
         <div className="sidebar__section">
           <div className="sidebar__label">
             <LayoutGrid size={11} />
-            <span>分类</span>
+            <span>{t("sidebar.categories")}</span>
             <button
               type="button"
               className="sidebar__label-action"
               onClick={() => setCategoryPickerOpen(true)}
-              aria-label="查看全部分类"
-              title="全部分类"
+              aria-label={t("sidebar.allCategoriesAria")}
+              title={t("filter.allCategories")}
             >
-              <span>全部</span>
+              <span>{t("sidebar.all")}</span>
               <ChevronRight size={11} />
             </button>
           </div>
@@ -159,7 +161,7 @@ export function Sidebar() {
                   className={`nav__item ${active ? "is-active" : ""}`}
                   onClick={() => {
                     setView({ kind: "category", id: c.id });
-                    toast.info(`已切换至${c.name}频道`);
+                    toast.info(t("toast.switchedChannel", { name: c.name }));
                   }}
                 >
                   <Icon size={14} />
@@ -174,15 +176,15 @@ export function Sidebar() {
         <div className="sidebar__section">
           <div className="sidebar__label">
             <Globe2 size={11} />
-            <span>国家</span>
+            <span>{t("sidebar.countries")}</span>
             <button
               type="button"
               className="sidebar__label-action"
               onClick={() => setCountryPickerOpen(true)}
-              aria-label="查看全部国家"
-              title="全部国家"
+              aria-label={t("sidebar.allCountriesAria")}
+              title={t("filter.allCountries")}
             >
-              <span>全部</span>
+              <span>{t("sidebar.all")}</span>
               <ChevronRight size={11} />
             </button>
           </div>
@@ -195,7 +197,7 @@ export function Sidebar() {
                   className={`nav__item nav__item--country ${active ? "is-active" : ""}`}
                   onClick={() => {
                     setView({ kind: "country", code: c.code });
-                    toast.info(`已切换至${c.name}频道`);
+                    toast.info(t("toast.switchedChannel", { name: c.name }));
                   }}
                   title={c.name}
                 >
@@ -213,26 +215,26 @@ export function Sidebar() {
             className={`sidebar__settings-btn sidebar__status-btn ${view.kind === "status" ? "is-active" : ""}`}
             onClick={() => {
               setView({ kind: "status" });
-              toast.info("已切换至状态页");
+              toast.info(t("toast.gotoStatus"));
             }}
-            aria-label="状态"
-            title="状态"
+            aria-label={t("sidebar.status")}
+            title={t("sidebar.status")}
           >
             <Radio size={13} />
-            <span>状态</span>
+            <span>{t("sidebar.status")}</span>
             <span className="dot" aria-hidden />
           </button>
           <button
             className={`sidebar__settings-btn ${view.kind === "settings" ? "is-active" : ""}`}
             onClick={() => {
               setView({ kind: "settings" });
-              toast.info("已切换至设置页");
+              toast.info(t("toast.gotoSettings"));
             }}
-            aria-label="设置"
-            title="设置"
+            aria-label={t("sidebar.settings")}
+            title={t("sidebar.settings")}
           >
             <Settings size={13} />
-            <span>设置</span>
+            <span>{t("sidebar.settings")}</span>
           </button>
         </div>
       </div>

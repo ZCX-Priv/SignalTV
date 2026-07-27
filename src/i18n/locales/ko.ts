@@ -1,0 +1,346 @@
+// 한국어 로케일. 키는 zh-CN 소스 사전에 대해 타입 검사된다.
+import type { Dict, VidstackDict } from "./zh-CN";
+
+export const dict: Dict = {
+  // ── 공통 ──
+  "common.channelPos": "CH {pos}",
+  "common.live": "생방송",
+  "common.liveNow": "방송 중",
+  "common.favAdd": "즐겨찾기에 추가",
+  "common.favRemove": "즐겨찾기에서 제거",
+  "common.fav": "즐겨찾기",
+  "common.faved": "즐겨찾기됨",
+  "common.independent": "독립",
+  "common.retry": "다시 시도",
+  "common.close": "닫기",
+  "common.clear": "지우기",
+  "common.channel": "채널",
+
+  // ── 헤더 ──
+  "header.menuClose": "메뉴 닫기",
+  "header.menuOpen": "메뉴 열기",
+  "header.sidebarExpand": "사이드바 펼치기",
+  "header.sidebarCollapse": "사이드바 접기",
+  "header.searchPlaceholder": "채널·방송사·국가 검색…",
+  "header.searchAria": "채널 검색",
+  "header.searchClear": "검색어 지우기",
+  "header.search": "검색",
+  "header.liveCountSuffix": "개 신호 방송 중",
+
+  // ── 사이드바 ──
+  "sidebar.home": "홈",
+  "sidebar.favorites": "즐겨찾기",
+  "sidebar.history": "시청 기록",
+  "sidebar.categories": "카테고리",
+  "sidebar.countries": "국가",
+  "sidebar.all": "전체",
+  "sidebar.allCategoriesAria": "전체 카테고리 보기",
+  "sidebar.allCountriesAria": "전체 국가 보기",
+  "sidebar.status": "상태",
+  "sidebar.settings": "설정",
+
+  // ── 토스트 ──
+  "toast.backHome": "홈으로 돌아왔습니다",
+  "toast.gotoFavorites": "즐겨찾기로 전환했습니다",
+  "toast.gotoHistory": "시청 기록으로 전환했습니다",
+  "toast.gotoStatus": "상태 페이지로 전환했습니다",
+  "toast.gotoSettings": "설정으로 전환했습니다",
+  "toast.switchedChannel": "{name} 채널로 전환했습니다",
+  "toast.favAdded": "즐겨찾기에 추가했습니다",
+  "toast.favRemoved": "즐겨찾기에서 제거했습니다",
+  "toast.categoryCleared": "카테고리 필터를 해제했습니다",
+  "toast.categorySet": "카테고리: {name}",
+  "toast.countryCleared": "국가 필터를 해제했습니다",
+  "toast.countrySet": "국가: {name}",
+  "toast.sortSet": "정렬: {name}",
+  "toast.nsfwOn": "성인 콘텐츠를 표시합니다",
+  "toast.nsfwOff": "성인 콘텐츠를 숨겼습니다",
+  "toast.historyCleared": "시청 기록을 삭제했습니다",
+  "toast.themeSwitched": "{name} 모드로 전환했습니다",
+  "toast.langSwitched": "언어를 {name}(으)로 변경했습니다",
+  "toast.streamFailover": "현재 스트림을 사용할 수 없어 예비 신호로 전환했습니다",
+  "toast.welcome": "SignalTV에 오신 것을 환영합니다",
+  "toast.loading": "불러오는 중",
+
+  // ── 히어로 ──
+  "hero.title1": "세계를,",
+  "hero.title2": "실시간으로.",
+  "hero.lede1": "전 세계",
+  "hero.lede2":
+    "개의 무료 TV 채널을 한곳에. 뉴스·영화·스포츠·음악·다큐멘터리 등, 가입 없이 바로 시청하세요.",
+  "hero.tuneIn": "추천 채널 시청",
+  "hero.featured": "추천",
+  "hero.rec": "● 녹화",
+  "hero.nowPlaying": "재생 중",
+
+  // ── 필터 바 ──
+  "filter.eyebrow": "편성 가이드",
+  "filter.searchResults": "“{q}” 검색 결과",
+  "filter.allChannels": "전체 채널",
+  "filter.categoryFallback": "카테고리",
+  "filter.countryFallback": "국가",
+  "filter.favorites": "즐겨찾기",
+  "filter.countFavorites": "즐겨찾기 {count}개",
+  "filter.countSignals": "신호 {count}개",
+  "filter.categoryAria": "카테고리 필터",
+  "filter.countryAria": "국가 필터",
+  "filter.sortAria": "정렬 방식",
+  "filter.allCategories": "전체 카테고리",
+  "filter.allCountries": "전체 국가",
+  "filter.nsfwTitle": "성인 콘텐츠 포함",
+  "filter.nsfwShown": "성인 콘텐츠 표시 중",
+  "filter.nsfwHidden": "성인 콘텐츠 숨김",
+
+  // ── 정렬 옵션 ──
+  "sort.default": "기본",
+  "sort.country": "국가",
+  "sort.recent": "최근 시청",
+  "sort.latencyAsc": "지연: 낮음 → 높음",
+  "sort.latencyDesc": "지연: 높음 → 낮음",
+  "sort.nsfwFirst": "성인 콘텐츠 우선",
+
+  // ── 채널 그리드 ──
+  "grid.emptyTitle": "신호 없음.",
+  "grid.emptyDesc": "현재 필터에 맞는 채널이 없습니다. 검색 범위를 넓혀 보세요.",
+  "grid.loadingMore": "신호 {count}개 불러오는 중…",
+  "grid.footer": "신호 {total}개 중 {shown}개 표시",
+
+  // ── 채널 카드 ──
+  "card.nsfw": "성인",
+
+  // ── 시청 기록 ──
+  "history.eyebrow": "시청 로그",
+  "history.title": "시청 기록",
+  "history.countRecords": "기록 {count}건",
+  "history.clear": "기록 삭제",
+  "history.emptyTitle": "아직 시청 기록이 없습니다.",
+  "history.emptyDesc": "채널을 재생하면 모든 시청이 타임라인 형태로 여기에 기록됩니다.",
+  "history.noMatchTitle": "일치하는 기록이 없습니다.",
+  "history.noMatchDesc":
+    "현재 필터에 맞는 기록이 없습니다. 다른 카테고리나 국가를 시도해 보세요.",
+  "history.replay": "{name} 다시 재생",
+  "history.gone": "채널 종료됨",
+
+  // ── 상태 페이지 ──
+  "status.eyebrow": "신호원",
+  "status.title": "상태",
+  "status.connError": "업링크 오류",
+  "status.connLoading": "업링크 연결 중",
+  "status.connOk": "업링크 연결됨",
+  "status.connIdle": "대기",
+  "status.connection": "연결",
+  "status.connectionDesc": "현재 신호원 데이터 로딩 상태.",
+  "status.connSub": "공영 TV 신호원 · iptv-org",
+  "status.data": "데이터",
+  "status.dataDesc": "불러온 채널·카테고리·국가 수.",
+  "status.statChannels": "개 채널",
+  "status.statCategories": "개 카테고리",
+  "status.statCountries": "개 국가",
+  "status.probe": "지연 측정",
+  "status.probeDesc": "표시 중인 채널의 지연을 측정해 지연순 정렬에 사용합니다.",
+  "status.probeStatus": "상태",
+  "status.probeReady": "준비됨",
+  "status.probeIdle": "시작 안 됨",
+  "status.probed": "측정됨",
+  "status.probedCount": "{count}개",
+  "status.reachable": "접속 가능",
+  "status.reachableValue": "{count}개 ({pct}%)",
+
+  // ── 설정 페이지 ──
+  "settings.eyebrow": "콘솔",
+  "settings.title": "설정",
+  "settings.appearance": "화면 모드",
+  "settings.appearanceDesc": "테마 모드를 선택해 전체 색감과 분위기를 바꿉니다.",
+  "settings.language": "언어",
+  "settings.languageDesc": "인터페이스 언어를 선택합니다. 기본값은 브라우저 언어 자동 감지입니다.",
+  "settings.langAuto": "자동 감지",
+  "settings.langAutoDesc": "브라우저 언어 따르기 (현재: {name})",
+  "settings.about": "정보",
+  "settings.githubAria": "GitHub 저장소",
+  "settings.tagline": "공영 TV 신호 · 무료 라이브 스트리밍",
+  "settings.channelsCount": "채널 {count}개",
+  "settings.noSignup": "가입 없음 · 광고 없음 · 추적 없음",
+  "settings.dataSource":
+    "채널 데이터는 공개 오픈소스 프로젝트 iptv-org에서 가져옵니다. 본 사이트는 어떤 영상 스트림도 저장하거나 중계하지 않습니다.",
+
+  // ── 테마 옵션 ──
+  "theme.system": "시스템 따르기",
+  "theme.systemDesc": "운영체제 설정에 따라 자동 전환",
+  "theme.light": "주간",
+  "theme.lightDesc": "따뜻한 크림빛 배경, 밝고 편안함",
+  "theme.dark": "야간",
+  "theme.darkDesc": "방송용 블랙, 몰입감 있는 분위기",
+
+  // ── 언어 이름 ──
+  "lang.zh-CN": "중국어(간체)",
+  "lang.en": "영어",
+  "lang.de": "독일어",
+  "lang.fr": "프랑스어",
+  "lang.ja": "일본어",
+  "lang.ru": "러시아어",
+  "lang.es": "스페인어",
+  "lang.ko": "한국어",
+
+  // ── 플레이어 모달 ──
+  "player.dialogAria": "{name} 재생 중",
+  "player.signalLocked": "신호 고정됨",
+  "player.closeAria": "플레이어 닫기",
+  "player.website": "공식 사이트",
+  "player.factChannel": "채널 번호",
+  "player.factCountry": "국가",
+  "player.factStreams": "스트림 수",
+  "player.factLaunched": "개국",
+  "player.related": "관련 신호",
+  "player.loadFailed": "플레이어를 불러오지 못했습니다. 닫은 뒤 다시 시도해 주세요.",
+
+  // ── 플레이어 오버레이 ──
+  "tv.acquiring": "신호 수신 중…",
+  "tv.tapToPlayAria": "탭하여 재생 시작",
+  "tv.tapToPlay": "탭하여 재생",
+  "tv.tapToPlayHint": "브라우저 정책상 수동 시작이 필요합니다",
+  "tv.signalLost": "신호 유실",
+  "tv.mixedContent":
+    "브라우저 보안 정책이 비암호화(http) 신호원을 차단해 이 페이지에서 재생할 수 없습니다.",
+  "tv.unavailable": "이 라이브 스트림은 사용할 수 없습니다.",
+  "tv.triedStreams": "스트림 {tried}/{total}개를 시도했지만 모두 재생할 수 없었습니다.",
+  "tv.regionHint":
+    "무료 신호 상당수는 지역 제한이 있거나 간헐적으로 오프라인입니다. 같은 방송사의 다른 채널을 시도해 보세요.",
+  "tv.startFailed": "재생을 시작할 수 없습니다. 다시 시도하거나 채널을 바꿔 주세요.",
+
+  // ── 알림 ──
+  "toaster.region": "알림",
+  "toaster.closeAria": "알림 닫기",
+
+  // ── 로더 ──
+  "loader.sub": "업링크 연결 중 · 공영 TV 신호원",
+  "loader.logConnect": "신호원에 연결 중",
+  "loader.logChannels": "채널 테이블 가져오는 중",
+  "loader.logStreams": "스트림 테이블 가져오는 중",
+  "loader.logSync": "방송 그리드 동기화 중",
+  "loader.failTitle1": "업링크 ",
+  "loader.failTitle2": "실패",
+  "loader.retryConnection": "다시 연결",
+
+  // ── 로딩 단계 ──
+  "stage.connecting": "신호원에 연결 중…",
+  "stage.ready": "{label} 준비 완료 ({done}/4)",
+  "stage.pulling": "{label} 가져오는 중 · {size}",
+  "stage.merging": "신호 테이블 병합 중…",
+
+  // ── 데이터셋 이름 ──
+  "data.channels": "채널 테이블",
+  "data.streams": "스트림 테이블",
+  "data.categories": "카테고리 테이블",
+  "data.countries": "국가 테이블",
+
+  // ── ErrorBoundary ──
+  "errb.title1": "신호 ",
+  "errb.title2": "중단",
+  "errb.unknown": "알 수 없는 렌더링 오류",
+
+  // ── 선택 모달 ──
+  "picker.recent": "최근 선택",
+  "picker.searchCategories": "카테고리 검색…",
+  "picker.searchCategoriesAria": "카테고리 검색",
+  "picker.noCategories": "일치하는 카테고리가 없습니다",
+  "picker.searchCountries": "국가 또는 지역 코드 검색…",
+  "picker.searchCountriesAria": "국가 검색",
+  "picker.noCountries": "일치하는 국가가 없습니다",
+
+  // ── API 오류 ──
+  "api.requestFailed": "요청 실패 {url}: {status}",
+  "api.timeout": "요청 시간 초과 {url}",
+  "api.cancelled": "요청이 취소되었습니다",
+  "api.readFailed": "응답 읽기 실패 {url}",
+  "api.parseFailed": "응답 파싱 실패 {url} (JSON 아님)",
+  "api.loadFailed": "방송 데이터를 불러오지 못했습니다.",
+
+  // ── 날짜 형식 ──
+  "format.today": "오늘",
+  "format.yesterday": "어제",
+
+  // ── SEO ──
+  "seo.homeTitle": "SignalTV - 무료 실시간 TV 온라인 시청",
+  "seo.homeDesc":
+    "SignalTV는 실시간 TV를 무료로 온라인 시청할 수 있는 사이트입니다. 전 세계 수천 개 채널을 모아 뉴스·영화·스포츠·음악·다큐멘터리 등을 가입 없이 바로 볼 수 있습니다.",
+  "seo.categoryTitle": "SignalTV | {name} 채널",
+  "seo.categoryDescCount":
+    "{name} 실시간 TV 채널 {count}개를 무료로 온라인 시청. 즉시 재생, 전 세계 {name} 콘텐츠.",
+  "seo.categoryDesc":
+    "{name} 실시간 TV 채널을 무료로 온라인 시청. 즉시 재생, 전 세계 {name} 콘텐츠.",
+  "seo.countryTitle": "SignalTV | {name} TV 채널",
+  "seo.countryDescCount": "{name}의 실시간 TV 채널 {count}개를 무료로 즉시 시청.",
+  "seo.countryDesc": "{name}의 실시간 TV 채널을 무료로 즉시 시청.",
+  "seo.favoritesTitle": "SignalTV | 내 즐겨찾기 채널",
+  "seo.favoritesDesc": "SignalTV에 즐겨찾기한 TV 채널 목록. 한 번의 클릭으로 이어서 시청.",
+  "seo.historyTitle": "SignalTV | 시청 기록",
+  "seo.historyDesc":
+    "SignalTV의 시청 기록 타임라인. 시청한 채널을 되돌아보고 다시 재생하세요 (로컬 저장만).",
+  "seo.statusTitle": "SignalTV | 신호원 상태",
+  "seo.statusDesc":
+    "SignalTV 신호원 상태: 연결 상태, 채널 통계, 지연 측정 진행 상황과 데이터 출처 안내.",
+  "seo.settingsTitle": "SignalTV | 설정",
+  "seo.settingsDesc": "SignalTV 설정: 테마 모드, 인터페이스 언어, 앱 정보.",
+  "seo.searchTitle": "SignalTV | “{q}” TV 채널 검색 결과",
+  "seo.searchDesc": "SignalTV에서 “{q}”와 일치하는 실시간 TV 채널을 무료로 시청하세요.",
+};
+
+// vidstack DefaultVideoLayout 한국어 번역
+export const vidstack: VidstackDict = {
+  "Announcements": "공지",
+  "Accessibility": "접근성",
+  "AirPlay": "AirPlay",
+  "Audio": "오디오",
+  "Auto": "자동",
+  "Boost": "부스트",
+  "Captions": "자막",
+  "Caption Styles": "자막 스타일",
+  "Captions look like this": "자막은 이렇게 표시됩니다",
+  "Chapters": "챕터",
+  "Closed-Captions Off": "자막 끄기",
+  "Closed-Captions On": "자막 켜기",
+  "Connected": "연결됨",
+  "Continue": "계속",
+  "Connecting": "연결 중",
+  "Default": "기본",
+  "Disabled": "사용 안 함",
+  "Disconnected": "연결 끊김",
+  "Display Background": "표시 배경",
+  "Download": "다운로드",
+  "Enter Fullscreen": "전체 화면 시작",
+  "Enter PiP": "PIP 시작",
+  "Exit Fullscreen": "전체 화면 종료",
+  "Exit PiP": "PIP 종료",
+  "Font": "글꼴",
+  "Family": "글꼴 종류",
+  "Fullscreen": "전체 화면",
+  "Google Cast": "Google Cast",
+  "Keyboard Animations": "키보드 애니메이션",
+  "LIVE": "생방송",
+  "Loop": "반복",
+  "Mute": "음소거",
+  "Normal": "보통",
+  "Off": "끄기",
+  "Pause": "일시정지",
+  "Play": "재생",
+  "Playback": "재생",
+  "PiP": "PIP",
+  "Quality": "화질",
+  "Replay": "다시 보기",
+  "Reset": "초기화",
+  "Seek Backward": "뒤로 이동",
+  "Seek Forward": "앞으로 이동",
+  "Seek": "탐색",
+  "Settings": "설정",
+  "Skip To Live": "실시간으로 이동",
+  "Speed": "속도",
+  "Size": "크기",
+  "Color": "색상",
+  "Opacity": "불투명도",
+  "Shadow": "그림자",
+  "Text": "텍스트",
+  "Text Background": "텍스트 배경",
+  "Track": "트랙",
+  "Unmute": "음소거 해제",
+  "Volume": "음량",
+};

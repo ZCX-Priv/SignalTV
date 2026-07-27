@@ -13,10 +13,12 @@ import { useChannel } from "../hooks/useChannels";
 import { broadcastDate, channelPosition, flagUrl, prettyCategory } from "../lib/format";
 import { toast } from "../lib/toast";
 import { pushModal, trapFocus } from "../lib/modalStack";
+import { useI18n } from "../i18n";
 import { LatencyTag } from "./LatencyTag";
 import { TvPlayer } from "./TvPlayer";
 
 export function PlayerModal() {
+  const { t } = useI18n();
   const activeId = useStore((s) => s.activeChannelId);
   const openChannel = useStore((s) => s.openChannel);
   const channel = useChannel(activeId);
@@ -46,9 +48,9 @@ export function PlayerModal() {
       }
       return i;
     });
-    if (switched) toast.info("当前流不可用，已切换备用信号源");
+    if (switched) toast.info(t("toast.streamFailover"));
     return switched;
-  }, [streamUrls.length]);
+  }, [streamUrls.length, t]);
 
   // 错误面板"重试"：从第一路流重新开始，retryToken 变化强制 remount
   const handleRetry = useCallback(() => {
@@ -107,7 +109,7 @@ export function PlayerModal() {
   const isFav = favorites.includes(channel.id);
 
   return (
-    <div className="player" role="dialog" aria-modal="true" aria-label={`正在播放 ${channel.name}`}>
+    <div className="player" role="dialog" aria-modal="true" aria-label={t("player.dialogAria", { name: channel.name })}>
       <div className="player__backdrop" />
       <div
         className="player__panel"
@@ -119,10 +121,10 @@ export function PlayerModal() {
       >
         <header className="player__head">
           <div className="player__head-left">
-            <span className="player__ch mono">频道 {channelPosition(channel.id)}</span>
+            <span className="player__ch mono">{t("common.channelPos", { pos: channelPosition(channel.id) })}</span>
             <span className="player__divider" />
             <span className="player__live mono">
-              <span className="dot" /> 直播中
+              <span className="dot" /> {t("common.liveNow")}
             </span>
             <span className="player__divider" />
             <span className="mono player__time">{broadcastDate()}</span>
@@ -132,12 +134,12 @@ export function PlayerModal() {
               <>
                 <span className="player__divider" />
                 <span className="player__signal-lock mono">
-                  <Lock size={11} /> 信号已锁定 · {channel.country}
+                  <Lock size={11} /> {t("player.signalLocked")} · {channel.country}
                 </span>
               </>
             )}
           </div>
-          <button className="player__close" onClick={() => openChannel(null)} aria-label="关闭播放器">
+          <button className="player__close" onClick={() => openChannel(null)} aria-label={t("player.closeAria")}>
             <X size={18} />
           </button>
         </header>
@@ -174,7 +176,7 @@ export function PlayerModal() {
                   {flagUrl(channel.country) && (
                     <img src={flagUrl(channel.country)!} alt="" className="player__flag" />
                   )}
-                  {channel.country} · {channel.network ?? "独立"}
+                  {channel.country} · {channel.network ?? t("common.independent")}
                   {channel.categories.map((c) => (
                     <span className="tag" key={c}>{prettyCategory(c)}</span>
                   ))}
@@ -193,12 +195,12 @@ export function PlayerModal() {
                 className={`btn btn--ghost btn--sm ${isFav ? "is-fav" : ""}`}
                 onClick={() => {
                   toggleFavorite(channel.id);
-                  if (!isFav) toast.success("已加入收藏夹");
-                  else toast.info("已移出收藏夹");
+                  if (!isFav) toast.success(t("toast.favAdded"));
+                  else toast.info(t("toast.favRemoved"));
                 }}
               >
                 <Star size={13} fill={isFav ? "currentColor" : "none"} />
-                {isFav ? "已收藏" : "收藏"}
+                {isFav ? t("common.faved") : t("common.fav")}
               </button>
               {channel.website && (
                 <a
@@ -207,27 +209,27 @@ export function PlayerModal() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <ExternalLink size={13} /> 官网
+                  <ExternalLink size={13} /> {t("player.website")}
                 </a>
               )}
             </div>
 
             <dl className="player__facts mono">
               <div>
-                <dt>频道号</dt>
-                <dd>频道 {channelPosition(channel.id)}</dd>
+                <dt>{t("player.factChannel")}</dt>
+                <dd>{t("common.channelPos", { pos: channelPosition(channel.id) })}</dd>
               </div>
               <div>
-                <dt>国家</dt>
+                <dt>{t("player.factCountry")}</dt>
                 <dd>{channel.country}</dd>
               </div>
               <div>
-                <dt>流数量</dt>
+                <dt>{t("player.factStreams")}</dt>
                 <dd>{channel.streamCount}</dd>
               </div>
               {channel.launched && (
                 <div>
-                  <dt>开播</dt>
+                  <dt>{t("player.factLaunched")}</dt>
                   <dd>{channel.launched.slice(0, 4)}</dd>
                 </div>
               )}
@@ -236,7 +238,7 @@ export function PlayerModal() {
             {suggestions.length > 0 && (
               <div className="player__related">
                 <div className="eyebrow">
-                  <Globe2 size={11} /> 相关信号
+                  <Globe2 size={11} /> {t("player.related")}
                 </div>
                 <div className="player__related-list">
                   {suggestions.map((c) => (

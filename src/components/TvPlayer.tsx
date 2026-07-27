@@ -9,68 +9,9 @@ import {
 import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
 import { Loader2, AlertTriangle, Play, RotateCcw } from "lucide-react";
 import { useStore } from "../store/useStore";
+import { getVidstackTranslations, useI18n } from "../i18n";
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
-
-// vidstack DefaultVideoLayout 中文翻译（覆盖 DefaultLayoutWord 全部词汇）
-const zhCNLayoutTranslations = {
-  "Announcements": "通知",
-  "Accessibility": "无障碍",
-  "AirPlay": "AirPlay",
-  "Audio": "音频",
-  "Auto": "自动",
-  "Boost": "增益",
-  "Captions": "字幕",
-  "Caption Styles": "字幕样式",
-  "Captions look like this": "字幕看起来像这样",
-  "Chapters": "章节",
-  "Closed-Captions Off": "关闭字幕",
-  "Closed-Captions On": "开启字幕",
-  "Connected": "已连接",
-  "Continue": "继续",
-  "Connecting": "连接中",
-  "Default": "默认",
-  "Disabled": "已禁用",
-  "Disconnected": "已断开",
-  "Display Background": "显示背景",
-  "Download": "下载",
-  "Enter Fullscreen": "进入全屏",
-  "Enter PiP": "进入画中画",
-  "Exit Fullscreen": "退出全屏",
-  "Exit PiP": "退出画中画",
-  "Font": "字体",
-  "Family": "字体族",
-  "Fullscreen": "全屏",
-  "Google Cast": "Google 投屏",
-  "Keyboard Animations": "键盘动画",
-  "LIVE": "直播",
-  "Loop": "循环",
-  "Mute": "静音",
-  "Normal": "正常",
-  "Off": "关闭",
-  "Pause": "暂停",
-  "Play": "播放",
-  "Playback": "播放",
-  "PiP": "画中画",
-  "Quality": "画质",
-  "Replay": "重播",
-  "Reset": "重置",
-  "Seek Backward": "快退",
-  "Seek Forward": "快进",
-  "Seek": "跳转",
-  "Settings": "设置",
-  "Skip To Live": "跳至直播",
-  "Speed": "速度",
-  "Size": "大小",
-  "Color": "颜色",
-  "Opacity": "不透明度",
-  "Shadow": "阴影",
-  "Text": "文字",
-  "Text Background": "文字背景",
-  "Track": "音轨",
-  "Unmute": "取消静音",
-  "Volume": "音量",
-} as const;
 
 type PlayerState = "idle" | "loading" | "ready" | "paused" | "error";
 
@@ -112,6 +53,7 @@ export function TvPlayer({
   streamTried,
   streamTotal,
 }: TvPlayerProps) {
+  const { t } = useI18n();
   const [state, setState] = useState<PlayerState>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [latency, setLatency] = useState<number | null>(null);
@@ -263,7 +205,7 @@ export function TvPlayer({
         setState("ready");
       } catch {
         setState("error");
-        setMessage("无法启动播放，请重试或切换频道。");
+        setMessage(t("tv.startFailed"));
       }
     }
   }
@@ -307,7 +249,7 @@ export function TvPlayer({
             return;
           }
           setState("error");
-          setMessage(detail.message ?? "此直播流不可用。");
+          setMessage(detail.message ?? t("tv.unavailable"));
         }}
         onCanPlay={handleCanPlay}
         onPlayFail={handlePlayFail}
@@ -317,13 +259,14 @@ export function TvPlayer({
         }}
       >
         <MediaProvider />
-        <DefaultVideoLayout icons={defaultLayoutIcons} translations={zhCNLayoutTranslations} />
+        {/* 控件词汇随当前语言切换（英文返回 undefined → vidstack 内置英文） */}
+        <DefaultVideoLayout icons={defaultLayoutIcons} translations={getVidstackTranslations()} />
       </MediaPlayer>
 
       {state === "loading" && (
         <div className="player__overlay">
           <Loader2 size={28} className="spin" />
-          <p className="mono">正在获取信号…</p>
+          <p className="mono">{t("tv.acquiring")}</p>
         </div>
       )}
 
@@ -332,26 +275,26 @@ export function TvPlayer({
           type="button"
           className="player__overlay player__overlay--paused"
           onClick={handleManualPlay}
-          aria-label="点击开始播放"
+          aria-label={t("tv.tapToPlayAria")}
         >
           <Play size={48} fill="currentColor" />
-          <span className="display">点击播放</span>
-          <span className="mono">浏览器策略要求手动启动</span>
+          <span className="display">{t("tv.tapToPlay")}</span>
+          <span className="mono">{t("tv.tapToPlayHint")}</span>
         </button>
       )}
 
       {state === "error" && (
         <div className="player__overlay player__overlay--error">
           <AlertTriangle size={28} />
-          <h3 className="display">信号丢失</h3>
+          <h3 className="display">{t("tv.signalLost")}</h3>
           <p>
             {isBlockedMixedContent(url)
-              ? "浏览器安全策略拦截了非加密（http）信号源，无法在当前页面播放。"
-              : message ?? "此直播流不可用。"}
+              ? t("tv.mixedContent")
+              : message ?? t("tv.unavailable")}
           </p>
           {streamTried !== undefined && streamTotal !== undefined && streamTotal > 1 && (
             <p className="mono player__error-note">
-              已尝试 {streamTried}/{streamTotal} 路流，均无法播放。
+              {t("tv.triedStreams", { tried: streamTried, total: streamTotal })}
             </p>
           )}
           {onRetry && (
@@ -361,11 +304,11 @@ export function TvPlayer({
               onClick={onRetry}
               style={{ marginTop: 10 }}
             >
-              <RotateCcw size={13} /> 重试
+              <RotateCcw size={13} /> {t("common.retry")}
             </button>
           )}
           <p className="player__error-note mono">
-            许多免费信号受地区限制或间歇性离线，请尝试同一电视台的其他频道。
+            {t("tv.regionHint")}
           </p>
         </div>
       )}

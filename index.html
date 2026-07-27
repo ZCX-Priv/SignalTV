@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- lang 静态默认 zh-CN（SEO 首选语言）；运行时由 src/i18n 根据用户语言偏好覆写 -->
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -35,7 +36,8 @@
     <!-- Canonical：占位 URL，运行时由 src/lib/seo.ts 用 window.location.href 覆写为真实地址 -->
     <link rel="canonical" href="https://signaltv.app/" />
 
-    <!-- 多语言后备（站点当前仅简体中文，声明默认与 x-default） -->
+    <!-- 多语言后备（静态默认简体中文；界面支持 8 语言，由运行时 i18n 切换，
+         SPA 同 URL 无独立语言页面，故仅声明默认与 x-default） -->
     <link rel="alternate" hreflang="zh-CN" href="https://signaltv.app/" />
     <link rel="alternate" hreflang="x-default" href="https://signaltv.app/" />
 

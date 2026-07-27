@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { SearchX, Loader2 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import type { ChannelWithStream } from "../types";
+import { fmt } from "../lib/format";
+import { useI18n } from "../i18n";
 import { ChannelCard } from "./ChannelCard";
 import { EmptyState } from "./EmptyState";
 
@@ -13,6 +15,7 @@ interface ChannelGridProps {
 }
 
 export function ChannelGrid({ list }: ChannelGridProps) {
+  const { t } = useI18n();
   const view = useStore((s) => s.view);
   const filter = useStore((s) => s.filter);
   const [limit, setLimit] = useState(PAGE);
@@ -63,8 +66,8 @@ export function ChannelGrid({ list }: ChannelGridProps) {
     return (
       <EmptyState
         icon={<SearchX size={28} />}
-        title="无信号。"
-        desc="没有频道匹配当前筛选条件，请尝试扩大搜索范围。"
+        title={t("grid.emptyTitle")}
+        desc={t("grid.emptyDesc")}
       />
     );
   }
@@ -80,12 +83,12 @@ export function ChannelGrid({ list }: ChannelGridProps) {
       {limit < list.length && (
         <div className="grid-loadmore" ref={sentinelRef}>
           <Loader2 size={14} className="spin" />
-          <span className="mono">正在加载 {Math.min(PAGE, list.length - limit)} 路信号…</span>
+          <span className="mono">{t("grid.loadingMore", { count: Math.min(PAGE, list.length - limit) })}</span>
         </div>
       )}
 
       <div className="grid-foot mono">
-        显示 {list.length.toLocaleString("en-US")} 路信号中的 {shown.length.toLocaleString("en-US")} 路
+        {t("grid.footer", { total: fmt(list.length), shown: fmt(shown.length) })}
       </div>
     </div>
   );

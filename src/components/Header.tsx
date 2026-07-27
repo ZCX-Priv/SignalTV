@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Search, X, Command, Menu } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useAllChannels } from "../hooks/useChannels";
-import { broadcastDate, clock } from "../lib/format";
+import { broadcastDate, clock, fmt } from "../lib/format";
 import { applySeo, describeSearch, describeView } from "../lib/seo";
+import { useI18n } from "../i18n";
 import { Logo } from "./Logo";
 
 // 时钟隔离成独立组件：每秒 setInterval 只重渲染此小组件，
@@ -22,6 +23,7 @@ function HeaderClock() {
 }
 
 export function Header() {
+  const { t } = useI18n();
   const setFilter = useStore((s) => s.setFilter);
   const filter = useStore((s) => s.filter);
   const setView = useStore((s) => s.setView);
@@ -103,11 +105,11 @@ export function Header() {
 
   const menuLabel = isMobile
     ? mobileSidebarOpen
-      ? "关闭菜单"
-      : "打开菜单"
+      ? t("header.menuClose")
+      : t("header.menuOpen")
     : sidebarCollapsed
-      ? "展开侧边栏"
-      : "收起侧边栏";
+      ? t("header.sidebarExpand")
+      : t("header.sidebarCollapse");
 
   function onSubmit(e: React.FormEvent) {
     // 回车不再触发二次搜索：实时过滤已由 onChange 完成，此处仅阻止表单默认提交
@@ -148,15 +150,15 @@ export function Header() {
         <input
           className="search__input"
           type="text"
-          placeholder="搜索频道、电视台、国家…"
+          placeholder={t("header.searchPlaceholder")}
           value={filter.q}
           onChange={(e) => setFilter({ q: e.target.value })}
           onBlur={onSearchBlur}
-          aria-label="搜索频道"
+          aria-label={t("header.searchAria")}
           ref={searchInputRef}
         />
         {filter.q ? (
-          <button type="button" className="search__clear" onClick={clear} aria-label="清除搜索">
+          <button type="button" className="search__clear" onClick={clear} aria-label={t("header.searchClear")}>
             <X size={14} />
           </button>
         ) : isPhone ? (
@@ -176,7 +178,7 @@ export function Header() {
             type="button"
             className="header__search-toggle"
             onClick={openSearch}
-            aria-label="搜索"
+            aria-label={t("header.search")}
             aria-expanded={searchOpen}
           >
             <Search size={18} />
@@ -187,7 +189,7 @@ export function Header() {
             <span /><span /><span /><span />
           </span>
           <span className="mono header__live-text">
-            <strong>{liveCount.toLocaleString("en-US")}</strong> 路信号直播中
+            <strong>{fmt(liveCount)}</strong> {t("header.liveCountSuffix")}
           </span>
         </div>
         <HeaderClock />

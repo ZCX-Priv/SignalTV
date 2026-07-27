@@ -1,10 +1,19 @@
 import { Radio } from "lucide-react";
 import { useStore } from "../store/useStore";
+import { useI18n } from "../i18n";
 
 export function Loader() {
-  // 真实加载阶段（init 更新）：弱网下让用户看到实际进度（含已下载字节数），
-  // 而非静态文案死等
+  const { t } = useI18n();
+  // 真实加载阶段（init 更新，存文案 key）：弱网下让用户看到实际进度
+  //（含已下载字节数），而非静态文案死等；渲染时翻译，中途切语言也正确
   const loadStage = useStore((s) => s.loadStage);
+  const stageText = loadStage
+    ? t(loadStage.key, {
+        label: loadStage.labelKey ? t(loadStage.labelKey) : "",
+        done: loadStage.done ?? 0,
+        size: loadStage.size ?? "",
+      })
+    : t("loader.logSync");
   return (
     <div className="loader">
       <div className="loader__inner">
@@ -16,7 +25,7 @@ export function Loader() {
           SignalTV
         </div>
         <div className="loader__sub mono">
-          正在建立上行链路 · 公共电视信号源
+          {t("loader.sub")}
         </div>
 
         <div className="loader__bar">
@@ -24,10 +33,10 @@ export function Loader() {
         </div>
 
         <div className="loader__log mono">
-          <p>{"> 正在连接信号源"}</p>
-          <p>{"> 正在拉取频道表"}</p>
-          <p>{"> 正在拉取信号流"}</p>
-          <p>{`> ${loadStage || "正在同步广播网格"}`}<span className="loader__cursor">_</span></p>
+          <p>{`> ${t("loader.logConnect")}`}</p>
+          <p>{`> ${t("loader.logChannels")}`}</p>
+          <p>{`> ${t("loader.logStreams")}`}</p>
+          <p>{`> ${stageText}`}<span className="loader__cursor">_</span></p>
         </div>
       </div>
 
@@ -37,6 +46,7 @@ export function Loader() {
 }
 
 export function ErrorState({ message }: { message: string }) {
+  const { t } = useI18n();
   return (
     <div className="loader">
       <div className="loader__inner">
@@ -44,7 +54,7 @@ export function ErrorState({ message }: { message: string }) {
           <Radio size={26} strokeWidth={2} />
         </div>
         <div className="loader__title display">
-          上行链路<em>失败</em>
+          {t("loader.failTitle1")}<em>{t("loader.failTitle2")}</em>
         </div>
         <div className="loader__sub mono">{message}</div>
         <button
@@ -52,7 +62,7 @@ export function ErrorState({ message }: { message: string }) {
           onClick={() => window.location.reload()}
           style={{ marginTop: 18 }}
         >
-          重试连接
+          {t("loader.retryConnection")}
         </button>
       </div>
     </div>

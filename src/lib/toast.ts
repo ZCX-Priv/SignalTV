@@ -15,6 +15,7 @@
 // - 自动消失：每个 toast 启动 setTimeout，duration=Infinity 时不启动
 import { createStore } from "zustand/vanilla";
 import { useStore } from "zustand";
+import { t } from "../i18n";
 
 export type ToastType =
   | "success"
@@ -194,7 +195,7 @@ export const toast = {
   ): Promise<T> => {
     const id = toastStore.getState().add({
       type: "loading",
-      title: opts.loading ?? "加载中",
+      title: opts.loading ?? t("toast.loading"),
       duration: Infinity,
     });
     try {

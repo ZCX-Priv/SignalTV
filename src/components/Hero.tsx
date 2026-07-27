@@ -2,8 +2,9 @@ import { useMemo } from "react";
 import { Play, Star, Globe2, Tv2, ArrowUpRight } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useAllChannels } from "../hooks/useChannels";
-import { broadcastDate, channelPosition, flagUrlLg, prettyCategory } from "../lib/format";
+import { broadcastDate, channelPosition, flagUrlLg, fmt, prettyCategory } from "../lib/format";
 import { toast } from "../lib/toast";
+import { useI18n } from "../i18n";
 
 // 精选分类列表——每次加载从这些分类中随机挑一个频道作为首屏主推
 const FEATURE_CATEGORIES = ["movies", "news", "sports", "music", "documentary", "entertainment"];
@@ -13,6 +14,7 @@ const FEATURE_CATEGORIES = ["movies", "news", "sports", "music", "documentary", 
 let sessionFeaturedId: string | null = null;
 
 export function Hero() {
+  const { t } = useI18n();
   const all = useAllChannels();
   const openChannel = useStore((s) => s.openChannel);
   const toggleFavorite = useStore((s) => s.toggleFavorite);
@@ -57,19 +59,19 @@ export function Hero() {
         <div className="hero__lead">
           <div className="hero__eyebrow">
             <span className="dot" />
-            <span className="mono">直播中 · {broadcastDate()}</span>
+            <span className="mono">{t("common.liveNow")} · {broadcastDate()}</span>
           </div>
 
           <h1 className="hero__title display">
-            世界，
+            {t("hero.title1")}
             <br />
-            <em>实时调频。</em>
+            <em>{t("hero.title2")}</em>
           </h1>
 
           <p className="hero__lede">
-            聚合全球{" "}
-            <strong>{all.length.toLocaleString("en-US")}</strong>{" "}
-            路免费电视频道，涵盖新闻、电影、体育、音乐、纪录片等分类，无需注册即开即看。
+            {t("hero.lede1")}{" "}
+            <strong>{fmt(all.length)}</strong>{" "}
+            {t("hero.lede2")}
           </p>
 
           <div className="hero__actions">
@@ -78,20 +80,20 @@ export function Hero() {
               onClick={() => openChannel(featured.id)}
             >
               <Play size={15} fill="currentColor" />
-              <span>调频至精选</span>
-              <span className="mono btn__meta">频道 {channelPosition(featured.id)}</span>
+              <span>{t("hero.tuneIn")}</span>
+              <span className="mono btn__meta">{t("common.channelPos", { pos: channelPosition(featured.id) })}</span>
             </button>
             <button
               className={`btn btn--ghost ${isFav ? "is-fav" : ""}`}
               onClick={() => {
                 toggleFavorite(featured.id);
-                if (!isFav) toast.success("已加入收藏夹");
-                else toast.info("已移出收藏夹");
+                if (!isFav) toast.success(t("toast.favAdded"));
+                else toast.info(t("toast.favRemoved"));
               }}
-              aria-label={isFav ? "移出收藏" : "加入收藏"}
+              aria-label={isFav ? t("common.favRemove") : t("common.favAdd")}
             >
               <Star size={15} fill={isFav ? "currentColor" : "none"} />
-              <span>{isFav ? "已收藏" : "收藏"}</span>
+              <span>{isFav ? t("common.faved") : t("common.fav")}</span>
             </button>
           </div>
         </div>
@@ -113,20 +115,20 @@ export function Hero() {
             )}
             <div className="feature__badge">
               <span className="bars"><span /><span /><span /><span /></span>
-              <span className="mono">精选</span>
+              <span className="mono">{t("hero.featured")}</span>
             </div>
             <div className="feature__play">
               <Play size={26} fill="currentColor" />
             </div>
             <div className="feature__corner mono">
-              <span>频道 {channelPosition(featured.id)}</span>
-              <span>● 录制</span>
+              <span>{t("common.channelPos", { pos: channelPosition(featured.id) })}</span>
+              <span>{t("hero.rec")}</span>
             </div>
           </div>
           <div className="feature__body">
             <div className="feature__top">
               <span className="mono feature__cat">
-                {primaryCat ? prettyCategory(primaryCat) : "频道"}
+                {primaryCat ? prettyCategory(primaryCat) : t("common.channel")}
               </span>
               <span className="feature__country">
                 {flagUrlLg(featured.country) && (
@@ -137,7 +139,7 @@ export function Hero() {
             </div>
             <h2 className="feature__name display">{featured.name}</h2>
             <div className="feature__meta mono">
-              <span><Tv2 size={11} /> {featured.network ?? "独立"}</span>
+              <span><Tv2 size={11} /> {featured.network ?? t("common.independent")}</span>
               {featured.categories.length > 0 && (
                 <span>
                   <Globe2 size={11} />
@@ -152,7 +154,7 @@ export function Hero() {
       {/* 滚动 ticker：CSS animation 无限循环，2 份内容拼接实现无缝衔接 */}
       <div className="ticker" aria-hidden>
         <div className="ticker__label mono">
-          <span className="dot" /> 正在播放
+          <span className="dot" /> {t("hero.nowPlaying")}
         </div>
         {ticker.length > 0 && (
           <div className="ticker__track">

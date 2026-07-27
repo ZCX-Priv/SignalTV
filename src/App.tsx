@@ -14,6 +14,7 @@ import { Loader, ErrorState } from "./components/Loader";
 import { Toaster } from "./components/Toaster";
 import { toast } from "./lib/toast";
 import { idbGet, idbSet } from "./lib/idb";
+import { t, useI18n } from "./i18n";
 
 // 懒加载播放器 + hls.js（约 250KB）——仅在打开频道时才需要
 const PlayerModal = lazy(() =>
@@ -34,6 +35,7 @@ function ChannelsView() {
 }
 
 function App() {
+  const { t: tr } = useI18n();
   const init = useStore((s) => s.init);
   const loading = useStore((s) => s.loading);
   const loaded = useStore((s) => s.loaded);
@@ -72,7 +74,7 @@ function App() {
           return;
         }
         if (cancelled) return;
-        toast.success("欢迎来到 SignalTV");
+        toast.success(t("toast.welcome"));
         await idbSet("signaltv-welcomed", "1");
       } catch {
         // IndexedDB 不可用 → 静默失败
@@ -128,7 +130,7 @@ function App() {
         <div className="app-bg" />
         <div className="grain" />
         <div className="scanlines" />
-        <ErrorState message={error} />
+        <ErrorState message={tr(error.key, error.params)} />
         <Toaster />
       </>
     );
@@ -188,7 +190,7 @@ function App() {
         fallback={
           <div className="loader">
             <div className="loader__inner">
-              <div className="loader__sub mono">播放器加载失败，请关闭后重试。</div>
+              <div className="loader__sub mono">{tr("player.loadFailed")}</div>
             </div>
           </div>
         }

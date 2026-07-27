@@ -4,9 +4,9 @@
 
 import type { Category, ChannelWithStream, CountryInfo } from "../types";
 import type { Filter, View } from "../store/useStore";
+import { getLocale, t } from "../i18n";
 
 export const SITE_NAME = "SignalTV";
-export const SITE_TAGLINE = "免费在线看电视直播";
 
 /** index.html 中静态写入的占位 origin，运行时会被覆写为真实 origin */
 export const PLACEHOLDER_ORIGIN = "https://signaltv.app";
@@ -19,10 +19,13 @@ export function getSiteOrigin(): string {
   return PLACEHOLDER_ORIGIN;
 }
 
-/** 首页基础文案（与 index.html 中的 meta 保持一致） */
-const HOME_TITLE = "SignalTV - 免费在线看电视直播频道";
-const HOME_DESCRIPTION =
-  "SignalTV 是一个免费在线看电视直播的网站，聚合全球数千路电视频道，涵盖新闻、电影、体育、音乐、纪录片等分类，无需注册即开即看。";
+/** 首页基础文案（随当前界面语言，zh 下与 index.html 静态 meta 一致） */
+function homeTitle(): string {
+  return t("seo.homeTitle");
+}
+function homeDescription(): string {
+  return t("seo.homeDesc");
+}
 
 export interface SeoMeta {
   title: string;
@@ -37,9 +40,9 @@ export interface SeoContext {
   channels: Map<string, ChannelWithStream>;
 }
 
-/** 数字带千位分隔符 */
+/** 数字带千位分隔符（随当前界面语言） */
 function fmtCount(n: number): string {
-  return n.toLocaleString("en-US");
+  return n.toLocaleString(getLocale());
 }
 
 /** 统计某分类下的频道数 */
@@ -73,18 +76,18 @@ export function describeView(
 
   switch (view.kind) {
     case "home": {
-      return { title: HOME_TITLE, description: HOME_DESCRIPTION, canonical };
+      return { title: homeTitle(), description: homeDescription(), canonical };
     }
 
     case "category": {
       const cat = ctx.categories.find((c) => c.id === view.id);
       const name = cat?.name ?? view.id;
       const count = countByCategory(view.id, ctx.channels);
-      const title = `${SITE_NAME} | ${name}频道`;
+      const title = t("seo.categoryTitle", { name });
       const description =
         count > 0
-          ? `在线观看 ${fmtCount(count)} 路${name}电视直播频道，免费即开即看，覆盖全球${name}内容。`
-          : `在线观看${name}电视直播频道，免费即开即看，覆盖全球${name}内容。`;
+          ? t("seo.categoryDescCount", { name, count: fmtCount(count) })
+          : t("seo.categoryDesc", { name });
       return { title, description, canonical };
     }
 
@@ -92,42 +95,42 @@ export function describeView(
       const country = ctx.countries.find((c) => c.code === view.code);
       const name = country?.name ?? view.code;
       const count = countByCountry(view.code, ctx.channels);
-      const title = `${SITE_NAME} | ${name}电视频道`;
+      const title = t("seo.countryTitle", { name });
       const description =
         count > 0
-          ? `在线观看来自${name}的 ${fmtCount(count)} 路电视直播频道，免费即开即看。`
-          : `在线观看来自${name}的电视直播频道，免费即开即看。`;
+          ? t("seo.countryDescCount", { name, count: fmtCount(count) })
+          : t("seo.countryDesc", { name });
       return { title, description, canonical };
     }
 
     case "favorites": {
       return {
-        title: `${SITE_NAME} | 我的收藏频道`,
-        description: `在 ${SITE_NAME} 收藏的电视频道列表，可一键继续观看。`,
+        title: t("seo.favoritesTitle"),
+        description: t("seo.favoritesDesc"),
         canonical,
       };
     }
 
     case "history": {
       return {
-        title: `${SITE_NAME} | 播放历史`,
-        description: `在 ${SITE_NAME} 的播放历史时间线，回顾并重新播放看过的电视频道（仅本地保存）。`,
+        title: t("seo.historyTitle"),
+        description: t("seo.historyDesc"),
         canonical,
       };
     }
 
     case "status": {
       return {
-        title: `${SITE_NAME} | 信号源状态`,
-        description: `${SITE_NAME} 信号源状态：连接状态、频道统计、延迟探测进度与数据源说明。`,
+        title: t("seo.statusTitle"),
+        description: t("seo.statusDesc"),
         canonical,
       };
     }
 
     case "settings": {
       return {
-        title: `${SITE_NAME} | 设置`,
-        description: `${SITE_NAME} 设置中心：主题模式（跟随系统 / 白昼 / 夜间）与应用信息。`,
+        title: t("seo.settingsTitle"),
+        description: t("seo.settingsDesc"),
         canonical,
       };
     }
@@ -143,11 +146,11 @@ export function describeSearch(q: string): SeoMeta {
   const canonical = `${origin}/`;
   const trimmed = q.trim().slice(0, 60);
   if (!trimmed) {
-    return { title: HOME_TITLE, description: HOME_DESCRIPTION, canonical };
+    return { title: homeTitle(), description: homeDescription(), canonical };
   }
   return {
-    title: `${SITE_NAME} | 搜索“${trimmed}”的电视频道结果`,
-    description: `在 ${SITE_NAME} 中搜索“${trimmed}”匹配的电视直播频道，免费在线观看。`,
+    title: t("seo.searchTitle", { q: trimmed }),
+    description: t("seo.searchDesc", { q: trimmed }),
     canonical,
   };
 }
@@ -242,10 +245,10 @@ export function initSeo(): void {
     setMeta('meta[name="twitter:image"]', "name", "twitter:image", `${origin}/pwa-512x512.png`);
   }
 
-  // 写入首页默认 SEO（与 index.html 中的静态值保持一致，确保动态注入路径就绪）
+  // 写入首页默认 SEO（按当前界面语言，确保动态注入路径就绪）
   applySeo({
-    title: HOME_TITLE,
-    description: HOME_DESCRIPTION,
+    title: homeTitle(),
+    description: homeDescription(),
     canonical: `${origin}/`,
   });
 }

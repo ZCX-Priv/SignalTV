@@ -3,6 +3,7 @@ import { LayoutGrid } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { toast } from "../lib/toast";
 import { catIcon } from "../lib/categoryIcon";
+import { useI18n } from "../i18n";
 import { PickerModal, type PickerItem } from "./PickerModal";
 
 interface CategoryPickerModalProps {
@@ -12,6 +13,7 @@ interface CategoryPickerModalProps {
 
 /** 全部分类选择弹窗：PickerModal 的薄包装，仅准备数据与 onPick 行为。 */
 export function CategoryPickerModal({ open, onClose }: CategoryPickerModalProps) {
+  const { t } = useI18n();
   const categories = useStore((s) => s.categories);
   const channels = useStore((s) => s.channels);
   const recentCategories = useStore((s) => s.recentCategories);
@@ -48,18 +50,18 @@ export function CategoryPickerModal({ open, onClose }: CategoryPickerModalProps)
     <PickerModal
       open={open}
       onClose={onClose}
-      title="全部分类"
+      title={t("filter.allCategories")}
       titleIcon={<LayoutGrid size={14} />}
-      searchPlaceholder="搜索分类…"
-      searchAriaLabel="搜索分类"
-      emptyText="未找到匹配的分类"
-      sectionLabel="全部分类"
+      searchPlaceholder={t("picker.searchCategories")}
+      searchAriaLabel={t("picker.searchCategoriesAria")}
+      emptyText={t("picker.noCategories")}
+      sectionLabel={t("filter.allCategories")}
       items={items}
       recentKeys={recentCategories}
       activeKey={view.kind === "category" ? view.id : null}
       onPick={(item) => {
         setView({ kind: "category", id: item.key });
-        toast.info(`已切换至${item.name}频道`);
+        toast.info(t("toast.switchedChannel", { name: item.name }));
         onClose();
       }}
     />

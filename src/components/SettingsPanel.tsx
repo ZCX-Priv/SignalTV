@@ -6,11 +6,19 @@ import {
   Moon,
   Check,
   Radio,
+  Languages,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import type { ThemeMode } from "../store/useStore";
-import { fmt } from "../lib/format";
 import { toast } from "../lib/toast";
+import {
+  NATIVE_LOCALE_NAMES,
+  SUPPORTED_LOCALES,
+  detectLocale,
+  useI18n,
+  type LanguagePref,
+  type MsgKey,
+} from "../i18n";
 
 // lucide-react 1.x 移除了品牌图标，此处内联 GitHub 图标 SVG（来自 lucide 旧版品牌图标）
 function GithubIcon({ size = 24 }: { size?: number }) {
@@ -32,51 +40,57 @@ function GithubIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-// 主题模式选项：跟随系统 / 白昼 / 夜间，每项配 SVG 图标 + 名称 + 简短描述
+// 主题模式选项：跟随系统 / 白昼 / 夜间，每项配 SVG 图标 + 名称/描述文案 key
 const THEME_OPTIONS: {
   value: ThemeMode;
-  label: string;
+  labelKey: MsgKey;
   icon: ReactNode;
-  desc: string;
+  descKey: MsgKey;
 }[] = [
   {
     value: "system",
-    label: "跟随系统",
+    labelKey: "theme.system",
     icon: <Monitor size={16} />,
-    desc: "随操作系统自动切换",
+    descKey: "theme.systemDesc",
   },
   {
     value: "light",
-    label: "白昼",
+    labelKey: "theme.light",
     icon: <Sun size={16} />,
-    desc: "暖米色底，明亮舒适",
+    descKey: "theme.lightDesc",
   },
   {
     value: "dark",
-    label: "夜间",
+    labelKey: "theme.dark",
     icon: <Moon size={16} />,
-    desc: "广播黑底，沉浸氛围",
+    descKey: "theme.darkDesc",
   },
 ];
 
+// 语言选项：自动检测 + 8 种语言（label 固定用本族语名，desc 用当前界面语言）
+const LANGUAGE_OPTIONS: LanguagePref[] = ["system", ...SUPPORTED_LOCALES];
+
 export function SettingsPanel() {
+  const { t } = useI18n();
   const themeMode = useStore((s) => s.themeMode);
   const setThemeMode = useStore((s) => s.setThemeMode);
+  const language = useStore((s) => s.language);
+  const setLanguage = useStore((s) => s.setLanguage);
   const channels = useStore((s) => s.channels);
 
   return (
     <div className="settings">
       <div className="settings__head">
         <div className="eyebrow">
-          <SettingsIcon size={11} /> 控制台
+          <SettingsIcon size={11} /> {t("settings.eyebrow")}
         </div>
-        <h1 className="settings__title display">设置</h1>
+        <h1 className="settings__title display">{t("settings.title")}</h1>
       </div>
 
       <section className="settings__section">
         <header className="settings__section-head">
-          <h2>外观</h2>
-          <p>选择主题模式，影响整体配色与氛围。</p>
+          <h2>{t("settings.appearance")}</h2>
+          <p>{t("settings.appearanceDesc")}</p>
         </header>
         <div className="settings__options">
           {THEME_OPTIONS.map((opt) => {
@@ -87,14 +101,14 @@ export function SettingsPanel() {
                 className={`settings__option ${active ? "is-active" : ""}`}
                 onClick={() => {
                   setThemeMode(opt.value);
-                  toast.success(`已切换至${opt.label}模式`);
+                  toast.success(t("toast.themeSwitched", { name: t(opt.labelKey) }));
                 }}
                 aria-pressed={active}
               >
                 <span className="settings__option-icon">{opt.icon}</span>
                 <span className="settings__option-text">
-                  <span className="settings__option-name">{opt.label}</span>
-                  <span className="settings__option-desc">{opt.desc}</span>
+                  <span className="settings__option-name">{t(opt.labelKey)}</span>
+                  <span className="settings__option-desc">{t(opt.descKey)}</span>
                 </span>
                 {active && (
                   <span className="settings__option-check">
@@ -109,7 +123,52 @@ export function SettingsPanel() {
 
       <section className="settings__section">
         <header className="settings__section-head">
-          <h2>关于</h2>
+          <h2>{t("settings.language")}</h2>
+          <p>{t("settings.languageDesc")}</p>
+        </header>
+        <div className="settings__options">
+          {LANGUAGE_OPTIONS.map((pref) => {
+            const active = language === pref;
+            const isAuto = pref === "system";
+            // 选项名：自动检测用当前界面语言；具体语言固定用本族语名（国际惯例）
+            const label = isAuto ? t("settings.langAuto") : NATIVE_LOCALE_NAMES[pref];
+            // 描述：自动检测项展示当前检测结果；语言项展示其在当前界面语言下的名称
+            const desc = isAuto
+              ? t("settings.langAutoDesc", { name: NATIVE_LOCALE_NAMES[detectLocale()] })
+              : t(`lang.${pref}` as MsgKey);
+            return (
+              <button
+                key={pref}
+                className={`settings__option ${active ? "is-active" : ""}`}
+                onClick={() => {
+                  void setLanguage(pref).then(() => {
+                    // await 后字典已就绪，toast 直接以新语言展示
+                    toast.success(t("toast.langSwitched", { name: label }));
+                  });
+                }}
+                aria-pressed={active}
+              >
+                <span className="settings__option-icon">
+                  {isAuto ? <Monitor size={16} /> : <Languages size={16} />}
+                </span>
+                <span className="settings__option-text">
+                  <span className="settings__option-name">{label}</span>
+                  <span className="settings__option-desc">{desc}</span>
+                </span>
+                {active && (
+                  <span className="settings__option-check">
+                    <Check size={14} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="settings__section">
+        <header className="settings__section-head">
+          <h2>{t("settings.about")}</h2>
         </header>
         <div className="settings__about">
           <div className="settings__about-logo">
@@ -124,21 +183,21 @@ export function SettingsPanel() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="settings__about-github"
-                aria-label="GitHub 仓库"
+                aria-label={t("settings.githubAria")}
               >
                 <GithubIcon size={18} />
               </a>
             </div>
             <div className="settings__about-tagline mono">
-              公共电视信号源 · 免费在线直播
+              {t("settings.tagline")}
             </div>
             <div className="settings__about-meta mono">
-              <span>{fmt(channels.size)} 路频道</span>
+              <span>{t("settings.channelsCount", { count: channels.size })}</span>
               <span>·</span>
-              <span>无注册 · 无广告 · 无追踪</span>
+              <span>{t("settings.noSignup")}</span>
             </div>
             <div className="settings__about-source">
-              频道数据来自公开的 iptv-org 开源项目，本站不存储、不转发任何视频流。
+              {t("settings.dataSource")}
             </div>
           </div>
         </div>

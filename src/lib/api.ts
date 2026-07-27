@@ -6,6 +6,7 @@ import type {
   CountryInfo,
   Stream,
 } from "../types";
+import type { MsgKey, TParams } from "../i18n";
 
 const BASE = "https://iptv-org.github.io/api";
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -13,12 +14,26 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 const LARGE_FILE_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 2;
 
-class ApiError extends Error {
+/** 面向 UI 的错误描述：存文案 key + 插值参数，展示时再翻译（切语言后仍正确） */
+export interface ApiErrorInfo {
+  key: MsgKey;
+  params?: TParams;
+}
+
+export class ApiError extends Error {
   readonly status?: number;
   readonly retryable: boolean;
-  constructor(message: string, status?: number, retryable: boolean = false) {
+  /** UI 展示用的文案 key（message 保留英文便于控制台排查） */
+  readonly info: ApiErrorInfo;
+  constructor(
+    message: string,
+    info: ApiErrorInfo,
+    status?: number,
+    retryable: boolean = false,
+  ) {
     super(message);
     this.name = "ApiError";
+    this.info = info;
     this.status = status;
     this.retryable = retryable;
   }
@@ -92,7 +107,12 @@ async function fetchWithTimeout(
     if (!res.ok) {
       // 仅 5xx 与 429 视为可重试，4xx 不重试
       const retryable = res.status >= 500 || res.status === 429;
-      throw new ApiError(`请求失败 ${url}: ${res.status}`, res.status, retryable);
+      throw new ApiError(
+        `Request failed ${url}: ${res.status}`,
+        { key: "api.requestFailed", params: { url, status: res.status } },
+        res.status,
+        retryable,
+      );
     }
     return res;
   } catch (err) {
@@ -100,7 +120,12 @@ async function fetchWithTimeout(
     if (err instanceof DOMException && err.name === "AbortError") {
       // 若是外部 signal 触发的 abort，不包装为可重试
       if (signal?.aborted) throw err;
-      throw new ApiError(`请求超时 ${url}`, undefined, true);
+      throw new ApiError(
+        `Request timed out ${url}`,
+        { key: "api.timeout", params: { url } },
+        undefined,
+        true,
+      );
     }
     throw err;
   } finally {
@@ -161,7 +186,7 @@ async function fetchJson<T>(url: string, opts: FetchJsonOpts = {}): Promise<T> {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     // 外部 signal 已 abort 时直接退出
     if (signal?.aborted) {
-      throw new ApiError("请求被取消", undefined, false);
+      throw new ApiError("Request cancelled", { key: "api.cancelled" }, undefined, false);
     }
     try {
       const res = await fetchWithTimeout(url, timeoutMs, signal);
@@ -172,14 +197,20 @@ async function fetchJson<T>(url: string, opts: FetchJsonOpts = {}): Promise<T> {
           : await res.text();
       } catch {
         // body 读取中断（网络闪断）：视为可重试的网络错误
-        throw new ApiError(`响应读取失败 ${url}`, undefined, true);
+        throw new ApiError(
+          `Failed to read response ${url}`,
+          { key: "api.readFailed", params: { url } },
+          undefined,
+          true,
+        );
       }
       try {
         return JSON.parse(text) as T;
       } catch {
         // JSON 解析失败（如 CDN 返回 HTML 错误页）：不重试
         throw new ApiError(
-          `响应解析失败 ${url}（非 JSON 格式）`,
+          `Failed to parse response ${url} (not JSON)`,
+          { key: "api.parseFailed", params: { url } },
           undefined,
           false,
         );
@@ -206,7 +237,9 @@ async function fetchJson<T>(url: string, opts: FetchJsonOpts = {}): Promise<T> {
       });
     }
   }
-  throw lastErr instanceof Error ? lastErr : new Error("加载广播数据失败。");
+  throw lastErr instanceof Error
+    ? lastErr
+    : new ApiError("Failed to load broadcast data.", { key: "api.loadFailed" });
 }
 
 export const api = {

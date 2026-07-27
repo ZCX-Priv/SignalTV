@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { t } from "../i18n";
 
 interface Props {
   children: ReactNode;
@@ -54,17 +55,17 @@ export class ErrorBoundary extends Component<Props, State> {
               <span style={{ fontSize: 26 }}>⚠</span>
             </div>
             <div className="loader__title display">
-              信号<em>中断</em>
+              {t("errb.title1")}<em>{t("errb.title2")}</em>
             </div>
             <div className="loader__sub mono">
-              {this.state.error?.message ?? "未知渲染错误"}
+              {this.state.error?.message ?? t("errb.unknown")}
             </div>
             <button
               className="btn btn--primary"
               onClick={this.reset}
               style={{ marginTop: 18 }}
             >
-              重试
+              {t("common.retry")}
             </button>
           </div>
         </div>

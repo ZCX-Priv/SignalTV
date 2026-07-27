@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Globe2 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { toast } from "../lib/toast";
+import { useI18n } from "../i18n";
 import { PickerModal, type PickerItem } from "./PickerModal";
 
 interface CountryPickerModalProps {
@@ -11,6 +12,7 @@ interface CountryPickerModalProps {
 
 /** 全部国家选择弹窗：PickerModal 的薄包装，支持按名称或地区代码搜索。 */
 export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
+  const { t } = useI18n();
   const countries = useStore((s) => s.countries);
   const recentCountries = useStore((s) => s.recentCountries);
   const view = useStore((s) => s.view);
@@ -32,12 +34,12 @@ export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
     <PickerModal
       open={open}
       onClose={onClose}
-      title="全部国家"
+      title={t("filter.allCountries")}
       titleIcon={<Globe2 size={14} />}
-      searchPlaceholder="搜索国家或地区代码…"
-      searchAriaLabel="搜索国家"
-      emptyText="未找到匹配的国家"
-      sectionLabel="全部国家"
+      searchPlaceholder={t("picker.searchCountries")}
+      searchAriaLabel={t("picker.searchCountriesAria")}
+      emptyText={t("picker.noCountries")}
+      sectionLabel={t("filter.allCountries")}
       items={items}
       recentKeys={recentCountries}
       activeKey={view.kind === "country" ? view.code : null}
@@ -47,7 +49,7 @@ export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
       }
       onPick={(item) => {
         setView({ kind: "country", code: item.key });
-        toast.info(`已切换至${item.name}频道`);
+        toast.info(t("toast.switchedChannel", { name: item.name }));
         onClose();
       }}
     />

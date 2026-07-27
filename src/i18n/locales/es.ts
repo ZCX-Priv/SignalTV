@@ -1,0 +1,352 @@
+// Archivo de idioma español. Las claves se verifican por tipos contra el diccionario fuente zh-CN.
+import type { Dict, VidstackDict } from "./zh-CN";
+
+export const dict: Dict = {
+  // ── Común ──
+  "common.channelPos": "Canal {pos}",
+  "common.live": "EN VIVO",
+  "common.liveNow": "AL AIRE",
+  "common.favAdd": "Añadir a favoritos",
+  "common.favRemove": "Quitar de favoritos",
+  "common.fav": "Favorito",
+  "common.faved": "En favoritos",
+  "common.independent": "Independiente",
+  "common.retry": "Reintentar",
+  "common.close": "Cerrar",
+  "common.clear": "Borrar",
+  "common.channel": "Canal",
+
+  // ── Cabecera ──
+  "header.menuClose": "Cerrar menú",
+  "header.menuOpen": "Abrir menú",
+  "header.sidebarExpand": "Expandir barra lateral",
+  "header.sidebarCollapse": "Contraer barra lateral",
+  "header.searchPlaceholder": "Buscar canales, cadenas, países…",
+  "header.searchAria": "Buscar canales",
+  "header.searchClear": "Borrar búsqueda",
+  "header.search": "Buscar",
+  "header.liveCountSuffix": "señales al aire",
+
+  // ── Barra lateral ──
+  "sidebar.home": "Inicio",
+  "sidebar.favorites": "Favoritos",
+  "sidebar.history": "Historial",
+  "sidebar.categories": "Categorías",
+  "sidebar.countries": "Países",
+  "sidebar.all": "Todo",
+  "sidebar.allCategoriesAria": "Ver todas las categorías",
+  "sidebar.allCountriesAria": "Ver todos los países",
+  "sidebar.status": "Estado",
+  "sidebar.settings": "Ajustes",
+
+  // ── Avisos ──
+  "toast.backHome": "De vuelta al inicio",
+  "toast.gotoFavorites": "Mostrando favoritos",
+  "toast.gotoHistory": "Mostrando historial de reproducción",
+  "toast.gotoStatus": "Mostrando página de estado",
+  "toast.gotoSettings": "Mostrando ajustes",
+  "toast.switchedChannel": "Mostrando canales de {name}",
+  "toast.favAdded": "Añadido a favoritos",
+  "toast.favRemoved": "Quitado de favoritos",
+  "toast.categoryCleared": "Filtro de categoría borrado",
+  "toast.categorySet": "Categoría: {name}",
+  "toast.countryCleared": "Filtro de país borrado",
+  "toast.countrySet": "País: {name}",
+  "toast.sortSet": "Orden: {name}",
+  "toast.nsfwOn": "Contenido adulto visible",
+  "toast.nsfwOff": "Contenido adulto oculto",
+  "toast.historyCleared": "Historial de reproducción borrado",
+  "toast.themeSwitched": "Modo «{name}» activado",
+  "toast.langSwitched": "Idioma cambiado a {name}",
+  "toast.streamFailover": "Transmisión no disponible, señal de respaldo activada",
+  "toast.welcome": "Bienvenido a SignalTV",
+  "toast.loading": "Cargando",
+
+  // ── Hero ──
+  "hero.title1": "El mundo,",
+  "hero.title2": "sintonizado en vivo.",
+  "hero.lede1": "Reúne",
+  "hero.lede2":
+    "canales de TV gratuitos de todo el mundo: noticias, cine, deportes, música, documentales y más. Sin registro, listo para ver.",
+  "hero.tuneIn": "Sintonizar destacado",
+  "hero.featured": "DESTACADO",
+  "hero.rec": "● GRAB",
+  "hero.nowPlaying": "REPRODUCIENDO",
+
+  // ── Barra de filtros ──
+  "filter.eyebrow": "Guía de programación",
+  "filter.searchResults": "Resultados de «{q}»",
+  "filter.allChannels": "Todos los canales",
+  "filter.categoryFallback": "Categoría",
+  "filter.countryFallback": "País",
+  "filter.favorites": "Favoritos",
+  "filter.countFavorites": { one: "{count} favorito", other: "{count} favoritos" },
+  "filter.countSignals": { one: "{count} señal", other: "{count} señales" },
+  "filter.categoryAria": "Filtrar por categoría",
+  "filter.countryAria": "Filtrar por país",
+  "filter.sortAria": "Orden",
+  "filter.allCategories": "Todas las categorías",
+  "filter.allCountries": "Todos los países",
+  "filter.nsfwTitle": "Incluir contenido adulto",
+  "filter.nsfwShown": "Contenido adulto visible",
+  "filter.nsfwHidden": "Contenido adulto oculto",
+
+  // ── Opciones de orden ──
+  "sort.default": "Predeterminado",
+  "sort.country": "País",
+  "sort.recent": "Vistos recientemente",
+  "sort.latencyAsc": "Latencia: baja → alta",
+  "sort.latencyDesc": "Latencia: alta → baja",
+  "sort.nsfwFirst": "Contenido adulto primero",
+
+  // ── Cuadrícula de canales ──
+  "grid.emptyTitle": "Sin señal.",
+  "grid.emptyDesc": "Ningún canal coincide con los filtros actuales. Amplía la búsqueda.",
+  "grid.loadingMore": {
+    one: "Cargando {count} señal más…",
+    other: "Cargando {count} señales más…",
+  },
+  "grid.footer": "Mostrando {shown} de {total} señales",
+
+  // ── Tarjeta de canal ──
+  "card.nsfw": "18+",
+
+  // ── Historial ──
+  "history.eyebrow": "Registro de reproducción",
+  "history.title": "Historial de reproducción",
+  "history.countRecords": { one: "{count} registro", other: "{count} registros" },
+  "history.clear": "Borrar historial",
+  "history.emptyTitle": "Aún no hay historial.",
+  "history.emptyDesc":
+    "Reproduce cualquier canal y cada visualización quedará registrada aquí como una línea de tiempo.",
+  "history.noMatchTitle": "Sin registros coincidentes.",
+  "history.noMatchDesc":
+    "Ningún registro coincide con los filtros actuales. Prueba otra categoría u otro país.",
+  "history.replay": "Volver a ver {name}",
+  "history.gone": "Canal fuera de línea",
+
+  // ── Página de estado ──
+  "status.eyebrow": "Fuente de señal",
+  "status.title": "Estado",
+  "status.connError": "Fallo del enlace ascendente",
+  "status.connLoading": "Estableciendo enlace ascendente",
+  "status.connOk": "Enlace ascendente establecido",
+  "status.connIdle": "En espera",
+  "status.connection": "Conexión",
+  "status.connectionDesc": "Estado actual de carga de las fuentes de señal.",
+  "status.connSub": "Fuentes públicas de TV · iptv-org",
+  "status.data": "Datos",
+  "status.dataDesc": "Canales, categorías y países cargados.",
+  "status.statChannels": "canales",
+  "status.statCategories": "categorías",
+  "status.statCountries": "países",
+  "status.probe": "Sonda de latencia",
+  "status.probeDesc": "Mide la latencia de los canales visibles para ordenarlos por latencia.",
+  "status.probeStatus": "Estado",
+  "status.probeReady": "Lista",
+  "status.probeIdle": "Sin iniciar",
+  "status.probed": "Sondeados",
+  "status.probedCount": { one: "{count} canal", other: "{count} canales" },
+  "status.reachable": "Accesibles",
+  "status.reachableValue": { one: "{count} canal ({pct}%)", other: "{count} canales ({pct}%)" },
+
+  // ── Ajustes ──
+  "settings.eyebrow": "Consola",
+  "settings.title": "Ajustes",
+  "settings.appearance": "Apariencia",
+  "settings.appearanceDesc": "Elige el modo de tema: paleta y ambiente generales.",
+  "settings.language": "Idioma",
+  "settings.languageDesc":
+    "Elige el idioma de la interfaz. Por defecto se detecta automáticamente el del navegador.",
+  "settings.langAuto": "Detección automática",
+  "settings.langAutoDesc": "Seguir el idioma del navegador (actual: {name})",
+  "settings.about": "Acerca de",
+  "settings.githubAria": "Repositorio de GitHub",
+  "settings.tagline": "Señales públicas de TV · Emisión gratuita en vivo",
+  "settings.channelsCount": { one: "{count} canal", other: "{count} canales" },
+  "settings.noSignup": "Sin registro · Sin anuncios · Sin rastreo",
+  "settings.dataSource":
+    "Los datos de canales provienen del proyecto público de código abierto iptv-org. Este sitio no almacena ni retransmite ningún flujo de vídeo.",
+
+  // ── Opciones de tema ──
+  "theme.system": "Sistema",
+  "theme.systemDesc": "Seguir al sistema operativo",
+  "theme.light": "Día",
+  "theme.lightDesc": "Fondo crema cálido, luminoso y cómodo",
+  "theme.dark": "Noche",
+  "theme.darkDesc": "Negro broadcast, ambiente inmersivo",
+
+  // ── Nombres de idiomas ──
+  "lang.zh-CN": "Chino (simplificado)",
+  "lang.en": "Inglés",
+  "lang.de": "Alemán",
+  "lang.fr": "Francés",
+  "lang.ja": "Japonés",
+  "lang.ru": "Ruso",
+  "lang.es": "Español",
+  "lang.ko": "Coreano",
+
+  // ── Ventana del reproductor ──
+  "player.dialogAria": "Reproduciendo {name}",
+  "player.signalLocked": "Señal fijada",
+  "player.closeAria": "Cerrar reproductor",
+  "player.website": "Sitio web",
+  "player.factChannel": "N.º de canal",
+  "player.factCountry": "País",
+  "player.factStreams": "Transmisiones",
+  "player.factLaunched": "Lanzado en",
+  "player.related": "Señales relacionadas",
+  "player.loadFailed": "No se pudo cargar el reproductor. Ciérralo y vuelve a intentarlo.",
+
+  // ── Superposiciones del reproductor ──
+  "tv.acquiring": "Adquiriendo señal…",
+  "tv.tapToPlayAria": "Toca para iniciar la reproducción",
+  "tv.tapToPlay": "Toca para reproducir",
+  "tv.tapToPlayHint": "La política del navegador exige un inicio manual",
+  "tv.signalLost": "Señal perdida",
+  "tv.mixedContent":
+    "El navegador bloqueó esta fuente sin cifrar (http) por su política de seguridad; no puede reproducirse en esta página.",
+  "tv.unavailable": "Esta transmisión en vivo no está disponible.",
+  "tv.triedStreams": "Se probaron {tried}/{total} transmisiones; ninguna pudo reproducirse.",
+  "tv.regionHint":
+    "Muchas señales gratuitas tienen restricción regional o se desconectan de forma intermitente. Prueba otro canal de la misma cadena.",
+  "tv.startFailed": "No se pudo iniciar la reproducción. Reintenta o cambia de canal.",
+
+  // ── Notificaciones ──
+  "toaster.region": "Notificaciones",
+  "toaster.closeAria": "Cerrar notificación",
+
+  // ── Pantalla de carga ──
+  "loader.sub": "Estableciendo enlace ascendente · Fuentes públicas de TV",
+  "loader.logConnect": "Conectando a las fuentes de señal",
+  "loader.logChannels": "Obteniendo tabla de canales",
+  "loader.logStreams": "Obteniendo tabla de transmisiones",
+  "loader.logSync": "Sincronizando la parrilla de emisión",
+  "loader.failTitle1": "Enlace ascendente ",
+  "loader.failTitle2": "fallido",
+  "loader.retryConnection": "Reintentar conexión",
+
+  // ── Etapas de carga ──
+  "stage.connecting": "Conectando a las fuentes de señal…",
+  "stage.ready": "{label} lista ({done}/4)",
+  "stage.pulling": "Obteniendo {label} · {size}",
+  "stage.merging": "Fusionando tablas de señales…",
+
+  // ── Nombres de conjuntos de datos ──
+  "data.channels": "tabla de canales",
+  "data.streams": "tabla de transmisiones",
+  "data.categories": "tabla de categorías",
+  "data.countries": "tabla de países",
+
+  // ── ErrorBoundary ──
+  "errb.title1": "Señal ",
+  "errb.title2": "interrumpida",
+  "errb.unknown": "Error de renderizado desconocido",
+
+  // ── Ventanas de selección ──
+  "picker.recent": "Usados recientemente",
+  "picker.searchCategories": "Buscar categorías…",
+  "picker.searchCategoriesAria": "Buscar categorías",
+  "picker.noCategories": "Sin categorías coincidentes",
+  "picker.searchCountries": "Buscar países o códigos de región…",
+  "picker.searchCountriesAria": "Buscar países",
+  "picker.noCountries": "Sin países coincidentes",
+
+  // ── Errores de API ──
+  "api.requestFailed": "Solicitud fallida {url}: {status}",
+  "api.timeout": "Tiempo de espera agotado {url}",
+  "api.cancelled": "Solicitud cancelada",
+  "api.readFailed": "No se pudo leer la respuesta {url}",
+  "api.parseFailed": "No se pudo analizar la respuesta {url} (no es JSON)",
+  "api.loadFailed": "No se pudieron cargar los datos de emisión.",
+
+  // ── Formato de fecha ──
+  "format.today": "Hoy",
+  "format.yesterday": "Ayer",
+
+  // ── SEO ──
+  "seo.homeTitle": "SignalTV - TV en vivo gratis online",
+  "seo.homeDesc":
+    "SignalTV es un sitio gratuito para ver televisión en vivo online que reúne miles de canales de todo el mundo: noticias, cine, deportes, música, documentales y más. Sin registro.",
+  "seo.categoryTitle": "SignalTV | Canales de {name}",
+  "seo.categoryDescCount":
+    "Ve gratis online {count} canales de TV en vivo de {name}: reproducción inmediata, contenido de {name} de todo el mundo.",
+  "seo.categoryDesc":
+    "Ve gratis online canales de TV en vivo de {name}: reproducción inmediata, contenido de {name} de todo el mundo.",
+  "seo.countryTitle": "SignalTV | Canales de TV de {name}",
+  "seo.countryDescCount":
+    "Ve gratis online {count} canales de TV en vivo de {name}, al instante.",
+  "seo.countryDesc": "Ve gratis online canales de TV en vivo de {name}, al instante.",
+  "seo.favoritesTitle": "SignalTV | Mis canales favoritos",
+  "seo.favoritesDesc": "Tus canales de TV favoritos en SignalTV: sigue viendo con un clic.",
+  "seo.historyTitle": "SignalTV | Historial de reproducción",
+  "seo.historyDesc":
+    "Tu línea de tiempo de reproducción en SignalTV: repasa y vuelve a ver los canales vistos (solo se guarda localmente).",
+  "seo.statusTitle": "SignalTV | Estado de las fuentes de señal",
+  "seo.statusDesc":
+    "Estado de las fuentes de SignalTV: conexión, estadísticas de canales, progreso de la sonda de latencia y notas sobre los datos.",
+  "seo.settingsTitle": "SignalTV | Ajustes",
+  "seo.settingsDesc": "Ajustes de SignalTV: modo de tema, idioma de la interfaz e información de la app.",
+  "seo.searchTitle": "SignalTV | Canales de TV para «{q}»",
+  "seo.searchDesc": "Canales de TV en vivo que coinciden con «{q}» en SignalTV: ver gratis online.",
+};
+
+// Traducción al español del DefaultVideoLayout de vidstack
+export const vidstack: VidstackDict = {
+  "Announcements": "Avisos",
+  "Accessibility": "Accesibilidad",
+  "AirPlay": "AirPlay",
+  "Audio": "Audio",
+  "Auto": "Auto",
+  "Boost": "Amplificación",
+  "Captions": "Subtítulos",
+  "Caption Styles": "Estilos de subtítulos",
+  "Captions look like this": "Los subtítulos se ven así",
+  "Chapters": "Capítulos",
+  "Closed-Captions Off": "Subtítulos desactivados",
+  "Closed-Captions On": "Subtítulos activados",
+  "Connected": "Conectado",
+  "Continue": "Continuar",
+  "Connecting": "Conectando",
+  "Default": "Predeterminado",
+  "Disabled": "Desactivado",
+  "Disconnected": "Desconectado",
+  "Display Background": "Fondo de pantalla",
+  "Download": "Descargar",
+  "Enter Fullscreen": "Pantalla completa",
+  "Enter PiP": "Activar PiP",
+  "Exit Fullscreen": "Salir de pantalla completa",
+  "Exit PiP": "Salir de PiP",
+  "Font": "Fuente",
+  "Family": "Familia tipográfica",
+  "Fullscreen": "Pantalla completa",
+  "Google Cast": "Google Cast",
+  "Keyboard Animations": "Animaciones de teclado",
+  "LIVE": "EN VIVO",
+  "Loop": "Bucle",
+  "Mute": "Silenciar",
+  "Normal": "Normal",
+  "Off": "Desactivado",
+  "Pause": "Pausa",
+  "Play": "Reproducir",
+  "Playback": "Reproducción",
+  "PiP": "PiP",
+  "Quality": "Calidad",
+  "Replay": "Volver a ver",
+  "Reset": "Restablecer",
+  "Seek Backward": "Retroceder",
+  "Seek Forward": "Avanzar",
+  "Seek": "Buscar posición",
+  "Settings": "Ajustes",
+  "Skip To Live": "Ir al directo",
+  "Speed": "Velocidad",
+  "Size": "Tamaño",
+  "Color": "Color",
+  "Opacity": "Opacidad",
+  "Shadow": "Sombra",
+  "Text": "Texto",
+  "Text Background": "Fondo del texto",
+  "Track": "Pista",
+  "Unmute": "Activar sonido",
+  "Volume": "Volumen",
+};

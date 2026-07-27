@@ -4,6 +4,7 @@ import type { ChannelWithStream } from "../types";
 import { useStore } from "../store/useStore";
 import { channelPosition, flagUrl, flagPngBgUrl, countryGradient, prettyCategory } from "../lib/format";
 import { toast } from "../lib/toast";
+import { useI18n } from "../i18n";
 import { LatencyTag } from "./LatencyTag";
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) {
+  const { t } = useI18n();
   const openChannel = useStore((s) => s.openChannel);
   const toggleFavorite = useStore((s) => s.toggleFavorite);
   // 直接订阅布尔结果（zustand 比较原始值）：收藏任一频道时
@@ -71,7 +73,7 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
           <span className="card__placeholder-country">{channel.country}</span>
         </div>
 
-        <span className="card__pos mono">频道 {pos}</span>
+        <span className="card__pos mono">{t("common.channelPos", { pos })}</span>
 
         <div className="card__hover">
           <span className="card__play">
@@ -80,12 +82,12 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
         </div>
 
         <div className="card__live mono">
-          <span className="dot" /> 直播
+          <span className="dot" /> {t("common.live")}
         </div>
 
         <LatencyTag ms={latency} className="card__ping" />
         {channel.is_nsfw && (
-          <span className="card__nsfw">成人</span>
+          <span className="card__nsfw">{t("card.nsfw")}</span>
         )}
       </div>
 
@@ -97,10 +99,10 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
             onClick={(e) => {
               e.stopPropagation();
               toggleFavorite(channel.id);
-              if (!isFav) toast.success("已加入收藏夹");
-              else toast.info("已移出收藏夹");
+              if (!isFav) toast.success(t("toast.favAdded"));
+              else toast.info(t("toast.favRemoved"));
             }}
-            aria-label={isFav ? "移出收藏" : "加入收藏"}
+            aria-label={isFav ? t("common.favRemove") : t("common.favAdd")}
           >
             <Star size={13} fill={isFav ? "currentColor" : "none"} />
           </button>

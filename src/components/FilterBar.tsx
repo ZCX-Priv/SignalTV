@@ -4,6 +4,7 @@ import { useStore } from "../store/useStore";
 import { toast } from "../lib/toast";
 import type { SortKey } from "../store/useStore";
 import type { ChannelWithStream } from "../types";
+import { useI18n } from "../i18n";
 import { Select } from "./Select";
 
 /** Radix Select 中 value="" 等同未选；用哨兵值表示"全部" */
@@ -15,6 +16,7 @@ interface FilterBarProps {
 }
 
 export function FilterBar({ list }: FilterBarProps) {
+  const { t } = useI18n();
   const filter = useStore((s) => s.filter);
   const setFilter = useStore((s) => s.setFilter);
   const categories = useStore((s) => s.categories);
@@ -34,33 +36,33 @@ export function FilterBar({ list }: FilterBarProps) {
 
   const sortOptions = useMemo(
     () => [
-      { value: "default", label: "默认" },
-      { value: "country", label: "国家" },
-      { value: "recent", label: "最近观看" },
-      { value: "latency-asc", label: "延迟：低 → 高" },
-      { value: "latency-desc", label: "延迟：高 → 低" },
+      { value: "default", label: t("sort.default") },
+      { value: "country", label: t("sort.country") },
+      { value: "recent", label: t("sort.recent") },
+      { value: "latency-asc", label: t("sort.latencyAsc") },
+      { value: "latency-desc", label: t("sort.latencyDesc") },
       ...(filter.nsfw && !isFavorites
-        ? [{ value: "nsfw-first", label: "成人内容优先" }]
+        ? [{ value: "nsfw-first", label: t("sort.nsfwFirst") }]
         : []),
     ],
-    [filter.nsfw, isFavorites],
+    [filter.nsfw, isFavorites, t],
   );
 
   const title = (() => {
-    // 输入即搜索：有搜索词时动态显示 "xxxx 的搜索结果"（与受控输入框内容一致）
-    if (filter.q.trim()) return `“${filter.q.trim()}” 的搜索结果`;
+    // 输入即搜索：有搜索词时动态显示搜索结果标题（与受控输入框内容一致）
+    if (filter.q.trim()) return t("filter.searchResults", { q: filter.q.trim() });
     switch (view.kind) {
-      case "home": return "全部频道";
+      case "home": return t("filter.allChannels");
       case "category": {
         const c = categories.find((x) => x.id === view.id);
-        return c ? c.name : "分类";
+        return c ? c.name : t("filter.categoryFallback");
       }
       case "country": {
         const c = countries.find((x) => x.code === view.code);
-        return c ? c.name : "国家";
+        return c ? c.name : t("filter.countryFallback");
       }
-      case "favorites": return "收藏夹";
-      default: return "频道";
+      case "favorites": return t("filter.favorites");
+      default: return t("common.channel");
     }
   })();
 
@@ -69,51 +71,51 @@ export function FilterBar({ list }: FilterBarProps) {
       <div className="filterbar__head">
         <div>
           <div className="eyebrow">
-            <SlidersHorizontal size={11} /> 节目指南
+            <SlidersHorizontal size={11} /> {t("filter.eyebrow")}
           </div>
           <h2 className="filterbar__title display">
             {title}
             <span className="filterbar__count mono">
-              {list.length.toLocaleString("en-US")} {isFavorites ? "个收藏" : "路信号"}
+              {t(isFavorites ? "filter.countFavorites" : "filter.countSignals", { count: list.length })}
             </span>
           </h2>
         </div>
 
         <div className="filterbar__controls">
           <Select
-            aria-label="分类筛选"
+            aria-label={t("filter.categoryAria")}
             icon={<Hash size={13} />}
-            placeholder="全部分类"
+            placeholder={t("filter.allCategories")}
             value={filter.categoryId ?? ALL}
             onValueChange={(v) => {
               setFilter({ categoryId: v === ALL ? null : v });
-              if (v === ALL) toast.info("已清除分类筛选");
+              if (v === ALL) toast.info(t("toast.categoryCleared"));
               else {
                 const c = categories.find((x) => x.id === v);
-                if (c) toast.info(`分类：${c.name}`);
+                if (c) toast.info(t("toast.categorySet", { name: c.name }));
               }
             }}
             options={[
-              { value: ALL, label: "全部分类" },
+              { value: ALL, label: t("filter.allCategories") },
               ...categories.map((c) => ({ value: c.id, label: c.name })),
             ]}
           />
 
           <Select
-            aria-label="国家筛选"
+            aria-label={t("filter.countryAria")}
             icon={<Globe size={13} />}
-            placeholder="全部国家"
+            placeholder={t("filter.allCountries")}
             value={filter.countryCode ?? ALL}
             onValueChange={(v) => {
               setFilter({ countryCode: v === ALL ? null : v });
-              if (v === ALL) toast.info("已清除国家筛选");
+              if (v === ALL) toast.info(t("toast.countryCleared"));
               else {
                 const c = countries.find((x) => x.code === v);
-                if (c) toast.info(`国家：${c.name}`);
+                if (c) toast.info(t("toast.countrySet", { name: c.name }));
               }
             }}
             options={[
-              { value: ALL, label: "全部国家" },
+              { value: ALL, label: t("filter.allCountries") },
               ...countries.map((c) => ({
                 value: c.code,
                 label: <>{c.name}（{c.channelCount}）</>,
@@ -123,13 +125,13 @@ export function FilterBar({ list }: FilterBarProps) {
           />
 
           <Select
-            aria-label="排序方式"
+            aria-label={t("filter.sortAria")}
             icon={<ArrowDownUp size={13} />}
             value={filter.sort}
             onValueChange={(v) => {
               setFilter({ sort: v as SortKey });
               const opt = sortOptions.find((o) => o.value === v);
-              if (opt) toast.info(`排序：${opt.label}`);
+              if (opt) toast.info(t("toast.sortSet", { name: opt.label }));
             }}
             options={sortOptions}
           />
@@ -140,13 +142,13 @@ export function FilterBar({ list }: FilterBarProps) {
               onClick={() => {
                 const next = !filter.nsfw;
                 setFilter({ nsfw: next });
-                if (next) toast.warning("已开启成人内容显示");
-                else toast.info("已隐藏成人内容");
+                if (next) toast.warning(t("toast.nsfwOn"));
+                else toast.info(t("toast.nsfwOff"));
               }}
-              title="包含成人内容"
+              title={t("filter.nsfwTitle")}
             >
               <ShieldAlert size={13} />
-              <span>{filter.nsfw ? "已显示成人内容" : "已隐藏成人内容"}</span>
+              <span>{filter.nsfw ? t("filter.nsfwShown") : t("filter.nsfwHidden")}</span>
             </button>
           )}
         </div>

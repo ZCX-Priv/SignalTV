@@ -1,6 +1,21 @@
 // 格式化辅助函数
 
+import { getLocale, t } from "../i18n";
+
 const FLAG_BASE = "https://flagcdn.com";
+
+// Intl.DateTimeFormat 构造成本较高（HeaderClock 每秒调用），按 locale+选项缓存
+const dtfCache = new Map<string, Intl.DateTimeFormat>();
+function dtf(opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const locale = getLocale();
+  const key = `${locale}|${JSON.stringify(opts)}`;
+  let f = dtfCache.get(key);
+  if (!f) {
+    f = new Intl.DateTimeFormat(locale, opts);
+    dtfCache.set(key, f);
+  }
+  return f;
+}
 
 // 国家代码来自第三方 API 数据，严格校验字符集后才拼接进 URL/CSS
 const COUNTRY_CODE_RE = /^[a-z]{2}$/i;
@@ -57,25 +72,28 @@ export function prettyCategory(id: string): string {
     .join(" ");
 }
 
-/** 数字带千位分隔符。 */
+/** 数字带千位分隔符（随当前界面语言的数字习惯）。 */
 export function fmt(n: number): string {
-  return n.toLocaleString("en-US");
+  return n.toLocaleString(getLocale());
 }
 
-/** 当前时间格式化为 HH:MM:SS（24 小时制）。 */
+/** 当前时间格式化为 HH:MM:SS（24 小时制，分隔符随 locale）。 */
 export function clock(d = new Date()): string {
-  return d.toLocaleTimeString("en-GB", { hour12: false });
+  return dtf({
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).format(d);
 }
 
-/** 格式化为广播日期，如 "周一 07月08日 · 14:32"。 */
+/** 格式化为广播日期（星期+月日按 locale 本地化），如 zh 下 "7月8日周一 · 14:32:05"。 */
 export function broadcastDate(d = new Date()): string {
-  const weekday = ["日", "一", "二", "三", "四", "五", "六"][d.getDay()];
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `周${weekday} ${mm}月${dd}日 · ${clock(d)}`;
+  const datePart = dtf({ weekday: "short", month: "short", day: "numeric" }).format(d);
+  return `${datePart} · ${clock(d)}`;
 }
 
-/** 播放历史的日期分组标签：今天 / 昨天 / "MM月DD日"。 */
+/** 播放历史的日期分组标签：今天 / 昨天 / 本地化月日。 */
 export function historyDayLabel(ts: number): string {
   const d = new Date(ts);
   const now = new Date();
@@ -84,11 +102,9 @@ export function historyDayLabel(ts: number): string {
   const diffDays = Math.round(
     (startOfDay(now) - startOfDay(d)) / 86_400_000,
   );
-  if (diffDays === 0) return "今天";
-  if (diffDays === 1) return "昨天";
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${mm}月${dd}日`;
+  if (diffDays === 0) return t("format.today");
+  if (diffDays === 1) return t("format.yesterday");
+  return dtf({ month: "long", day: "numeric" }).format(d);
 }
 
 /** 由频道 id 生成稳定的"频道号"（用于频道号美学展示）。 */

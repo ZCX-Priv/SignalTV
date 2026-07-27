@@ -7,13 +7,24 @@ import type {
 } from "../types";
 import {
   api,
+  ApiError,
   buildChannelIndex,
   buildCountryInfo,
   getMeasuredSpeed,
+  type ApiErrorInfo,
 } from "../lib/api";
 import { probeBatch } from "../lib/latency";
 import { idbGet, idbStorage } from "../lib/idb";
 import { applySeo, describeView } from "../lib/seo";
+import {
+  SUPPORTED_LOCALES,
+  applyLocaleSideEffects,
+  loadLocale,
+  resolveLocale,
+  type LanguagePref,
+  type Locale,
+  type MsgKey,
+} from "../i18n";
 
 // 批量节流更新 latency：200ms 窗口内合并多次 setLatency 为一次 set，
 // 避免 5000 频道 × new Map(s.latency) 的 O(n²) 开销。
@@ -127,6 +138,28 @@ export async function getInitialTheme(): Promise<Theme> {
   return getSystemTheme();
 }
 
+// 异步：从 IndexedDB 读取持久化的语言偏好（main.tsx 在渲染前 await，
+// 据此预加载语言包，避免首屏文案闪烁）。无效/缺失时回落到 "system" 自动检测。
+export async function getInitialLanguage(): Promise<LanguagePref> {
+  if (typeof window === "undefined") return "system";
+  try {
+    const raw = await idbGet("signaltv-iptv");
+    if (raw) {
+      const parsed = JSON.parse(raw) as {
+        state?: { language?: string };
+      };
+      const lang = parsed.state?.language;
+      if (lang === "system") return lang;
+      if (lang && (SUPPORTED_LOCALES as readonly string[]).includes(lang)) {
+        return lang as Locale;
+      }
+    }
+  } catch {
+    // 解析失败则回落到自动检测
+  }
+  return "system";
+}
+
 // 主题切换瞬间禁用所有过渡/动画：在 <html> 上加 .theme-transitioning 类，
 // CSS 规则把该类下所有元素的 transition-duration / animation-duration 强制为 0s，
 // 等效于"瞬时切换"，避免带 transition 的元素缓慢过渡到新主题色形成扎眼时差。
@@ -187,6 +220,16 @@ export interface HistoryEntry {
 // 历史上限：超出截断尾部（最旧），避免持久化体积无限增长
 const HISTORY_LIMIT = 200;
 
+// 首屏加载阶段：存文案 key + 插值参数，Loader 渲染时翻译
+// （加载中途切语言也能正确展示）
+export interface LoadStage {
+  key: MsgKey;
+  /** 数据集名称的文案 key（data.channels 等），渲染时先翻译再插值 */
+  labelKey?: MsgKey;
+  done?: number;
+  size?: string;
+}
+
 interface State {
   // 数据
   channels: Map<string, ChannelWithStream>;
@@ -194,9 +237,10 @@ interface State {
   countries: CountryInfo[];
   loaded: boolean;
   loading: boolean;
-  error: string | null;
+  /** 加载错误：存文案 key，展示时翻译（ErrorState / StatusPanel） */
+  error: ApiErrorInfo | null;
   /** 首屏加载阶段提示（Loader 展示真实进度，弱网下尤其重要） */
-  loadStage: string;
+  loadStage: LoadStage | null;
   /** 网络画像：首屏实测 < 500KB/s 判为 slow，控制探测并发与 hls 缓冲策略 */
   networkProfile: NetworkProfile;
 
@@ -217,6 +261,8 @@ interface State {
   searchOpen: boolean; // 移动端搜索框展开（上移到 store 供 Ctrl+K 共用）
   theme: Theme; // 实际渲染主题（dark|light），由 themeMode 派生
   themeMode: ThemeMode; // 用户主题偏好（system|light|dark），持久化
+  language: LanguagePref; // 用户语言偏好（system|具体 locale），持久化
+  locale: Locale; // 实际界面语言，由 language 派生（system 时自动检测）
 
   // 动作
   init: () => Promise<void>;
@@ -235,6 +281,7 @@ interface State {
   setSearchOpen: (open: boolean) => void;
   setTheme: (t: Theme) => void;
   setThemeMode: (m: ThemeMode) => void;
+  setLanguage: (pref: LanguagePref) => Promise<void>;
 }
 
 export const useStore = create<State>()(
@@ -246,7 +293,7 @@ export const useStore = create<State>()(
       loaded: false,
       loading: false,
       error: null,
-      loadStage: "",
+      loadStage: null,
       networkProfile: "fast",
 
       view: { kind: "home" },
@@ -263,17 +310,19 @@ export const useStore = create<State>()(
       searchOpen: false,
       theme: getSystemTheme(),
       themeMode: "system",
+      language: "system",
+      locale: "zh-CN",
 
       init: async () => {
         if (get().loaded || get().loading) return;
-        set({ loading: true, error: null, loadStage: "正在连接信号源…" });
+        set({ loading: true, error: null, loadStage: { key: "stage.connecting" } });
         try {
           // 完成计数：四个请求并行，每个完成时更新阶段提示
           let done = 0;
-          const track = <T,>(p: Promise<T>, label: string): Promise<T> =>
+          const track = <T,>(p: Promise<T>, labelKey: MsgKey): Promise<T> =>
             p.then((r) => {
               done++;
-              set({ loadStage: `${label}已就绪 (${done}/4)` });
+              set({ loadStage: { key: "stage.ready", labelKey, done } });
               return r;
             });
           // 大文件下载进度（弱网下让用户看到真实字节数，而非死等），
@@ -281,19 +330,19 @@ export const useStore = create<State>()(
           let lastProgress = 0;
           const fmtBytes = (b: number) =>
             b >= 1_048_576 ? `${(b / 1_048_576).toFixed(1)}MB` : `${Math.round(b / 1024)}KB`;
-          const onProgress = (label: string) => (bytes: number) => {
+          const onProgress = (labelKey: MsgKey) => (bytes: number) => {
             const now = Date.now();
             if (now - lastProgress < 300) return;
             lastProgress = now;
-            set({ loadStage: `正在拉取${label} · ${fmtBytes(bytes)}` });
+            set({ loadStage: { key: "stage.pulling", labelKey, size: fmtBytes(bytes) } });
           };
           const [channels, streams, categories, countries] = await Promise.all([
-            track(api.channels(undefined, onProgress("频道表")), "频道表"),
-            track(api.streams(undefined, onProgress("信号流")), "信号流"),
-            track(api.categories(), "分类表"),
-            track(api.countries(), "国家表"),
+            track(api.channels(undefined, onProgress("data.channels")), "data.channels"),
+            track(api.streams(undefined, onProgress("data.streams")), "data.streams"),
+            track(api.categories(), "data.categories"),
+            track(api.countries(), "data.countries"),
           ]);
-          set({ loadStage: "正在合并信号表…" });
+          set({ loadStage: { key: "stage.merging" } });
           const idx = buildChannelIndex(channels, streams);
           const countryInfo = buildCountryInfo(countries, idx);
           const cats = categories
@@ -305,15 +354,16 @@ export const useStore = create<State>()(
             countries: countryInfo,
             loaded: true,
             loading: false,
-            loadStage: "",
+            loadStage: null,
             // 加载完成后据实测速度判定网络画像（< 500KB/s → slow）
             networkProfile: resolveNetworkProfile(),
           });
         } catch (e) {
           set({
             loading: false,
-            loadStage: "",
-            error: e instanceof Error ? e.message : "加载广播数据失败。",
+            loadStage: null,
+            // 存文案 key 而非翻译后字符串：错误屏期间切语言也能正确展示
+            error: e instanceof ApiError ? e.info : { key: "api.loadFailed" },
           });
         }
       },
@@ -408,6 +458,23 @@ export const useStore = create<State>()(
         syncThemeCache(actualTheme);
         set({ themeMode: m, theme: actualTheme });
       },
+      setLanguage: async (pref) => {
+        // 先加载语言包再提交 state：确保订阅组件重渲染时字典已就绪，
+        // 调用方 await 后弹的 toast 也能直接用新语言展示
+        const locale = resolveLocale(pref);
+        await loadLocale(locale);
+        set({ language: pref, locale });
+        applyLocaleSideEffects(locale);
+        // 同步刷新当前视图的 SEO 元信息（title/description 随新语言）
+        const s = get();
+        applySeo(
+          describeView(s.view, s.filter, {
+            categories: s.categories,
+            countries: s.countries,
+            channels: s.channels,
+          }),
+        );
+      },
     }),
     {
       name: "signaltv-iptv",
@@ -421,6 +488,7 @@ export const useStore = create<State>()(
         sidebarCollapsed: s.sidebarCollapsed,
         theme: s.theme,
         themeMode: s.themeMode,
+        language: s.language,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -437,6 +505,12 @@ export const useStore = create<State>()(
         // 与 rehydrated 值不一致的时序窗口
         document.documentElement.dataset.theme = actual;
         syncThemeCache(actual);
+        // 旧版数据没有 language → 默认跟随浏览器自动检测；
+        // 重算实际 locale 并确保语言包已加载（main.tsx 预读一致时为幂等操作）
+        if (!state.language) state.language = "system";
+        const locale = resolveLocale(state.language);
+        state.locale = locale;
+        void loadLocale(locale).then(() => applyLocaleSideEffects(locale));
       },
     },
   ),
@@ -453,5 +527,15 @@ if (typeof window !== "undefined" && window.matchMedia) {
     disableTransitionsBriefly();
     syncThemeCache(next);
     useStore.setState({ theme: next });
+  });
+}
+
+// 自动检测模式：监听浏览器语言变化，仅在 language === "system" 时重新解析。
+// 显式选择的语言不受系统语言切换影响。
+if (typeof window !== "undefined") {
+  window.addEventListener("languagechange", () => {
+    const s = useStore.getState();
+    if (s.language !== "system") return;
+    void s.setLanguage("system");
   });
 }

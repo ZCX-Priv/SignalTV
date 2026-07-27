@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Search, X } from "lucide-react";
 import { pushModal, trapFocus } from "../lib/modalStack";
+import { fmt } from "../lib/format";
+import { useI18n } from "../i18n";
 
 export interface PickerItem {
   key: string;
@@ -53,6 +55,7 @@ export function PickerModal({
   onPick,
   match = defaultMatch,
 }: PickerModalProps) {
+  const { t } = useI18n();
   const [q, setQ] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -116,7 +119,7 @@ export function PickerModal({
         {item.leading}
         <span className="picker__name">{item.name}</span>
         <span className="picker__count mono">
-          {item.count.toLocaleString("en-US")}
+          {fmt(item.count)}
         </span>
       </button>
     );
@@ -143,7 +146,7 @@ export function PickerModal({
             type="button"
             className="picker__close"
             onClick={onClose}
-            aria-label="关闭"
+            aria-label={t("common.close")}
           >
             <X size={16} />
           </button>
@@ -166,7 +169,7 @@ export function PickerModal({
                 type="button"
                 className="search__clear"
                 onClick={() => setQ("")}
-                aria-label="清除"
+                aria-label={t("common.clear")}
               >
                 <X size={13} />
               </button>
@@ -181,7 +184,7 @@ export function PickerModal({
             <>
               {recentSection.length > 0 && (
                 <section>
-                  <div className="picker__section-label">最近点击</div>
+                  <div className="picker__section-label">{t("picker.recent")}</div>
                   {recentSection.map(renderItem)}
                 </section>
               )}

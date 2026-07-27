@@ -1,0 +1,353 @@
+// Deutsche Sprachdatei. Schlüssel werden gegen das zh-CN-Quellwörterbuch typgeprüft.
+import type { Dict, VidstackDict } from "./zh-CN";
+
+export const dict: Dict = {
+  // ── Allgemein ──
+  "common.channelPos": "Kanal {pos}",
+  "common.live": "LIVE",
+  "common.liveNow": "AUF SENDUNG",
+  "common.favAdd": "Zu Favoriten hinzufügen",
+  "common.favRemove": "Aus Favoriten entfernen",
+  "common.fav": "Favorit",
+  "common.faved": "Favorisiert",
+  "common.independent": "Unabhängig",
+  "common.retry": "Erneut versuchen",
+  "common.close": "Schließen",
+  "common.clear": "Löschen",
+  "common.channel": "Kanal",
+
+  // ── Kopfzeile ──
+  "header.menuClose": "Menü schließen",
+  "header.menuOpen": "Menü öffnen",
+  "header.sidebarExpand": "Seitenleiste ausklappen",
+  "header.sidebarCollapse": "Seitenleiste einklappen",
+  "header.searchPlaceholder": "Kanäle, Sender, Länder suchen…",
+  "header.searchAria": "Kanäle suchen",
+  "header.searchClear": "Suche löschen",
+  "header.search": "Suchen",
+  "header.liveCountSuffix": "Signale auf Sendung",
+
+  // ── Seitenleiste ──
+  "sidebar.home": "Startseite",
+  "sidebar.favorites": "Favoriten",
+  "sidebar.history": "Verlauf",
+  "sidebar.categories": "Kategorien",
+  "sidebar.countries": "Länder",
+  "sidebar.all": "Alle",
+  "sidebar.allCategoriesAria": "Alle Kategorien anzeigen",
+  "sidebar.allCountriesAria": "Alle Länder anzeigen",
+  "sidebar.status": "Status",
+  "sidebar.settings": "Einstellungen",
+
+  // ── Toasts ──
+  "toast.backHome": "Zurück zur Startseite",
+  "toast.gotoFavorites": "Zu Favoriten gewechselt",
+  "toast.gotoHistory": "Zum Wiedergabeverlauf gewechselt",
+  "toast.gotoStatus": "Zur Statusseite gewechselt",
+  "toast.gotoSettings": "Zu Einstellungen gewechselt",
+  "toast.switchedChannel": "Zu {name}-Kanälen gewechselt",
+  "toast.favAdded": "Zu Favoriten hinzugefügt",
+  "toast.favRemoved": "Aus Favoriten entfernt",
+  "toast.categoryCleared": "Kategoriefilter zurückgesetzt",
+  "toast.categorySet": "Kategorie: {name}",
+  "toast.countryCleared": "Länderfilter zurückgesetzt",
+  "toast.countrySet": "Land: {name}",
+  "toast.sortSet": "Sortierung: {name}",
+  "toast.nsfwOn": "Inhalte für Erwachsene werden angezeigt",
+  "toast.nsfwOff": "Inhalte für Erwachsene ausgeblendet",
+  "toast.historyCleared": "Wiedergabeverlauf gelöscht",
+  "toast.themeSwitched": "Zum Modus „{name}“ gewechselt",
+  "toast.langSwitched": "Sprache auf {name} umgestellt",
+  "toast.streamFailover": "Stream nicht verfügbar, auf Ersatzsignal umgeschaltet",
+  "toast.welcome": "Willkommen bei SignalTV",
+  "toast.loading": "Wird geladen",
+
+  // ── Hero ──
+  "hero.title1": "Die Welt,",
+  "hero.title2": "live eingestellt.",
+  "hero.lede1": "Bündelt",
+  "hero.lede2":
+    "kostenlose TV-Kanäle weltweit — Nachrichten, Filme, Sport, Musik, Dokus und mehr. Ohne Anmeldung, einfach einschalten.",
+  "hero.tuneIn": "Empfohlenes einschalten",
+  "hero.featured": "EMPFOHLEN",
+  "hero.rec": "● AUFN",
+  "hero.nowPlaying": "JETZT LÄUFT",
+
+  // ── Filterleiste ──
+  "filter.eyebrow": "Programmführer",
+  "filter.searchResults": "Ergebnisse für „{q}“",
+  "filter.allChannels": "Alle Kanäle",
+  "filter.categoryFallback": "Kategorie",
+  "filter.countryFallback": "Land",
+  "filter.favorites": "Favoriten",
+  "filter.countFavorites": { one: "{count} Favorit", other: "{count} Favoriten" },
+  "filter.countSignals": { one: "{count} Signal", other: "{count} Signale" },
+  "filter.categoryAria": "Nach Kategorie filtern",
+  "filter.countryAria": "Nach Land filtern",
+  "filter.sortAria": "Sortierreihenfolge",
+  "filter.allCategories": "Alle Kategorien",
+  "filter.allCountries": "Alle Länder",
+  "filter.nsfwTitle": "Inhalte für Erwachsene einbeziehen",
+  "filter.nsfwShown": "Erwachseneninhalte sichtbar",
+  "filter.nsfwHidden": "Erwachseneninhalte ausgeblendet",
+
+  // ── Sortieroptionen ──
+  "sort.default": "Standard",
+  "sort.country": "Land",
+  "sort.recent": "Zuletzt gesehen",
+  "sort.latencyAsc": "Latenz: niedrig → hoch",
+  "sort.latencyDesc": "Latenz: hoch → niedrig",
+  "sort.nsfwFirst": "Erwachseneninhalte zuerst",
+
+  // ── Kanalraster ──
+  "grid.emptyTitle": "Kein Signal.",
+  "grid.emptyDesc": "Keine Kanäle entsprechen den aktuellen Filtern. Suche erweitern.",
+  "grid.loadingMore": {
+    one: "{count} weiteres Signal wird geladen…",
+    other: "{count} weitere Signale werden geladen…",
+  },
+  "grid.footer": "{shown} von {total} Signalen angezeigt",
+
+  // ── Kanalkarte ──
+  "card.nsfw": "18+",
+
+  // ── Verlauf ──
+  "history.eyebrow": "Wiedergabeprotokoll",
+  "history.title": "Wiedergabeverlauf",
+  "history.countRecords": { one: "{count} Eintrag", other: "{count} Einträge" },
+  "history.clear": "Verlauf löschen",
+  "history.emptyTitle": "Noch kein Wiedergabeverlauf.",
+  "history.emptyDesc":
+    "Sobald ein Kanal abgespielt wird, erscheint hier jede Wiedergabe als Zeitleiste.",
+  "history.noMatchTitle": "Keine passenden Einträge.",
+  "history.noMatchDesc":
+    "Keine Verlaufseinträge entsprechen den aktuellen Filtern. Andere Kategorie oder anderes Land wählen.",
+  "history.replay": "{name} erneut abspielen",
+  "history.gone": "Kanal offline",
+
+  // ── Statusseite ──
+  "status.eyebrow": "Signalquelle",
+  "status.title": "Status",
+  "status.connError": "Uplink-Fehler",
+  "status.connLoading": "Uplink wird aufgebaut",
+  "status.connOk": "Uplink hergestellt",
+  "status.connIdle": "Bereitschaft",
+  "status.connection": "Verbindung",
+  "status.connectionDesc": "Aktueller Ladezustand der Signalquellen.",
+  "status.connSub": "Öffentliche TV-Signalquellen · iptv-org",
+  "status.data": "Daten",
+  "status.dataDesc": "Geladene Kanäle, Kategorien und Länder.",
+  "status.statChannels": "Kanäle",
+  "status.statCategories": "Kategorien",
+  "status.statCountries": "Länder",
+  "status.probe": "Latenzmessung",
+  "status.probeDesc": "Misst die Latenz sichtbarer Kanäle für die Sortierung nach Latenz.",
+  "status.probeStatus": "Status",
+  "status.probeReady": "Bereit",
+  "status.probeIdle": "Nicht gestartet",
+  "status.probed": "Gemessen",
+  "status.probedCount": { one: "{count} Kanal", other: "{count} Kanäle" },
+  "status.reachable": "Erreichbar",
+  "status.reachableValue": { one: "{count} Kanal ({pct}%)", other: "{count} Kanäle ({pct}%)" },
+
+  // ── Einstellungen ──
+  "settings.eyebrow": "Konsole",
+  "settings.title": "Einstellungen",
+  "settings.appearance": "Erscheinungsbild",
+  "settings.appearanceDesc": "Themenmodus wählen — bestimmt Farbwelt und Stimmung.",
+  "settings.language": "Sprache",
+  "settings.languageDesc":
+    "Sprache der Oberfläche wählen. Standardmäßig wird der Browser automatisch erkannt.",
+  "settings.langAuto": "Automatisch",
+  "settings.langAutoDesc": "Browsersprache folgen (aktuell {name})",
+  "settings.about": "Über",
+  "settings.githubAria": "GitHub-Repository",
+  "settings.tagline": "Öffentliche TV-Signale · Kostenloses Live-Streaming",
+  "settings.channelsCount": { one: "{count} Kanal", other: "{count} Kanäle" },
+  "settings.noSignup": "Keine Anmeldung · Keine Werbung · Kein Tracking",
+  "settings.dataSource":
+    "Die Kanaldaten stammen aus dem öffentlichen Open-Source-Projekt iptv-org. Diese Seite speichert oder überträgt keine Videostreams.",
+
+  // ── Themenoptionen ──
+  "theme.system": "System",
+  "theme.systemDesc": "Dem Betriebssystem folgen",
+  "theme.light": "Tag",
+  "theme.lightDesc": "Warmer Cremeton, hell und angenehm",
+  "theme.dark": "Nacht",
+  "theme.darkDesc": "Sendeschwarz, immersive Atmosphäre",
+
+  // ── Sprachnamen ──
+  "lang.zh-CN": "Chinesisch (vereinfacht)",
+  "lang.en": "Englisch",
+  "lang.de": "Deutsch",
+  "lang.fr": "Französisch",
+  "lang.ja": "Japanisch",
+  "lang.ru": "Russisch",
+  "lang.es": "Spanisch",
+  "lang.ko": "Koreanisch",
+
+  // ── Player-Dialog ──
+  "player.dialogAria": "Es läuft {name}",
+  "player.signalLocked": "Signal eingerastet",
+  "player.closeAria": "Player schließen",
+  "player.website": "Webseite",
+  "player.factChannel": "Kanalnummer",
+  "player.factCountry": "Land",
+  "player.factStreams": "Streams",
+  "player.factLaunched": "Sendestart",
+  "player.related": "Verwandte Signale",
+  "player.loadFailed": "Player konnte nicht geladen werden. Bitte schließen und erneut versuchen.",
+
+  // ── Player-Overlays ──
+  "tv.acquiring": "Signal wird empfangen…",
+  "tv.tapToPlayAria": "Zum Abspielen tippen",
+  "tv.tapToPlay": "Zum Abspielen tippen",
+  "tv.tapToPlayHint": "Browser-Richtlinie erfordert manuellen Start",
+  "tv.signalLost": "Signal verloren",
+  "tv.mixedContent":
+    "Der Browser hat diese unverschlüsselte (http) Quelle aus Sicherheitsgründen blockiert; sie kann auf dieser Seite nicht abgespielt werden.",
+  "tv.unavailable": "Dieser Livestream ist nicht verfügbar.",
+  "tv.triedStreams": "{tried}/{total} Streams versucht, keiner spielbar.",
+  "tv.regionHint":
+    "Viele freie Signale sind geoblockiert oder zeitweise offline. Anderen Kanal desselben Senders versuchen.",
+  "tv.startFailed": "Wiedergabe konnte nicht gestartet werden. Erneut versuchen oder Kanal wechseln.",
+
+  // ── Toaster ──
+  "toaster.region": "Benachrichtigungen",
+  "toaster.closeAria": "Benachrichtigung schließen",
+
+  // ── Loader ──
+  "loader.sub": "Uplink wird aufgebaut · Öffentliche TV-Signalquellen",
+  "loader.logConnect": "Verbindung zu Signalquellen",
+  "loader.logChannels": "Kanaltabelle wird geladen",
+  "loader.logStreams": "Streamtabelle wird geladen",
+  "loader.logSync": "Sendegitter wird synchronisiert",
+  "loader.failTitle1": "Uplink ",
+  "loader.failTitle2": "fehlgeschlagen",
+  "loader.retryConnection": "Verbindung wiederholen",
+
+  // ── Ladephasen ──
+  "stage.connecting": "Verbindung zu Signalquellen…",
+  "stage.ready": "{label} bereit ({done}/4)",
+  "stage.pulling": "{label} wird geladen · {size}",
+  "stage.merging": "Signaltabellen werden zusammengeführt…",
+
+  // ── Datensatznamen ──
+  "data.channels": "Kanaltabelle",
+  "data.streams": "Streamtabelle",
+  "data.categories": "Kategorietabelle",
+  "data.countries": "Ländertabelle",
+
+  // ── ErrorBoundary ──
+  "errb.title1": "Signal ",
+  "errb.title2": "unterbrochen",
+  "errb.unknown": "Unbekannter Rendering-Fehler",
+
+  // ── Auswahl-Dialoge ──
+  "picker.recent": "Zuletzt verwendet",
+  "picker.searchCategories": "Kategorien suchen…",
+  "picker.searchCategoriesAria": "Kategorien suchen",
+  "picker.noCategories": "Keine passenden Kategorien",
+  "picker.searchCountries": "Länder oder Ländercodes suchen…",
+  "picker.searchCountriesAria": "Länder suchen",
+  "picker.noCountries": "Keine passenden Länder",
+
+  // ── API-Fehler ──
+  "api.requestFailed": "Anfrage fehlgeschlagen {url}: {status}",
+  "api.timeout": "Zeitüberschreitung der Anfrage {url}",
+  "api.cancelled": "Anfrage abgebrochen",
+  "api.readFailed": "Antwort konnte nicht gelesen werden {url}",
+  "api.parseFailed": "Antwort konnte nicht geparst werden {url} (kein JSON)",
+  "api.loadFailed": "Sendedaten konnten nicht geladen werden.",
+
+  // ── Datumsformat ──
+  "format.today": "Heute",
+  "format.yesterday": "Gestern",
+
+  // ── SEO ──
+  "seo.homeTitle": "SignalTV - Kostenlos Live-TV online schauen",
+  "seo.homeDesc":
+    "SignalTV ist eine kostenlose Website für Live-TV im Internet und bündelt Tausende Kanäle weltweit — Nachrichten, Filme, Sport, Musik, Dokus und mehr. Ohne Anmeldung.",
+  "seo.categoryTitle": "SignalTV | {name}-Kanäle",
+  "seo.categoryDescCount":
+    "{count} Live-TV-Kanäle der Kategorie {name} kostenlos online schauen — sofort abspielbar, {name}-Inhalte aus aller Welt.",
+  "seo.categoryDesc":
+    "Live-TV-Kanäle der Kategorie {name} kostenlos online schauen — sofort abspielbar, {name}-Inhalte aus aller Welt.",
+  "seo.countryTitle": "SignalTV | TV-Kanäle aus {name}",
+  "seo.countryDescCount":
+    "{count} Live-TV-Kanäle aus {name} kostenlos und sofort online schauen.",
+  "seo.countryDesc": "Live-TV-Kanäle aus {name} kostenlos und sofort online schauen.",
+  "seo.favoritesTitle": "SignalTV | Meine Favoriten",
+  "seo.favoritesDesc":
+    "Ihre favorisierten TV-Kanäle auf SignalTV — mit einem Klick weiterschauen.",
+  "seo.historyTitle": "SignalTV | Wiedergabeverlauf",
+  "seo.historyDesc":
+    "Ihre Verlaufszeitleiste auf SignalTV — gesehene Kanäle erneut abspielen (nur lokal gespeichert).",
+  "seo.statusTitle": "SignalTV | Status der Signalquellen",
+  "seo.statusDesc":
+    "SignalTV-Quellenstatus: Verbindungszustand, Kanalstatistiken, Latenzmessung und Hinweise zur Datenquelle.",
+  "seo.settingsTitle": "SignalTV | Einstellungen",
+  "seo.settingsDesc": "SignalTV-Einstellungen: Themenmodus, Oberflächensprache und App-Infos.",
+  "seo.searchTitle": "SignalTV | TV-Kanäle für „{q}“",
+  "seo.searchDesc": "Live-TV-Kanäle passend zu „{q}“ auf SignalTV — kostenlos online schauen.",
+};
+
+// vidstack DefaultVideoLayout deutsche Übersetzung
+export const vidstack: VidstackDict = {
+  "Announcements": "Ankündigungen",
+  "Accessibility": "Barrierefreiheit",
+  "AirPlay": "AirPlay",
+  "Audio": "Audio",
+  "Auto": "Auto",
+  "Boost": "Verstärkung",
+  "Captions": "Untertitel",
+  "Caption Styles": "Untertitelstile",
+  "Captions look like this": "Untertitel sehen so aus",
+  "Chapters": "Kapitel",
+  "Closed-Captions Off": "Untertitel aus",
+  "Closed-Captions On": "Untertitel an",
+  "Connected": "Verbunden",
+  "Continue": "Fortfahren",
+  "Connecting": "Verbindung wird hergestellt",
+  "Default": "Standard",
+  "Disabled": "Deaktiviert",
+  "Disconnected": "Getrennt",
+  "Display Background": "Anzeigehintergrund",
+  "Download": "Herunterladen",
+  "Enter Fullscreen": "Vollbild starten",
+  "Enter PiP": "Bild-in-Bild starten",
+  "Exit Fullscreen": "Vollbild beenden",
+  "Exit PiP": "Bild-in-Bild beenden",
+  "Font": "Schrift",
+  "Family": "Schriftfamilie",
+  "Fullscreen": "Vollbild",
+  "Google Cast": "Google Cast",
+  "Keyboard Animations": "Tastaturanimationen",
+  "LIVE": "LIVE",
+  "Loop": "Schleife",
+  "Mute": "Stumm",
+  "Normal": "Normal",
+  "Off": "Aus",
+  "Pause": "Pause",
+  "Play": "Abspielen",
+  "Playback": "Wiedergabe",
+  "PiP": "Bild-in-Bild",
+  "Quality": "Qualität",
+  "Replay": "Erneut abspielen",
+  "Reset": "Zurücksetzen",
+  "Seek Backward": "Zurückspulen",
+  "Seek Forward": "Vorspulen",
+  "Seek": "Springen",
+  "Settings": "Einstellungen",
+  "Skip To Live": "Zum Livepunkt springen",
+  "Speed": "Geschwindigkeit",
+  "Size": "Größe",
+  "Color": "Farbe",
+  "Opacity": "Deckkraft",
+  "Shadow": "Schatten",
+  "Text": "Text",
+  "Text Background": "Texthintergrund",
+  "Track": "Spur",
+  "Unmute": "Ton an",
+  "Volume": "Lautstärke",
+};

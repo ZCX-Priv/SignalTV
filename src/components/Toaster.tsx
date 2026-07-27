@@ -10,6 +10,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { toast, useToastState } from "../lib/toast";
 import type { ToastItem, ToastType } from "../lib/toast";
+import { useI18n } from "../i18n";
 
 // 类型 → 图标映射：所有 toast 都渲染对应图标，颜色由 CSS 按类型着色
 const TOAST_ICONS: Record<ToastType, LucideIcon> = {
@@ -36,17 +37,19 @@ const TOAST_ICONS: Record<ToastType, LucideIcon> = {
  * 关闭按钮：toast 内部右侧（flex 布局，与内容同行），非浮在角上。
  */
 export function Toaster() {
+  const { t } = useI18n();
   const toasts = useToastState();
   return (
-    <div className="signaltv-toaster" role="region" aria-label="通知">
-      {toasts.map((t) => (
-        <ToastView key={t.id} item={t} />
+    <div className="signaltv-toaster" role="region" aria-label={t("toaster.region")}>
+      {toasts.map((item) => (
+        <ToastView key={item.id} item={item} />
       ))}
     </div>
   );
 }
 
 function ToastView({ item }: { item: ToastItem }) {
+  const { t } = useI18n();
   const Icon = TOAST_ICONS[item.type];
   return (
     <div
@@ -70,7 +73,7 @@ function ToastView({ item }: { item: ToastItem }) {
         type="button"
         className="signaltv-toast__close"
         onClick={() => toast.dismiss(item.id)}
-        aria-label="关闭通知"
+        aria-label={t("toaster.closeAria")}
       >
         <X size={14} />
       </button>
