@@ -220,21 +220,14 @@ export const dict: Dict = {
   "loader.logChannels": "Fetching channel table",
   "loader.logStreams": "Fetching stream table",
   "loader.logSync": "Syncing broadcast grid",
+  "loader.size": "Downloaded {size}",
+  "loader.speed": "Speed {speed}",
   "loader.failTitle1": "Uplink ",
   "loader.failTitle2": "failed",
   "loader.retryConnection": "Retry connection",
 
   // ── Load stages ──
-  "stage.connecting": "Connecting to signal sources…",
-  "stage.ready": "{label} ready ({done}/4)",
-  "stage.pulling": "Fetching {label} · {size}",
   "stage.merging": "Merging signal tables…",
-
-  // ── Dataset names ──
-  "data.channels": "channel table",
-  "data.streams": "stream table",
-  "data.categories": "category table",
-  "data.countries": "country table",
 
   // ── ErrorBoundary ──
   "errb.title1": "Signal ",

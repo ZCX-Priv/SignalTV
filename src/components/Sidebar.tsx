@@ -13,13 +13,13 @@ import { useStore } from "../store/useStore";
 import { fmt } from "../lib/format";
 import { toast } from "../lib/toast";
 import { catIcon } from "../lib/categoryIcon";
-import { useI18n } from "../i18n";
+import { useI18n, LOCALE_HOME_COUNTRY } from "../i18n";
 import { CategoryPickerModal } from "./CategoryPickerModal";
 import { CountryPickerModal } from "./CountryPickerModal";
 import type { CountryInfo } from "../types";
 
 export function Sidebar() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const categories = useStore((s) => s.categories);
@@ -76,8 +76,16 @@ export function Sidebar() {
       .filter((c): c is CountryInfo => !!c);
     const recentCodes = new Set(recentInList.map((c) => c.code));
     const rest = countries.filter((c) => !recentCodes.has(c.code));
+    // 用户从未手动点过国家时，按当前界面语言把母语国置顶；
+    // 一旦有手动选择记录，尊重"最近使用优先"，不再干预
+    if (recentInList.length === 0) {
+      const homeIdx = rest.findIndex(
+        (c) => c.code === LOCALE_HOME_COUNTRY[locale],
+      );
+      if (homeIdx > 0) rest.unshift(...rest.splice(homeIdx, 1));
+    }
     return [...recentInList, ...rest].slice(0, 14);
-  }, [countries, recentCountries]);
+  }, [countries, recentCountries, locale]);
 
   const activeCat = view.kind === "category" ? view.id : filter.categoryId;
   const activeCountry = view.kind === "country" ? view.code : filter.countryCode;

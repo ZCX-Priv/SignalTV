@@ -45,6 +45,18 @@ export const NATIVE_LOCALE_NAMES: Record<Locale, string> = {
   ko: "한국어",
 };
 
+/** 各语言的母语国（iptv-org 国家 code）：侧边栏"国家"默认置顶用 */
+export const LOCALE_HOME_COUNTRY: Record<Locale, string> = {
+  "zh-CN": "CN",
+  en: "US",
+  de: "DE",
+  fr: "FR",
+  ja: "JP",
+  ru: "RU",
+  es: "ES",
+  ko: "KR",
+};
+
 /** og:locale 值映射 */
 const OG_LOCALES: Record<Locale, string> = {
   "zh-CN": "zh_CN",

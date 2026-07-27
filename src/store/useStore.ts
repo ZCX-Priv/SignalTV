@@ -23,7 +23,6 @@ import {
   resolveLocale,
   type LanguagePref,
   type Locale,
-  type MsgKey,
 } from "../i18n";
 
 // 批量节流更新 latency：200ms 窗口内合并多次 setLatency 为一次 set，
@@ -210,7 +209,7 @@ export type View =
   | { kind: "status" }
   | { kind: "settings" };
 
-// 播放历史条目：每次播放实时追加一条（同频道重复播放各记一条），
+// 播放历史条目：按频道去重，重复播放会把该频道条目提升至最新时间，
 // 供 HistoryPanel 以垂直时间线展示；与 recents（去重、供排序）独立
 export interface HistoryEntry {
   id: string;
@@ -220,14 +219,21 @@ export interface HistoryEntry {
 // 历史上限：超出截断尾部（最旧），避免持久化体积无限增长
 const HISTORY_LIMIT = 200;
 
-// 首屏加载阶段：存文案 key + 插值参数，Loader 渲染时翻译
-// （加载中途切语言也能正确展示）
-export interface LoadStage {
-  key: MsgKey;
-  /** 数据集名称的文案 key（data.channels 等），渲染时先翻译再插值 */
-  labelKey?: MsgKey;
-  done?: number;
+// 首屏加载进度（固定五行 Loader 用）：done 每 +1 触发第2、3行清空重显，
+// size/speed 为两大文件合计，原地刷新
+export interface LoadProgress {
+  /** 完成请求数 0-4：作为第2、3行的 React key，+1 即重挂载重播入场动画 */
+  done: number;
+  /** 频道表已就绪 → 第2行 [OK] */
+  channelsReady: boolean;
+  /** 信号流已就绪 → 第3行 [OK] */
+  streamsReady: boolean;
+  /** 两大文件合计已下载（如 2.3MB） */
   size?: string;
+  /** 合计瞬时速率（如 512KB/s） */
+  speed?: string;
+  /** 合并阶段：光标移到"正在合并信号表"行 */
+  merging?: boolean;
 }
 
 interface State {
@@ -239,8 +245,8 @@ interface State {
   loading: boolean;
   /** 加载错误：存文案 key，展示时翻译（ErrorState / StatusPanel） */
   error: ApiErrorInfo | null;
-  /** 首屏加载阶段提示（Loader 展示真实进度，弱网下尤其重要） */
-  loadStage: LoadStage | null;
+  /** 首屏加载进度（固定五行 Loader；null = 未开始/已结束） */
+  loadProgress: LoadProgress | null;
   /** 网络画像：首屏实测 < 500KB/s 判为 slow，控制探测并发与 hls 缓冲策略 */
   networkProfile: NetworkProfile;
 
@@ -293,7 +299,7 @@ export const useStore = create<State>()(
       loaded: false,
       loading: false,
       error: null,
-      loadStage: null,
+      loadProgress: null,
       networkProfile: "fast",
 
       view: { kind: "home" },
@@ -315,34 +321,53 @@ export const useStore = create<State>()(
 
       init: async () => {
         if (get().loaded || get().loading) return;
-        set({ loading: true, error: null, loadStage: { key: "stage.connecting" } });
+        set({
+          loading: true,
+          error: null,
+          loadProgress: { done: 0, channelsReady: false, streamsReady: false },
+        });
         try {
-          // 完成计数：四个请求并行，每个完成时更新阶段提示
+          // 原地合并更新进度（行位置固定，不滚动）
+          const patch = (p: Partial<LoadProgress>) =>
+            set((s) =>
+              s.loadProgress ? { loadProgress: { ...s.loadProgress, ...p } } : {},
+            );
+          // 完成计数：四个请求并行，每完成一个 done+1
+          //（Loader 第2、3行以 done 为 key，随之清空重显）
           let done = 0;
-          const track = <T,>(p: Promise<T>, labelKey: MsgKey): Promise<T> =>
+          const track = <T,>(p: Promise<T>, onDone?: Partial<LoadProgress>): Promise<T> =>
             p.then((r) => {
               done++;
-              set({ loadStage: { key: "stage.ready", labelKey, done } });
+              patch({ done, ...onDone });
               return r;
             });
-          // 大文件下载进度（弱网下让用户看到真实字节数，而非死等），
-          // 300ms 节流，两个并行文件共用时间窗口
-          let lastProgress = 0;
+          // 大文件下载进度（弱网下让用户看到真实字节数，而非死等）：
+          // 两文件合计字节数与瞬时速率，共享 300ms 节流原地刷新
           const fmtBytes = (b: number) =>
             b >= 1_048_576 ? `${(b / 1_048_576).toFixed(1)}MB` : `${Math.round(b / 1024)}KB`;
-          const onProgress = (labelKey: MsgKey) => (bytes: number) => {
+          const fileBytes = { channels: 0, streams: 0 };
+          let prevTotal = 0;
+          let prevTime = 0;
+          const onProgress = (file: keyof typeof fileBytes) => (bytes: number) => {
+            fileBytes[file] = bytes;
             const now = Date.now();
-            if (now - lastProgress < 300) return;
-            lastProgress = now;
-            set({ loadStage: { key: "stage.pulling", labelKey, size: fmtBytes(bytes) } });
+            if (prevTime && now - prevTime < 300) return;
+            const total = fileBytes.channels + fileBytes.streams;
+            // 首次 tick 无基准不算速度
+            const speed = prevTime
+              ? `${fmtBytes(((total - prevTotal) / (now - prevTime)) * 1000)}/s`
+              : undefined;
+            prevTotal = total;
+            prevTime = now;
+            patch(speed ? { size: fmtBytes(total), speed } : { size: fmtBytes(total) });
           };
           const [channels, streams, categories, countries] = await Promise.all([
-            track(api.channels(undefined, onProgress("data.channels")), "data.channels"),
-            track(api.streams(undefined, onProgress("data.streams")), "data.streams"),
-            track(api.categories(), "data.categories"),
-            track(api.countries(), "data.countries"),
+            track(api.channels(undefined, onProgress("channels")), { channelsReady: true }),
+            track(api.streams(undefined, onProgress("streams")), { streamsReady: true }),
+            track(api.categories()),
+            track(api.countries()),
           ]);
-          set({ loadStage: { key: "stage.merging" } });
+          patch({ merging: true });
           const idx = buildChannelIndex(channels, streams);
           const countryInfo = buildCountryInfo(countries, idx);
           const cats = categories
@@ -354,14 +379,14 @@ export const useStore = create<State>()(
             countries: countryInfo,
             loaded: true,
             loading: false,
-            loadStage: null,
+            loadProgress: null,
             // 加载完成后据实测速度判定网络画像（< 500KB/s → slow）
             networkProfile: resolveNetworkProfile(),
           });
         } catch (e) {
           set({
             loading: false,
-            loadStage: null,
+            loadProgress: null,
             // 存文案 key 而非翻译后字符串：错误屏期间切语言也能正确展示
             error: e instanceof ApiError ? e.info : { key: "api.loadFailed" },
           });
@@ -402,7 +427,11 @@ export const useStore = create<State>()(
         })),
       pushHistory: (id) =>
         set((s) => ({
-          history: [{ id, at: Date.now() }, ...s.history].slice(0, HISTORY_LIMIT),
+          // 去重：同频道旧条目移除，新条目置顶（时间刷新为最新）
+          history: [{ id, at: Date.now() }, ...s.history.filter((h) => h.id !== id)].slice(
+            0,
+            HISTORY_LIMIT
+          ),
         })),
       clearHistory: () => set({ history: [] }),
       pushRecentCategory: (id) =>

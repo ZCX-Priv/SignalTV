@@ -222,21 +222,14 @@ export const dict: Dict = {
   "loader.logChannels": "Kanaltabelle wird geladen",
   "loader.logStreams": "Streamtabelle wird geladen",
   "loader.logSync": "Sendegitter wird synchronisiert",
+  "loader.size": "Heruntergeladen {size}",
+  "loader.speed": "Geschwindigkeit {speed}",
   "loader.failTitle1": "Uplink ",
   "loader.failTitle2": "fehlgeschlagen",
   "loader.retryConnection": "Verbindung wiederholen",
 
   // ── Ladephasen ──
-  "stage.connecting": "Verbindung zu Signalquellen…",
-  "stage.ready": "{label} bereit ({done}/4)",
-  "stage.pulling": "{label} wird geladen · {size}",
   "stage.merging": "Signaltabellen werden zusammengeführt…",
-
-  // ── Datensatznamen ──
-  "data.channels": "Kanaltabelle",
-  "data.streams": "Streamtabelle",
-  "data.categories": "Kategorietabelle",
-  "data.countries": "Ländertabelle",
 
   // ── ErrorBoundary ──
   "errb.title1": "Signal ",

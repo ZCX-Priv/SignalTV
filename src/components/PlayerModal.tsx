@@ -7,6 +7,7 @@ import {
   Tv2,
   ExternalLink,
   Lock,
+  RotateCcw,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useChannel } from "../hooks/useChannels";
@@ -21,7 +22,11 @@ export function PlayerModal() {
   const { t } = useI18n();
   const activeId = useStore((s) => s.activeChannelId);
   const openChannel = useStore((s) => s.openChannel);
-  const channel = useChannel(activeId);
+  // 退出动画：关闭时 activeId 先变 null，displayId 保留频道继续渲染并加 is-closing 类，
+  // fade-out/scale-out 播完（onAnimationEnd）后才真正卸载
+  const [displayId, setDisplayId] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
+  const channel = useChannel(displayId);
   const favorites = useStore((s) => s.favorites);
   const toggleFavorite = useStore((s) => s.toggleFavorite);
   const channels = useStore((s) => s.channels);
@@ -37,6 +42,26 @@ export function PlayerModal() {
     setStreamIdx(0);
     setRetryToken(0);
   }, [activeId]);
+
+  // activeId → displayId/closing 同步：打开/切频道直接替换；关闭时进入退出动画阶段
+  useEffect(() => {
+    if (activeId) {
+      setDisplayId(activeId);
+      setClosing(false);
+    } else if (displayId) {
+      setClosing(true);
+    }
+  }, [activeId, displayId]);
+
+  // 关闭动画兜底：animationend 丢失（如标签页后台）时 400ms 后强制卸载
+  useEffect(() => {
+    if (!closing) return;
+    const id = window.setTimeout(() => {
+      setDisplayId(null);
+      setClosing(false);
+    }, 400);
+    return () => clearTimeout(id);
+  }, [closing]);
 
   // TvPlayer 播放失败 → 切到下一路流；返回是否还有备用流可切
   const handleStreamError = useCallback(() => {
@@ -104,12 +129,24 @@ export function PlayerModal() {
       .slice(0, 6);
   }, [channels, channelId, primaryCat]);
 
-  if (!activeId || !channel) return null;
+  if (!displayId || !channel) return null;
 
   const isFav = favorites.includes(channel.id);
 
   return (
-    <div className="player" role="dialog" aria-modal="true" aria-label={t("player.dialogAria", { name: channel.name })}>
+    <div
+      className={`player ${closing ? "is-closing" : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("player.dialogAria", { name: channel.name })}
+      onAnimationEnd={(e) => {
+        // 只认根节点自身的 fade-out（panel 的 scale-out 会冒泡上来，需过滤）
+        if (closing && e.target === e.currentTarget) {
+          setDisplayId(null);
+          setClosing(false);
+        }
+      }}
+    >
       <div className="player__backdrop" />
       <div
         className="player__panel"
@@ -139,9 +176,19 @@ export function PlayerModal() {
               </>
             )}
           </div>
-          <button className="player__close" onClick={() => openChannel(null)} aria-label={t("player.closeAria")}>
-            <X size={18} />
-          </button>
+          <div className="player__head-actions">
+            <button
+              className="player__close"
+              onClick={handleRetry}
+              aria-label={t("common.retry")}
+              title={t("common.retry")}
+            >
+              <RotateCcw size={16} />
+            </button>
+            <button className="player__close" onClick={() => openChannel(null)} aria-label={t("player.closeAria")}>
+              <X size={18} />
+            </button>
+          </div>
         </header>
 
         <div className="player__stage" ref={stageRef}>
@@ -151,7 +198,6 @@ export function PlayerModal() {
             onLatencyChange={setLatency}
             onStateChange={setPlayerState}
             onStreamError={handleStreamError}
-            onRetry={handleRetry}
             streamTried={Math.min(streamIdx + 1, streamUrls.length)}
             streamTotal={streamUrls.length}
           />

@@ -255,21 +255,14 @@ export const dict: Dict = {
   "loader.logChannels": "Получение таблицы каналов",
   "loader.logStreams": "Получение таблицы потоков",
   "loader.logSync": "Синхронизация эфирной сетки",
+  "loader.size": "Загружено {size}",
+  "loader.speed": "Скорость {speed}",
   "loader.failTitle1": "Аплинк ",
   "loader.failTitle2": "не удался",
   "loader.retryConnection": "Повторить подключение",
 
   // ── Этапы загрузки ──
-  "stage.connecting": "Подключение к источникам сигнала…",
-  "stage.ready": "{label}: готово ({done}/4)",
-  "stage.pulling": "Загрузка: {label} · {size}",
   "stage.merging": "Объединение таблиц сигналов…",
-
-  // ── Названия наборов данных ──
-  "data.channels": "таблица каналов",
-  "data.streams": "таблица потоков",
-  "data.categories": "таблица категорий",
-  "data.countries": "таблица стран",
 
   // ── ErrorBoundary ──
   "errb.title1": "Сигнал ",

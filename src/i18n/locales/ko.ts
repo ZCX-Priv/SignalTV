@@ -217,21 +217,14 @@ export const dict: Dict = {
   "loader.logChannels": "채널 테이블 가져오는 중",
   "loader.logStreams": "스트림 테이블 가져오는 중",
   "loader.logSync": "방송 그리드 동기화 중",
+  "loader.size": "다운로드됨 {size}",
+  "loader.speed": "속도 {speed}",
   "loader.failTitle1": "업링크 ",
   "loader.failTitle2": "실패",
   "loader.retryConnection": "다시 연결",
 
   // ── 로딩 단계 ──
-  "stage.connecting": "신호원에 연결 중…",
-  "stage.ready": "{label} 준비 완료 ({done}/4)",
-  "stage.pulling": "{label} 가져오는 중 · {size}",
   "stage.merging": "신호 테이블 병합 중…",
-
-  // ── 데이터셋 이름 ──
-  "data.channels": "채널 테이블",
-  "data.streams": "스트림 테이블",
-  "data.categories": "카테고리 테이블",
-  "data.countries": "국가 테이블",
 
   // ── ErrorBoundary ──
   "errb.title1": "신호 ",

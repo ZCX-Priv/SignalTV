@@ -222,21 +222,14 @@ export const dict: Dict = {
   "loader.logChannels": "Récupération de la table des chaînes",
   "loader.logStreams": "Récupération de la table des flux",
   "loader.logSync": "Synchronisation de la grille de diffusion",
+  "loader.size": "Téléchargé {size}",
+  "loader.speed": "Débit {speed}",
   "loader.failTitle1": "Liaison montante ",
   "loader.failTitle2": "échouée",
   "loader.retryConnection": "Retenter la connexion",
 
   // ── Étapes de chargement ──
-  "stage.connecting": "Connexion aux sources de signal…",
-  "stage.ready": "{label} prête ({done}/4)",
-  "stage.pulling": "Récupération : {label} · {size}",
   "stage.merging": "Fusion des tables de signaux…",
-
-  // ── Noms des jeux de données ──
-  "data.channels": "table des chaînes",
-  "data.streams": "table des flux",
-  "data.categories": "table des catégories",
-  "data.countries": "table des pays",
 
   // ── ErrorBoundary ──
   "errb.title1": "Signal ",

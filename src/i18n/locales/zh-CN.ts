@@ -229,21 +229,14 @@ export const dict = {
   "loader.logChannels": "正在拉取频道表",
   "loader.logStreams": "正在拉取信号流",
   "loader.logSync": "正在同步广播网格",
+  "loader.size": "已下载 {size}",
+  "loader.speed": "速率 {speed}",
   "loader.failTitle1": "上行链路",
   "loader.failTitle2": "失败",
   "loader.retryConnection": "重试连接",
 
-  // ── 加载阶段（store.init 写入 key，Loader 渲染时翻译） ──
-  "stage.connecting": "正在连接信号源…",
-  "stage.ready": "{label}已就绪 ({done}/4)",
-  "stage.pulling": "正在拉取{label} · {size}",
+  // ── 加载阶段（store.init 写入，Loader 渲染时翻译） ──
   "stage.merging": "正在合并信号表…",
-
-  // ── 数据集名称（加载阶段插值用） ──
-  "data.channels": "频道表",
-  "data.streams": "信号流",
-  "data.categories": "分类表",
-  "data.countries": "国家表",
 
   // ── ErrorBoundary ──
   "errb.title1": "信号",

@@ -7,23 +7,13 @@ import {
   isHLSProvider,
 } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
-import { Loader2, AlertTriangle, Play, RotateCcw } from "lucide-react";
+import { Loader2, AlertTriangle, Play } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { getVidstackTranslations, useI18n } from "../i18n";
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
 
 type PlayerState = "idle" | "loading" | "ready" | "paused" | "error";
-
-/** 当前页面为 https 且流为 http → 被浏览器混合内容策略拦截，需明确提示用户 */
-function isBlockedMixedContent(url: string | null): boolean {
-  return (
-    !!url &&
-    typeof window !== "undefined" &&
-    window.location.protocol === "https:" &&
-    url.startsWith("http://")
-  );
-}
 
 interface TvPlayerProps {
   url: string | null;
@@ -35,8 +25,6 @@ interface TvPlayerProps {
    * （url 即将变化，保持 loading），返回 false 表示已无备用流 → 显示错误。
    */
   onStreamError?: () => boolean;
-  /** 错误面板"重试"按钮：从第一路流重新开始 */
-  onRetry?: () => void;
   /** 已尝试的流数（含当前），用于错误面板展示 */
   streamTried?: number;
   /** 该频道的流总数 */
@@ -49,7 +37,6 @@ export function TvPlayer({
   onMessageChange,
   onLatencyChange,
   onStreamError,
-  onRetry,
   streamTried,
   streamTotal,
 }: TvPlayerProps) {
@@ -287,25 +274,10 @@ export function TvPlayer({
         <div className="player__overlay player__overlay--error">
           <AlertTriangle size={28} />
           <h3 className="display">{t("tv.signalLost")}</h3>
-          <p>
-            {isBlockedMixedContent(url)
-              ? t("tv.mixedContent")
-              : message ?? t("tv.unavailable")}
-          </p>
           {streamTried !== undefined && streamTotal !== undefined && streamTotal > 1 && (
             <p className="mono player__error-note">
               {t("tv.triedStreams", { tried: streamTried, total: streamTotal })}
             </p>
-          )}
-          {onRetry && (
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={onRetry}
-              style={{ marginTop: 10 }}
-            >
-              <RotateCcw size={13} /> {t("common.retry")}
-            </button>
           )}
           <p className="player__error-note mono">
             {t("tv.regionHint")}

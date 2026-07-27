@@ -4,16 +4,12 @@ import { useI18n } from "../i18n";
 
 export function Loader() {
   const { t } = useI18n();
-  // 真实加载阶段（init 更新，存文案 key）：弱网下让用户看到实际进度
-  //（含已下载字节数），而非静态文案死等；渲染时翻译，中途切语言也正确
-  const loadStage = useStore((s) => s.loadStage);
-  const stageText = loadStage
-    ? t(loadStage.key, {
-        label: loadStage.labelKey ? t(loadStage.labelKey) : "",
-        done: loadStage.done ?? 0,
-        size: loadStage.size ?? "",
-      })
-    : t("loader.logSync");
+  // 固定五行进度（init 原地更新，不滚动）：
+  // 第2、3行以 done 为 key，每完成一个请求重挂载一次 →
+  // 入场动画（delay + both）重播，呈现"先清空后重显"；
+  // 第4、5行位置固定，合计大小/速率纯文本原地刷新
+  const progress = useStore((s) => s.loadProgress);
+  const cursor = <span className="loader__cursor">_</span>;
   return (
     <div className="loader">
       <div className="loader__inner">
@@ -33,10 +29,35 @@ export function Loader() {
         </div>
 
         <div className="loader__log mono">
-          <p>{`> ${t("loader.logConnect")}`}</p>
-          <p>{`> ${t("loader.logChannels")}`}</p>
-          <p>{`> ${t("loader.logStreams")}`}</p>
-          <p>{`> ${stageText}`}<span className="loader__cursor">_</span></p>
+          {progress ? (
+            <>
+              <p>{`> ${t("loader.logConnect")}`}</p>
+              <p key={`ch-${progress.done}`}>
+                {`> ${t("loader.logChannels")}`}
+                {progress.channelsReady && <span className="loader__ok"> [OK]</span>}
+              </p>
+              <p key={`st-${progress.done}`}>
+                {`> ${t("loader.logStreams")}`}
+                {progress.streamsReady && <span className="loader__ok"> [OK]</span>}
+              </p>
+              <p>{`> ${t("loader.size", { size: progress.size ?? "0KB" })}`}</p>
+              <p>
+                {`> ${t("loader.speed", { speed: progress.speed ?? "--" })}`}
+                {!progress.merging && cursor}
+              </p>
+              {progress.merging && (
+                <p>
+                  {`> ${t("stage.merging")}`}
+                  {cursor}
+                </p>
+              )}
+            </>
+          ) : (
+            <p>
+              {`> ${t("loader.logSync")}`}
+              {cursor}
+            </p>
+          )}
         </div>
       </div>
 

@@ -217,21 +217,14 @@ export const dict: Dict = {
   "loader.logChannels": "チャンネルテーブルを取得中",
   "loader.logStreams": "ストリームテーブルを取得中",
   "loader.logSync": "放送グリッドを同期中",
+  "loader.size": "ダウンロード済み {size}",
+  "loader.speed": "速度 {speed}",
   "loader.failTitle1": "アップリンク",
   "loader.failTitle2": "失敗",
   "loader.retryConnection": "接続を再試行",
 
   // ── 読み込みステージ ──
-  "stage.connecting": "信号源に接続中…",
-  "stage.ready": "{label}の準備完了 ({done}/4)",
-  "stage.pulling": "{label}を取得中 · {size}",
   "stage.merging": "信号テーブルを結合中…",
-
-  // ── データセット名 ──
-  "data.channels": "チャンネルテーブル",
-  "data.streams": "ストリームテーブル",
-  "data.categories": "カテゴリーテーブル",
-  "data.countries": "国テーブル",
 
   // ── ErrorBoundary ──
   "errb.title1": "信号",

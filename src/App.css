@@ -1352,6 +1352,15 @@
   padding: 30px;
   animation: fade-in var(--dur-overlay) var(--ease);
 }
+/* 关闭阶段：整体淡出 + 面板轻微缩小，动画结束后由 PlayerModal 卸载；
+   减弱动态效果下经全局 0.01ms 规则自动瞬时完成（纯装饰动效，不属豁免范围） */
+.player.is-closing {
+  animation: fade-out var(--dur-overlay) var(--ease) both;
+  pointer-events: none;
+}
+.player.is-closing .player__panel {
+  animation: scale-out var(--dur-overlay) var(--ease) both;
+}
 .player__backdrop {
   position: absolute;
   inset: 0;
@@ -1430,6 +1439,13 @@
 .player__ping--warn { color: var(--amber); border-color: rgba(255, 182, 39, 0.3); }
 .player__ping--bad { color: var(--signaltv); border-color: rgba(255, 59, 48, 0.3); }
 .player__ping--unknown { color: var(--ink-mute); }
+/* 标题栏右侧按钮组：重试 + 关闭 */
+.player__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
 .player__close {
   display: grid;
   place-items: center;
@@ -1483,7 +1499,8 @@
 .picker__panel {
   position: relative;
   width: min(560px, 100%);
-  max-height: min(640px, calc(100dvh - 60px));
+  /* 固定高度：避免搜索过滤时条目增减导致面板高度抖动 */
+  height: min(640px, calc(100dvh - 60px));
   background: var(--bg-1);
   border: 1px solid var(--line-2);
   border-radius: 14px;
@@ -2033,11 +2050,15 @@
   margin: 0;
   animation: fade-in 0.4s var(--ease) both;
 }
+/* 入场错峰延迟；第2、3行以 done 为 key 重挂载时，
+   delay + both 使其先空白（清空）再淡入（重新显示） */
 .loader__log p:nth-child(1) { animation-delay: 0.2s; }
 .loader__log p:nth-child(2) { animation-delay: 0.5s; }
 .loader__log p:nth-child(3) { animation-delay: 0.8s; }
 .loader__log p:nth-child(4) { animation-delay: 1.1s; }
 .loader__log p:nth-child(5) { animation-delay: 1.4s; }
+/* 数据集就绪标记 */
+.loader__ok { color: var(--lime); }
 .loader__cursor {
   animation: blink 1s steps(2) infinite;
   color: var(--signaltv);
