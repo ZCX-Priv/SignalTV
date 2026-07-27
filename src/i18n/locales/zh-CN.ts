@@ -183,7 +183,7 @@ export const dict = {
   "settings.timezone": "时区",
   "settings.timezoneDesc": "选择时间显示使用的时区，默认跟随设备自动检测。",
   "settings.tzAuto": "自动检测",
-  "settings.tzAutoDesc": "跟随设备时区（当前：{name}）",
+  "settings.tzAutoDesc": "跟随设备时区",
 
   // ── 时区地图 ──
   "tz.mapAria": "世界地图时区选择",

@@ -169,7 +169,7 @@ export const dict: Dict = {
   "settings.timezone": "시간대",
   "settings.timezoneDesc": "시간 표시에 사용할 시간대를 선택합니다. 기본은 자동 감지입니다.",
   "settings.tzAuto": "자동 감지",
-  "settings.tzAutoDesc": "기기 시간대 따르기 (현재: {name})",
+  "settings.tzAutoDesc": "기기 시간대 따르기",
 
   // ── 시간대 지도 ──
   "tz.mapAria": "세계 지도 시간대 선택",

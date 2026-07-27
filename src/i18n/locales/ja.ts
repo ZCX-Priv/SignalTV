@@ -169,7 +169,7 @@ export const dict: Dict = {
   "settings.timezone": "タイムゾーン",
   "settings.timezoneDesc": "時刻表示に使用するタイムゾーンを選択します。既定では自動検出です。",
   "settings.tzAuto": "自動検出",
-  "settings.tzAutoDesc": "デバイスのタイムゾーンに従う（現在：{name}）",
+  "settings.tzAutoDesc": "デバイスのタイムゾーンに従う",
 
   // ── タイムゾーンマップ ──
   "tz.mapAria": "世界地図タイムゾーン選択",

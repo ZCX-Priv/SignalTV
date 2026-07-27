@@ -1,10 +1,12 @@
 // PWA 版本更新管理器 —— 统一接管 Service Worker 注册与更新流程。
 //
 // 三种更新方式（用户偏好持久化在 useStore.updateMode）：
-// - auto：静默安装 + 下次生效。发现新版本后不打扰当前会话，
-//   在页面隐藏/离开（pagehide）瞬间向 waiting SW 发 SKIP_WAITING，
-//   下次打开/刷新即进入新版本。避免 mid-session 激活清掉旧 precache
-//   导致运行中页面懒加载 chunk（如语言包）失败。
+// - auto：后台静默增量下载（断点续传由 Workbox 预缓存天然提供：
+//   install 逐文件先 cacheMatch，已缓存的跳过；中断后重试只补缺失文件），
+//   会话内不打扰；下次进入页面时由 activateWaitingBeforeBoot 在 React
+//   挂载前无感激活并重载，用户看到的是一次正常加载。
+//   （历史教训：曾在 pagehide 瞬间发 SKIP_WAITING，新 SW 激活与刷新导航
+//   并发，旧 SW 返回的旧 HTML 引用的资源已被清理 → 黑屏）
 // - manual：弹交互式 toast（更新/忽略/X），点「更新」走模拟进度条 →
 //   10s 倒计时 → SKIP_WAITING + reload；点「忽略」把版本号写入 IDB
 //   永久跳过该版本；点 X 仅本会话静默，下次进入页面再提示。
@@ -34,6 +36,14 @@ const RELOAD_COUNTDOWN_S = 10;
 const RELOAD_FALLBACK_MS = 3000;
 // 等待 zustand persist rehydrate 的兜底超时（IDB 异常时不至于永久卡住）
 const HYDRATION_TIMEOUT_MS = 3000;
+// 启动期无感激活：等待 controllerchange 的超时（超时则本次继续用旧版）
+const BOOT_ACTIVATE_TIMEOUT_MS = 2000;
+// 启动期自动重载的防循环护栏 key（sessionStorage）
+const RELOAD_GUARD_KEY = "signaltv-update-reloading";
+// 网络恢复（online 事件）后的最小补查间隔：1 分钟
+const ONLINE_CHECK_GAP_MS = 60 * 1000;
+// SW 安装失败（如下载中断）后的单次重试延迟：60s
+const INSTALL_RETRY_DELAY_MS = 60 * 1000;
 
 // ── 模块级状态 ──
 let registration: ServiceWorkerRegistration | null = null;
@@ -45,7 +55,7 @@ let toastId: string | null = null; // 更新 toast 的 id（null = 未展示）
 let dismissedThisSession = false; // 用户点 X：本会话不再弹同版本
 let downloading = false; // 已点「更新」，进度/倒计时流程中（防重入）
 let reloading = false; // 已触发 applyAndReload（防重入）
-let pagehideArmed = false; // auto 模式的 pagehide 激活监听已挂
+let retryScheduled = false; // 安装失败后的单次重试已排期
 let lastCheckAt = 0;
 let progressTimer: ReturnType<typeof setInterval> | null = null;
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
@@ -100,24 +110,76 @@ function waitForHydration(): Promise<void> {
   });
 }
 
-// ── auto 模式：pagehide 静默激活 ──
+// ── auto 模式：启动期无感激活（渲染前完成，用户只看到一次正常加载） ──
 
-function sendSkipWaiting(): void {
-  registration?.waiting?.postMessage({ type: "SKIP_WAITING" });
+// 渲染前读取持久化的 updateMode（此时 persist 尚未 rehydrate，
+// 不能读 store 默认值；与 useStore 的 getInitial* 同模式的原始解析）
+async function getBootUpdateMode(): Promise<UpdateMode> {
+  try {
+    const raw = await idbGet("signaltv-iptv");
+    if (raw) {
+      const parsed = JSON.parse(raw) as {
+        state?: { updateMode?: UpdateMode };
+      };
+      const m = parsed.state?.updateMode;
+      if (m === "manual" || m === "off") return m;
+    }
+  } catch {
+    // 解析失败按默认 auto 处理
+  }
+  return "auto";
 }
 
-function armPagehideActivation(): void {
-  if (pagehideArmed) return;
-  pagehideArmed = true;
-  window.addEventListener("pagehide", sendSkipWaiting);
-  // 页面本就处于后台（如后台 tab 里周期检查发现更新）→ 立即激活
-  if (document.visibilityState === "hidden") sendSkipWaiting();
-}
-
-function disarmPagehideActivation(): void {
-  if (!pagehideArmed) return;
-  pagehideArmed = false;
-  window.removeEventListener("pagehide", sendSkipWaiting);
+/**
+ * 启动期无感激活：main.tsx bootstrap 在 React 挂载前 await。
+ * auto 模式且存在上个会话装好的 waiting SW 时，发 SKIP_WAITING 并在
+ * controllerchange（新 SW 确认接管）后整页重载 —— 此时页面仅有
+ * index.html 主题底色，重载表现为一次正常加载，无旧版闪现/黑屏
+ *（reload 严格发生在新 SW 接管之后，顺序确定，无并发窗口）。
+ * 激活成功时返回的 Promise 永不 resolve，阻止后续 bootstrap 挂载旧版。
+ */
+export async function activateWaitingBeforeBoot(): Promise<void> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+  // 防循环护栏：上一次加载刚完成自动激活重载 → 本次直接正常启动
+  try {
+    if (sessionStorage.getItem(RELOAD_GUARD_KEY)) {
+      sessionStorage.removeItem(RELOAD_GUARD_KEY);
+      return;
+    }
+  } catch {
+    // sessionStorage 不可用（隐私模式）→ 无护栏则不做启动期激活，避免重载循环
+    return;
+  }
+  let reg: ServiceWorkerRegistration | undefined;
+  try {
+    reg = await navigator.serviceWorker.getRegistration();
+  } catch {
+    return;
+  }
+  const waiting = reg?.waiting;
+  if (!waiting) return;
+  if ((await getBootUpdateMode()) !== "auto") return;
+  await new Promise<void>((resolve) => {
+    const onChange = () => {
+      clearTimeout(timeout);
+      try {
+        sessionStorage.setItem(RELOAD_GUARD_KEY, "1");
+      } catch {
+        // 护栏写入失败也照常重载（前面已确认 sessionStorage 可读）
+      }
+      window.location.reload();
+      // 故意不 resolve：页面即将卸载，阻止 bootstrap 继续挂载旧版
+    };
+    const timeout = setTimeout(() => {
+      // 激活超时 → 本次继续用旧版渲染，下次进入再试
+      navigator.serviceWorker.removeEventListener("controllerchange", onChange);
+      resolve();
+    }, BOOT_ACTIVATE_TIMEOUT_MS);
+    navigator.serviceWorker.addEventListener("controllerchange", onChange, {
+      once: true,
+    });
+    waiting.postMessage({ type: "SKIP_WAITING" });
+  });
 }
 
 // ── manual 模式：更新 toast 流程 ──
@@ -228,6 +290,7 @@ function applyAndReload(): void {
     once: true,
   });
   waiting.postMessage({ type: "SKIP_WAITING" });
+  // 逃生舱：正常路径 controllerchange 先到，不会触发此兜底
   setTimeout(reload, RELOAD_FALLBACK_MS);
 }
 
@@ -283,17 +346,16 @@ async function handleNewVersion(): Promise<void> {
 function applyMode(mode: UpdateMode): void {
   if (reloading || !updateAvailable) return;
   if (mode === "off") {
-    disarmPagehideActivation();
     dismissToast();
     return;
   }
   if (mode === "auto") {
+    // 会话中途发现的新版本静默保持 waiting，不打扰当前观看；
+    // 下次进入页面时由 activateWaitingBeforeBoot 在渲染前无感激活
     dismissToast();
-    armPagehideActivation();
     return;
   }
   // manual
-  disarmPagehideActivation();
   void dispatchManual();
 }
 
@@ -332,13 +394,32 @@ export function initUpdater(): void {
           void maybeCheck(VISIBLE_CHECK_GAP_MS);
         }
       });
+      // 网络恢复即补查：上次中断的下载在新一轮 install 中增量续传
+      //（Workbox 预缓存逐文件先 cacheMatch，已下载的不会重下）
+      window.addEventListener("online", () => {
+        void maybeCheck(ONLINE_CHECK_GAP_MS);
+      });
+      // 安装失败（如下载中断，installing → redundant）→ 60s 后单次重试；
+      // 重试再失败则等 online 事件或 60 分钟周期，避免离线时空转轮询
+      r.addEventListener("updatefound", () => {
+        const installing = r.installing;
+        if (!installing) return;
+        installing.addEventListener("statechange", () => {
+          if (installing.state !== "redundant" || retryScheduled) return;
+          retryScheduled = true;
+          setTimeout(() => {
+            retryScheduled = false;
+            void maybeCheck(0);
+          }, INSTALL_RETRY_DELAY_MS);
+        });
+      });
     },
     onNeedRefresh() {
       void handleNewVersion();
     },
   });
 
-  // 模式切换联动：off 清理提示、auto 转静默激活、manual 立即评估是否弹 toast
+  // 模式切换联动：off/auto 清理提示转静默、manual 立即评估是否弹 toast
   useStore.subscribe((s, prev) => {
     if (s.updateMode === prev.updateMode) return;
     // 用户显式切换视为新意图：清除「本会话已关闭」标记，

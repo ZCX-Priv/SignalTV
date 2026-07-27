@@ -9,7 +9,8 @@ export function Loader() {
   // 第2、3行下载中显示 [n%]，完成时原地换 [OK]；
   // 第4、5行合计大小/速率纯文本原地刷新；
   // 合并阶段经 JS 门控：必须等五行错峰入场全部完成后，
-  // 才清掉大小/速率两行并打印"合并信号表"行
+  // 才清掉大小/速率两行并打印"合并信号表"行；
+  // 合并完成后合并行原地追加 [OK]，store 侧等 1s 后进主页
   const progress = useStore((s) => s.loadProgress);
   // 进度日志分支（五行）首次挂载时间，错峰延迟以此为起点
   const logMountAt = useRef<number | null>(null);
@@ -79,7 +80,7 @@ export function Loader() {
                 // （不加延迟类，挂载即淡入）
                 <p>
                   {`> ${t("stage.merging")}`}
-                  {cursor}
+                  {progress.mergeOk ? <span className="loader__ok"> [OK]</span> : cursor}
                 </p>
               ) : (
                 <>

@@ -247,6 +247,9 @@ const HISTORY_LIMIT = 200;
 // fade-in 时长同步（Loader 合并行门控与 init 停留时长计算共用）
 export const LOG_STAGGER_END_MS = 1800;
 
+// 合并行打 [OK] 前至少显示光标的时长，避免行与 [OK] 同帧出现
+const MERGE_MIN_VISIBLE_MS = 600;
+
 // 首屏加载进度（固定五行 Loader 用）：所有字段均原地刷新，不重挂载
 export interface LoadProgress {
   /** 频道表已就绪 → 第2行 [OK] */
@@ -263,6 +266,8 @@ export interface LoadProgress {
   speed?: string;
   /** 合并阶段：光标移到"正在合并信号表"行 */
   merging?: boolean;
+  /** 合并完成 → 合并行原地追加 [OK]，1s 后进主页 */
+  mergeOk?: boolean;
 }
 
 interface State {
@@ -407,31 +412,42 @@ export const useStore = create<State>()(
               streamsPct: filePct.streams,
             });
           };
-          const [channels, streams, categories, countries] = await Promise.all([
+          // 两大文件就绪即进入合并阶段，不等 categories/countries 小文件
+          // （SW 缓存过期时小文件可能走慢网络，避免卡在大小/速率行）；
+          // 同时补一次最终大小与全程均值速率（缓存场景下载在 300ms
+          // 节流窗口内结束，末次 tick 被吞、速率恒为 "--"，以均值兜底）
+          let mergingAt = 0;
+          const filesDone = Promise.all([
             track(api.channels(undefined, onProgress("channels")), { channelsReady: true }),
             track(api.streams(undefined, onProgress("streams")), { streamsReady: true }),
+          ]).then((r) => {
+            mergingAt = Date.now();
+            const doneBytes = fileBytes.channels + fileBytes.streams;
+            patch({
+              merging: true,
+              size: fmtBytes(doneBytes),
+              speed: `${fmtBytes((doneBytes / Math.max(1, mergingAt - startAt)) * 1000)}/s`,
+            });
+            return r;
+          });
+          const [[channels, streams], categories, countries] = await Promise.all([
+            filesDone,
             api.categories(),
             api.countries(),
           ]);
-          // 下载完成：补一次最终大小与全程均值速率（缓存场景下载在 300ms
-          // 节流窗口内结束，末次 tick 被吞、速率恒为 "--"，以均值兕底）
-          const mergingAt = Date.now();
-          const doneBytes = fileBytes.channels + fileBytes.streams;
-          patch({
-            merging: true,
-            size: fmtBytes(doneBytes),
-            speed: `${fmtBytes((doneBytes / Math.max(1, mergingAt - startAt)) * 1000)}/s`,
-          });
           const idx = buildChannelIndex(channels, streams);
           const countryInfo = buildCountryInfo(countries, idx);
           const cats = categories
             .filter((c) => c.id !== "xxx")
             .sort((a, b) => a.name.localeCompare(b.name));
           // 合并行实际显示时刻与 Loader 门控一致（须等错峰入场完成），
-          // 进主页前保证合并行至少可见 1s（缓存命中时也能播完整序列）
+          // 先闪 MERGE_MIN_VISIBLE_MS 光标再打 [OK]
           const mergeShownAt = Math.max(mergingAt, startAt + LOG_STAGGER_END_MS);
-          const wait = mergeShownAt + 1000 - Date.now();
-          if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+          const okWait = mergeShownAt + MERGE_MIN_VISIBLE_MS - Date.now();
+          if (okWait > 0) await new Promise((r) => setTimeout(r, okWait));
+          patch({ mergeOk: true });
+          // 全流程唯一停留：合并行 [OK] 后 1s 进主页
+          await new Promise((r) => setTimeout(r, 1000));
           set({
             channels: idx,
             categories: cats,

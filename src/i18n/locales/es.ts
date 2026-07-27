@@ -174,7 +174,7 @@ export const dict: Dict = {
   "settings.timezone": "Zona horaria",
   "settings.timezoneDesc": "Elige la zona horaria para mostrar la hora, detectada automáticamente por defecto.",
   "settings.tzAuto": "Detección automática",
-  "settings.tzAutoDesc": "Seguir la zona horaria del dispositivo (actual: {name})",
+  "settings.tzAutoDesc": "Seguir la zona horaria del dispositivo",
 
   // ── Mapa de zonas horarias ──
   "tz.mapAria": "Selector de zona horaria en mapa mundial",

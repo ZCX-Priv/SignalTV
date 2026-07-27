@@ -172,7 +172,7 @@ export const dict: Dict = {
   "settings.timezone": "Time zone",
   "settings.timezoneDesc": "Choose the time zone used for time display, auto-detected by default.",
   "settings.tzAuto": "Auto detect",
-  "settings.tzAutoDesc": "Follow device time zone (current: {name})",
+  "settings.tzAutoDesc": "Follow device time zone",
 
   // ── Time zone map ──
   "tz.mapAria": "World map time zone picker",

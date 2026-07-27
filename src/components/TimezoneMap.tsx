@@ -6,6 +6,8 @@ import {
   formatOffsetLabel,
   ianaToOffsetMinutes,
   offsetMinutesLabel,
+  representativeIana,
+  translateIana,
 } from "../lib/timezone";
 import { toast } from "../lib/toast";
 import { useI18n } from "../i18n";
@@ -91,7 +93,7 @@ const LAND_PATH = LAND.map(
  * 键盘可达（radio 语义，Enter/Space 选择）。
  */
 export function TimezoneMap() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const timezonePref = useStore((s) => s.timezonePref);
   const setTimezonePref = useStore((s) => s.setTimezonePref);
 
@@ -115,14 +117,17 @@ export function TimezoneMap() {
   const select = (offset: number) => {
     if (timezonePref === offset) return; // 重复点击已选带不重复弹 toast
     setTimezonePref(offset);
-    toast.success(t("toast.tzSwitched", { name: formatOffsetLabel(offset) }));
+    toast.success(
+      t("toast.tzSwitched", { name: formatOffsetLabel(offset, locale) }),
+    );
   };
 
-  // 状态行：手动 → UTC+8；auto → 检测到的 IANA 名 + 等效偏移
+  // 状态行：手动 → 代表城市 + 偏移名（亚洲/上海 (东八区)）；
+  // auto → 检测时区的 IANA 名对应语言翻译（亚洲/上海）+ 等效偏移
   const statusLabel =
     timezonePref === "auto"
-      ? `${detected}${detectedMins !== null ? ` (${offsetMinutesLabel(detectedMins)})` : ""}`
-      : formatOffsetLabel(timezonePref);
+      ? `${translateIana(detected, locale)}${detectedMins !== null ? ` (${offsetMinutesLabel(detectedMins, locale)})` : ""}`
+      : `${translateIana(representativeIana(timezonePref), locale)} (${formatOffsetLabel(timezonePref, locale)})`;
 
   return (
     <div className="tzmap">
@@ -137,7 +142,7 @@ export function TimezoneMap() {
         {OFFSETS.map((n) => {
           const x = (n + 11) * BAND_W;
           const active = n === activeOffset;
-          const label = formatOffsetLabel(n);
+          const label = formatOffsetLabel(n, locale);
           return (
             <g key={n}>
               <rect

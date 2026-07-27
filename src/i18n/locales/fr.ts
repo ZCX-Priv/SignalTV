@@ -174,7 +174,7 @@ export const dict: Dict = {
   "settings.timezone": "Fuseau horaire",
   "settings.timezoneDesc": "Choisissez le fuseau horaire pour l'affichage de l'heure, détecté automatiquement par défaut.",
   "settings.tzAuto": "Détection automatique",
-  "settings.tzAutoDesc": "Suivre le fuseau de l'appareil (actuel : {name})",
+  "settings.tzAutoDesc": "Suivre le fuseau de l'appareil",
 
   // ── Carte des fuseaux horaires ──
   "tz.mapAria": "Sélecteur de fuseau horaire sur carte du monde",

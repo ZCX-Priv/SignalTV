@@ -12,7 +12,7 @@ import {
 } from "./store/useStore";
 import { migrateFromLocalStorage } from "./lib/idb";
 import { initSeo } from "./lib/seo";
-import { initUpdater } from "./lib/updater";
+import { activateWaitingBeforeBoot, initUpdater } from "./lib/updater";
 import { syncActiveTimeZone } from "./lib/timezone";
 import { applyLocaleSideEffects, loadLocale, resolveLocale } from "./i18n";
 
@@ -57,6 +57,10 @@ function initFrauncesItalic() {
 }
 
 async function bootstrap() {
+  // auto 更新且存在上个会话装好的 waiting SW → 在 React 挂载前无感激活
+  // 并重载进入新版本（此时仅有主题底色，重载表现为一次正常加载）；
+  // 无 waiting/非 auto 模式时立即返回，不影响首屏速度
+  await activateWaitingBeforeBoot();
   // 尽早启动 Fraunces italic 字体加载监听，与后续初始化并行，不阻塞渲染
   initFrauncesItalic();
   const [, theme, languagePref, timezonePref] = await Promise.all([

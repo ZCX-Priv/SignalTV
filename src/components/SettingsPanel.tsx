@@ -14,7 +14,6 @@ import {
 import { useStore } from "../store/useStore";
 import type { ThemeMode, UpdateMode } from "../store/useStore";
 import { toast } from "../lib/toast";
-import { detectTimeZone } from "../lib/timezone";
 import { TimezoneMap } from "./TimezoneMap";
 import {
   NATIVE_LOCALE_NAMES,
@@ -225,7 +224,7 @@ export function SettingsPanel() {
             <span className="settings__option-text">
               <span className="settings__option-name">{t("settings.tzAuto")}</span>
               <span className="settings__option-desc">
-                {t("settings.tzAutoDesc", { name: detectTimeZone() })}
+                {t("settings.tzAutoDesc")}
               </span>
             </span>
             {timezonePref === "auto" && (
