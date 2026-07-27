@@ -21,12 +21,16 @@ export function FilterBar({ list }: FilterBarProps) {
   const countries = useStore((s) => s.countries);
   const view = useStore((s) => s.view);
 
-  // 当 nsfw 关闭时，sort=nsfw-first 无意义（所有 nsfw 频道已被过滤），自动回退到 default
+  // 收藏夹视图不提供成人内容开关与"成人内容优先"排序：
+  // 收藏是用户自己选的，列表也不受 nsfw 过滤影响（见 useFilteredChannels）
+  const isFavorites = view.kind === "favorites";
+
+  // 当 nsfw 关闭或处于收藏夹视图时，sort=nsfw-first 无意义，自动回退到 default
   useEffect(() => {
-    if (!filter.nsfw && filter.sort === "nsfw-first") {
+    if ((!filter.nsfw || isFavorites) && filter.sort === "nsfw-first") {
       setFilter({ sort: "default" });
     }
-  }, [filter.nsfw, filter.sort, setFilter]);
+  }, [filter.nsfw, filter.sort, isFavorites, setFilter]);
 
   const sortOptions = useMemo(
     () => [
@@ -35,11 +39,11 @@ export function FilterBar({ list }: FilterBarProps) {
       { value: "recent", label: "最近观看" },
       { value: "latency-asc", label: "延迟：低 → 高" },
       { value: "latency-desc", label: "延迟：高 → 低" },
-      ...(filter.nsfw
+      ...(filter.nsfw && !isFavorites
         ? [{ value: "nsfw-first", label: "成人内容优先" }]
         : []),
     ],
-    [filter.nsfw],
+    [filter.nsfw, isFavorites],
   );
 
   const title = (() => {
@@ -70,7 +74,7 @@ export function FilterBar({ list }: FilterBarProps) {
           <h2 className="filterbar__title display">
             {title}
             <span className="filterbar__count mono">
-              {list.length.toLocaleString("en-US")} 路信号
+              {list.length.toLocaleString("en-US")} {isFavorites ? "个收藏" : "路信号"}
             </span>
           </h2>
         </div>
@@ -130,19 +134,21 @@ export function FilterBar({ list }: FilterBarProps) {
             options={sortOptions}
           />
 
-          <button
-            className={`toggle ${filter.nsfw ? "is-on" : ""}`}
-            onClick={() => {
-              const next = !filter.nsfw;
-              setFilter({ nsfw: next });
-              if (next) toast.warning("已开启成人内容显示");
-              else toast.info("已隐藏成人内容");
-            }}
-            title="包含成人内容"
-          >
-            <ShieldAlert size={13} />
-            <span>{filter.nsfw ? "已显示成人内容" : "已隐藏成人内容"}</span>
-          </button>
+          {!isFavorites && (
+            <button
+              className={`toggle ${filter.nsfw ? "is-on" : ""}`}
+              onClick={() => {
+                const next = !filter.nsfw;
+                setFilter({ nsfw: next });
+                if (next) toast.warning("已开启成人内容显示");
+                else toast.info("已隐藏成人内容");
+              }}
+              title="包含成人内容"
+            >
+              <ShieldAlert size={13} />
+              <span>{filter.nsfw ? "已显示成人内容" : "已隐藏成人内容"}</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

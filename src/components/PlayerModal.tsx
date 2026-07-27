@@ -246,9 +246,16 @@ export function PlayerModal() {
                       onClick={() => {
                         openChannel(c.id);
                         // 移动端播放页是单列布局，相关信号在底部、视频在顶部。
-                        // 切换频道后把滚动容器平滑带回顶部，让用户立刻看到新视频加载。
+                        // 切换频道后把滚动容器带回顶部，让用户立刻看到新视频加载；
+                        // 尊重 reduced-motion：减弱动态效果时瞬时跳转而非平滑滚动。
                         // 桌面端 .player__stage 是 overflow:hidden，scrollTo 无副作用，无需特判。
-                        stageRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                        const reduceMotion = window.matchMedia(
+                          "(prefers-reduced-motion: reduce)",
+                        ).matches;
+                        stageRef.current?.scrollTo({
+                          top: 0,
+                          behavior: reduceMotion ? "auto" : "smooth",
+                        });
                       }}
                     >
                       <span className="related__logo">

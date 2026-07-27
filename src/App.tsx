@@ -8,10 +8,12 @@ import { FilterBar } from "./components/FilterBar";
 import { ChannelGrid } from "./components/ChannelGrid";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { StatusPanel } from "./components/StatusPanel";
+import { HistoryPanel } from "./components/HistoryPanel";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Loader, ErrorState } from "./components/Loader";
 import { Toaster } from "./components/Toaster";
 import { toast } from "./lib/toast";
+import { idbGet, idbSet } from "./lib/idb";
 
 // 懒加载播放器 + hls.js（约 250KB）——仅在打开频道时才需要
 const PlayerModal = lazy(() =>
@@ -42,19 +44,43 @@ function App() {
     void init();
   }, [init]);
 
-  // 首次访问欢迎提示：loaded 后检测 localStorage 标记，仅首次显示。
-  // 用独立 key "signaltv-welcomed" 与 zustand persist 解耦，读取同步无时序问题。
-  // localStorage 不可用（隐私模式）时静默失败，不阻塞渲染。
+  // 首次访问欢迎提示：loaded 后异步检查 IndexedDB 标记，仅首次显示。
+  // 统一走 IndexedDB（localStorage 仅保留给必须同步读取的主题防 FOUC 缓存）。
+  // 兼容老用户：IDB 无值时检查 localStorage 旧标记，存在则静默迁移不重复弹欢迎。
+  // IDB 不可用时静默失败，不阻塞渲染。
   useEffect(() => {
     if (!loaded) return;
-    try {
-      if (!localStorage.getItem("signaltv-welcomed")) {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const seen = await idbGet("signaltv-welcomed");
+        if (seen) return;
+        // 老用户旧标记迁移（localStorage → IDB）
+        let legacy: string | null = null;
+        try {
+          legacy = localStorage.getItem("signaltv-welcomed");
+        } catch {
+          // localStorage 不可用 → 当作无旧标记
+        }
+        if (legacy) {
+          await idbSet("signaltv-welcomed", "1");
+          try {
+            localStorage.removeItem("signaltv-welcomed");
+          } catch {
+            // 忽略清理失败
+          }
+          return;
+        }
+        if (cancelled) return;
         toast.success("欢迎来到 SignalTV");
-        localStorage.setItem("signaltv-welcomed", "1");
+        await idbSet("signaltv-welcomed", "1");
+      } catch {
+        // IndexedDB 不可用 → 静默失败
       }
-    } catch {
-      // localStorage 不可用 → 静默失败
-    }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loaded]);
 
   // 注：原 loaded 后自动触发 runLatencyProbe 的逻辑已移除。
@@ -111,7 +137,18 @@ function App() {
   const showHero = view.kind === "home";
   const isSettings = view.kind === "settings";
   const isStatus = view.kind === "status";
-  const isPanel = isSettings || isStatus;
+  const isHistory = view.kind === "history";
+  const isPanel = isSettings || isStatus || isHistory;
+
+  // 视图入场动画 key：切换视图/分类/国家时重挂载 .view-anim 重放 fade-up，
+  // 同视图内筛选/搜索变化不重放（key 不含 filter），
+  // 保证所有页面（含标题区/空态）入场节奏一致
+  const viewKey =
+    view.kind === "category"
+      ? `category:${view.id}`
+      : view.kind === "country"
+        ? `country:${view.code}`
+        : view.kind;
 
   return (
     <>
@@ -130,11 +167,19 @@ function App() {
         <main className="app__main">
           {showHero && <Hero />}
           <div className="content">
-            {isPanel ? (
-              isStatus ? <StatusPanel /> : <SettingsPanel />
-            ) : (
-              <ChannelsView />
-            )}
+            <div className="view-anim" key={viewKey}>
+              {isPanel ? (
+                isStatus ? (
+                  <StatusPanel />
+                ) : isHistory ? (
+                  <HistoryPanel />
+                ) : (
+                  <SettingsPanel />
+                )
+              ) : (
+                <ChannelsView />
+              )}
+            </div>
           </div>
         </main>
       </div>

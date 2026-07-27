@@ -57,6 +57,8 @@ interface ToastState {
 const DEFAULT_DURATION = 3500;
 // 关闭动画时长（与 App.css 中 .signaltv-toast[data-closing] 一致）
 const CLOSE_ANIMATION_MS = 180;
+// 屏幕同时最多显示的 toast 数：超出时滚动淘汰最旧的，只保留最新 5 条
+const MAX_VISIBLE_TOASTS = 5;
 
 let idCounter = 0;
 function genId(): string {
@@ -95,7 +97,22 @@ export const toastStore = createStore<ToastState>((set, get) => ({
       id,
       createdAt: Date.now(),
     };
-    set((s) => ({ toasts: [...s.toasts, toast] }));
+    set((s) => {
+      const next = [...s.toasts, toast];
+      // 滚动上限：未在关闭中的条目超过 5 条时，从头部（最旧）直接淘汰多余的，
+      // 不走 180ms 关闭动画，避免快速连发时动画堆积
+      let visible = next.filter((t) => !t.closing).length;
+      const kept: ToastItem[] = [];
+      for (const t of next) {
+        if (!t.closing && visible > MAX_VISIBLE_TOASTS) {
+          visible--;
+          clearTimer(t.id);
+          continue;
+        }
+        kept.push(t);
+      }
+      return { toasts: kept };
+    });
     scheduleAutoDismiss(id, item.duration);
     return id;
   },

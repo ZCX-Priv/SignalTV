@@ -70,7 +70,9 @@ export function useFilteredChannels(): ChannelWithStream[] {
     if (filter.countryCode) {
       list = list.filter((c) => c.country === filter.countryCode);
     }
-    if (!filter.nsfw) {
+    // 收藏夹视图不做 nsfw 过滤：收藏是用户自己选的，始终全部可见
+    // （收藏夹页也不提供成人内容开关，见 FilterBar）
+    if (!filter.nsfw && view.kind !== "favorites") {
       list = list.filter((c) => !c.is_nsfw);
     }
 

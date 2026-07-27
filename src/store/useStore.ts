@@ -173,8 +173,19 @@ export type View =
   | { kind: "category"; id: string }
   | { kind: "country"; code: string }
   | { kind: "favorites" }
+  | { kind: "history" }
   | { kind: "status" }
   | { kind: "settings" };
+
+// 播放历史条目：每次播放实时追加一条（同频道重复播放各记一条），
+// 供 HistoryPanel 以垂直时间线展示；与 recents（去重、供排序）独立
+export interface HistoryEntry {
+  id: string;
+  at: number; // Date.now() 时间戳
+}
+
+// 历史上限：超出截断尾部（最旧），避免持久化体积无限增长
+const HISTORY_LIMIT = 200;
 
 interface State {
   // 数据
@@ -198,6 +209,7 @@ interface State {
   activeChannelId: string | null; // 播放器目标
   favorites: string[];
   recents: string[]; // 最近观看，最新在前
+  history: HistoryEntry[]; // 播放历史，最新在前，每次播放追加一条
   recentCategories: string[]; // 最近使用的分类，最新在前
   recentCountries: string[]; // 最近使用的国家 code，最新在前
   sidebarCollapsed: boolean; // 桌面端侧边栏收起
@@ -213,6 +225,8 @@ interface State {
   openChannel: (id: string | null) => void;
   toggleFavorite: (id: string) => void;
   pushRecent: (id: string) => void;
+  pushHistory: (id: string) => void;
+  clearHistory: () => void;
   pushRecentCategory: (id: string) => void;
   pushRecentCountry: (code: string) => void;
   probeLatencyForIds: (ids: string[]) => Promise<void>;
@@ -240,6 +254,7 @@ export const useStore = create<State>()(
       activeChannelId: null,
       favorites: [],
       recents: [],
+      history: [],
       recentCategories: [],
       recentCountries: [],
       latency: new Map(),
@@ -319,7 +334,10 @@ export const useStore = create<State>()(
       },
       setFilter: (patch) => set({ filter: { ...get().filter, ...patch } }),
       openChannel: (id) => {
-        if (id) get().pushRecent(id);
+        if (id) {
+          get().pushRecent(id);
+          get().pushHistory(id);
+        }
         set({ activeChannelId: id });
       },
       toggleFavorite: (id) =>
@@ -332,6 +350,11 @@ export const useStore = create<State>()(
         set((s) => ({
           recents: [id, ...s.recents.filter((r) => r !== id)].slice(0, 24),
         })),
+      pushHistory: (id) =>
+        set((s) => ({
+          history: [{ id, at: Date.now() }, ...s.history].slice(0, HISTORY_LIMIT),
+        })),
+      clearHistory: () => set({ history: [] }),
       pushRecentCategory: (id) =>
         set((s) => ({
           recentCategories: [id, ...s.recentCategories.filter((r) => r !== id)].slice(0, 24),
@@ -392,6 +415,7 @@ export const useStore = create<State>()(
       partialize: (s) => ({
         favorites: s.favorites,
         recents: s.recents,
+        history: s.history,
         recentCategories: s.recentCategories,
         recentCountries: s.recentCountries,
         sidebarCollapsed: s.sidebarCollapsed,

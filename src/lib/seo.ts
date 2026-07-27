@@ -108,6 +108,14 @@ export function describeView(
       };
     }
 
+    case "history": {
+      return {
+        title: `${SITE_NAME} | 播放历史`,
+        description: `在 ${SITE_NAME} 的播放历史时间线，回顾并重新播放看过的电视频道（仅本地保存）。`,
+        canonical,
+      };
+    }
+
     case "status": {
       return {
         title: `${SITE_NAME} | 信号源状态`,

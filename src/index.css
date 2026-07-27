@@ -49,6 +49,13 @@
   /* Motion */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 动画时长 token：同类元素统一时长，消除各处硬编码不一致 */
+  --dur-micro: 0.16s;   /* 下拉/微交互 */
+  --dur-overlay: 0.2s;  /* 遮罩淡入 */
+  --dur-modal: 0.28s;   /* 模态面板/Toast 进入 */
+  --dur-page: 0.4s;     /* 页面级面板 fade-up */
+  --dur-card: 0.5s;     /* 卡片入场 */
 }
 
 * {
@@ -374,4 +381,24 @@ html.theme-transitioning *::after {
   transition-duration: 0s !important;
   animation-duration: 0s !important;
   animation-delay: 0s !important;
+}
+
+/* ============================================================
+   无障碍：尊重系统"减弱动态效果"偏好（全局兑底）
+   ============================================================
+   全站所有动画/过渡在 reduce 下直接关闭（与侧边栏行为一致）：
+   - 用近零时长而非 animation:none，保证带 both/forwards 的入场动画
+     （.view-anim/.card/toast 等）瞬间跳到终态而非停在初始帧；
+   - iteration-count:1 终止无限循环动画（pulse/bars/ticker/spin 等）；
+   - 同时覆盖第三方（vidstack）内部动画与 CSS 平滑滚动。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+  }
 }

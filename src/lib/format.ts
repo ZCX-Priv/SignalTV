@@ -75,6 +75,22 @@ export function broadcastDate(d = new Date()): string {
   return `周${weekday} ${mm}月${dd}日 · ${clock(d)}`;
 }
 
+/** 播放历史的日期分组标签：今天 / 昨天 / "MM月DD日"。 */
+export function historyDayLabel(ts: number): string {
+  const d = new Date(ts);
+  const now = new Date();
+  const startOfDay = (x: Date) =>
+    new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diffDays = Math.round(
+    (startOfDay(now) - startOfDay(d)) / 86_400_000,
+  );
+  if (diffDays === 0) return "今天";
+  if (diffDays === 1) return "昨天";
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${mm}月${dd}日`;
+}
+
 /** 由频道 id 生成稳定的"频道号"（用于频道号美学展示）。 */
 export function channelPosition(id: string): string {
   let h = 0;

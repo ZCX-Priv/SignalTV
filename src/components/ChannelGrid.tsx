@@ -3,6 +3,7 @@ import { SearchX, Loader2 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import type { ChannelWithStream } from "../types";
 import { ChannelCard } from "./ChannelCard";
+import { EmptyState } from "./EmptyState";
 
 const PAGE = 60;
 
@@ -60,11 +61,11 @@ export function ChannelGrid({ list }: ChannelGridProps) {
 
   if (list.length === 0) {
     return (
-      <div className="empty">
-        <SearchX size={28} />
-        <h3 className="display">无信号。</h3>
-        <p>没有频道匹配当前筛选条件，请尝试扩大搜索范围。</p>
-      </div>
+      <EmptyState
+        icon={<SearchX size={28} />}
+        title="无信号。"
+        desc="没有频道匹配当前筛选条件，请尝试扩大搜索范围。"
+      />
     );
   }
 

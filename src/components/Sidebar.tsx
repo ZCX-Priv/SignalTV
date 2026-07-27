@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   Home,
   Heart,
+  History,
   LayoutGrid,
   Globe2,
   Radio,
@@ -22,6 +23,7 @@ export function Sidebar() {
   const categories = useStore((s) => s.categories);
   const countries = useStore((s) => s.countries);
   const favorites = useStore((s) => s.favorites);
+  const historyCount = useStore((s) => s.history.length);
   const channels = useStore((s) => s.channels);
   const filter = useStore((s) => s.filter);
   const recentCategories = useStore((s) => s.recentCategories);
@@ -118,6 +120,17 @@ export function Sidebar() {
             <Heart size={15} />
             <span>收藏夹</span>
             {favorites.length > 0 && <span className="nav__count mono">{favorites.length}</span>}
+          </button>
+          <button
+            className={`nav__item ${isActiveNav("history") ? "is-active" : ""}`}
+            onClick={() => {
+              setView({ kind: "history" });
+              toast.info("已切换至播放历史");
+            }}
+          >
+            <History size={15} />
+            <span>播放历史</span>
+            {historyCount > 0 && <span className="nav__count mono">{historyCount}</span>}
           </button>
         </nav>
 
