@@ -59,6 +59,7 @@ export const dict: Dict = {
   "toast.historyCleared": "История просмотров очищена",
   "toast.themeSwitched": "Включён режим «{name}»",
   "toast.langSwitched": "Язык переключён: {name}",
+  "toast.updateModeSwitched": "Режим обновления: {name}",
   "toast.streamFailover": "Поток недоступен, включён резервный сигнал",
   "toast.welcome": "Добро пожаловать в SignalTV",
   "toast.loading": "Загрузка",
@@ -200,6 +201,22 @@ export const dict: Dict = {
   "settings.noSignup": "Без регистрации · Без рекламы · Без слежки",
   "settings.dataSource":
     "Данные каналов взяты из открытого проекта iptv-org. Сайт не хранит и не ретранслирует видеопотоки.",
+  "settings.updates": "Обновления",
+  "settings.updatesDesc": "Выберите, как обрабатывать новые версии.",
+
+  // ── Параметры обновления и уведомление об обновлении ──
+  "update.auto": "Автообновление",
+  "update.autoDesc": "Тихая установка в фоне, применяется при следующем запуске",
+  "update.manual": "Ручное обновление",
+  "update.manualDesc": "Показывать уведомление о новой версии, решаете вы",
+  "update.off": "Обновления отключены",
+  "update.offDesc": "Не проверять новые версии",
+  "update.available": "Доступна новая версия. Обновить?",
+  "update.actionUpdate": "Обновить",
+  "update.actionIgnore": "Игнорировать",
+  "update.downloading": "Загрузка новой версии…",
+  "update.ready": "Новая версия готова",
+  "update.actionReload": "Обновить страницу ({s}с)",
 
   // ── Темы ──
   "theme.system": "Как в системе",

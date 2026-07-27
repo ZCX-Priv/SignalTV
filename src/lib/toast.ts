@@ -25,6 +25,12 @@ export type ToastType =
   | "loading"
   | "message";
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+  variant?: "primary" | "ghost";
+}
+
 export interface ToastItem {
   id: string;
   type: ToastType;
@@ -33,6 +39,14 @@ export interface ToastItem {
   duration: number; // Infinity 表示不自动消失
   createdAt: number;
   closing?: boolean;
+  /** 操作按钮行（如更新 toast 的「更新/忽略」），渲染在内容下方 */
+  actions?: ToastAction[];
+  /** 进度百分比 0-100，存在时在内容下方渲染细条进度条 */
+  progress?: number;
+  /** 不参与滚动淘汰：连发普通 toast 时不会被挤掉（更新 toast 用） */
+  sticky?: boolean;
+  /** 用户点 X 关闭时回调（仅 X，不含程序性 dismiss） */
+  onClose?: () => void;
 }
 
 export interface ToastOptions {
@@ -101,11 +115,12 @@ export const toastStore = createStore<ToastState>((set, get) => ({
     set((s) => {
       const next = [...s.toasts, toast];
       // 滚动上限：未在关闭中的条目超过 5 条时，从头部（最旧）直接淘汰多余的，
-      // 不走 180ms 关闭动画，避免快速连发时动画堆积
+      // 不走 180ms 关闭动画，避免快速连发时动画堆积；
+      // sticky 条目（更新 toast）跳过淘汰，不被普通 toast 连发挤掉
       let visible = next.filter((t) => !t.closing).length;
       const kept: ToastItem[] = [];
       for (const t of next) {
-        if (!t.closing && visible > MAX_VISIBLE_TOASTS) {
+        if (!t.closing && !t.sticky && visible > MAX_VISIBLE_TOASTS) {
           visible--;
           clearTimer(t.id);
           continue;

@@ -7,6 +7,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { getInitialLanguage, getInitialTheme, useStore } from "./store/useStore";
 import { migrateFromLocalStorage } from "./lib/idb";
 import { initSeo } from "./lib/seo";
+import { initUpdater } from "./lib/updater";
 import { applyLocaleSideEffects, loadLocale, resolveLocale } from "./i18n";
 
 // 启动流程：
@@ -68,6 +69,8 @@ async function bootstrap() {
     useStore.getState().setTheme(theme);
   }
   initSeo();
+  // 注册 Service Worker 并启动 PWA 更新管理（auto/manual/off 由用户设置决定）
+  initUpdater();
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <ErrorBoundary>

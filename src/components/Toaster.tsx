@@ -68,11 +68,43 @@ function ToastView({ item }: { item: ToastItem }) {
         {item.description && (
           <span className="signaltv-toast__desc">{item.description}</span>
         )}
+        {item.progress !== undefined && (
+          <span
+            className="signaltv-toast__progress"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(item.progress)}
+          >
+            <span
+              className="signaltv-toast__progress-fill"
+              style={{ width: `${Math.min(100, Math.max(0, item.progress))}%` }}
+            />
+          </span>
+        )}
+        {item.actions && item.actions.length > 0 && (
+          <span className="signaltv-toast__actions">
+            {item.actions.map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                className={`signaltv-toast__btn signaltv-toast__btn--${action.variant ?? "ghost"}`}
+                onClick={action.onClick}
+              >
+                {action.label}
+              </button>
+            ))}
+          </span>
+        )}
       </span>
       <button
         type="button"
         className="signaltv-toast__close"
-        onClick={() => toast.dismiss(item.id)}
+        onClick={() => {
+          // 先回调 onClose（更新 toast 据此记录「本会话已关闭」）再关闭
+          item.onClose?.();
+          toast.dismiss(item.id);
+        }}
         aria-label={t("toaster.closeAria")}
       >
         <X size={14} />

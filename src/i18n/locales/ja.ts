@@ -58,6 +58,7 @@ export const dict: Dict = {
   "toast.historyCleared": "視聴履歴を消去しました",
   "toast.themeSwitched": "{name}モードに切り替えました",
   "toast.langSwitched": "言語を{name}に切り替えました",
+  "toast.updateModeSwitched": "更新方式：{name}",
   "toast.streamFailover": "現在のストリームが利用できないため、予備信号に切り替えました",
   "toast.welcome": "SignalTV へようこそ",
   "toast.loading": "読み込み中",
@@ -162,6 +163,22 @@ export const dict: Dict = {
   "settings.noSignup": "登録不要 · 広告なし · トラッキングなし",
   "settings.dataSource":
     "チャンネルデータは公開のオープンソースプロジェクト iptv-org に由来します。本サイトは映像ストリームの保存・中継を一切行いません。",
+  "settings.updates": "更新",
+  "settings.updatesDesc": "新バージョン発見時の処理方法を選択します。",
+
+  // ── 更新オプションと更新トースト ──
+  "update.auto": "自動更新",
+  "update.autoDesc": "バックグラウンドで静かにインストールし、次回起動時に適用",
+  "update.manual": "手動更新",
+  "update.manualDesc": "新バージョン発見時に通知を表示、適用はあなた次第",
+  "update.off": "更新をオフ",
+  "update.offDesc": "新バージョンを確認しない",
+  "update.available": "新しいバージョンが利用可能です。更新しますか？",
+  "update.actionUpdate": "更新",
+  "update.actionIgnore": "無視",
+  "update.downloading": "新バージョンをダウンロード中…",
+  "update.ready": "新バージョンの準備完了",
+  "update.actionReload": "ページを再読み込み ({s}s)",
 
   // ── テーマ ──
   "theme.system": "システムに従う",

@@ -87,6 +87,10 @@ export type Theme = "dark" | "light";
 // theme 字段保留为实际渲染值（dark|light），由 themeMode 派生。
 export type ThemeMode = "system" | "light" | "dark";
 
+// PWA 更新方式：auto 静默安装下次生效 / manual 弹 toast 询问 / off 不检查更新。
+// 具体更新流程由 src/lib/updater.ts 驱动，此处只持久化用户偏好。
+export type UpdateMode = "auto" | "manual" | "off";
+
 // 同步：跟随系统 prefers-color-scheme，用于 store 初始化（避免 Promise 赋给 Theme 字段）
 function getSystemTheme(): Theme {
   if (typeof window === "undefined") return "dark";
@@ -269,6 +273,7 @@ interface State {
   themeMode: ThemeMode; // 用户主题偏好（system|light|dark），持久化
   language: LanguagePref; // 用户语言偏好（system|具体 locale），持久化
   locale: Locale; // 实际界面语言，由 language 派生（system 时自动检测）
+  updateMode: UpdateMode; // PWA 更新方式（auto|manual|off），持久化
 
   // 动作
   init: () => Promise<void>;
@@ -288,6 +293,7 @@ interface State {
   setTheme: (t: Theme) => void;
   setThemeMode: (m: ThemeMode) => void;
   setLanguage: (pref: LanguagePref) => Promise<void>;
+  setUpdateMode: (m: UpdateMode) => void;
 }
 
 export const useStore = create<State>()(
@@ -318,6 +324,7 @@ export const useStore = create<State>()(
       themeMode: "system",
       language: "system",
       locale: "zh-CN",
+      updateMode: "auto",
 
       init: async () => {
         if (get().loaded || get().loading) return;
@@ -504,6 +511,7 @@ export const useStore = create<State>()(
           }),
         );
       },
+      setUpdateMode: (m) => set({ updateMode: m }),
     }),
     {
       name: "signaltv-iptv",
@@ -518,6 +526,7 @@ export const useStore = create<State>()(
         theme: s.theme,
         themeMode: s.themeMode,
         language: s.language,
+        updateMode: s.updateMode,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -540,6 +549,8 @@ export const useStore = create<State>()(
         const locale = resolveLocale(state.language);
         state.locale = locale;
         void loadLocale(locale).then(() => applyLocaleSideEffects(locale));
+        // 旧版数据没有 updateMode → 回落默认「自动更新」
+        if (!state.updateMode) state.updateMode = "auto";
       },
     },
   ),

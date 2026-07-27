@@ -58,6 +58,7 @@ export const dict: Dict = {
   "toast.historyCleared": "Watch history cleared",
   "toast.themeSwitched": "Switched to {name} mode",
   "toast.langSwitched": "Language switched to {name}",
+  "toast.updateModeSwitched": "Update mode: {name}",
   "toast.streamFailover": "Stream unavailable, switched to backup signal",
   "toast.welcome": "Welcome to SignalTV",
   "toast.loading": "Loading",
@@ -165,6 +166,22 @@ export const dict: Dict = {
   "settings.noSignup": "No sign-up · No ads · No tracking",
   "settings.dataSource":
     "Channel data comes from the public iptv-org open-source project. This site does not store or relay any video streams.",
+  "settings.updates": "Updates",
+  "settings.updatesDesc": "Choose how new versions are handled.",
+
+  // ── Update options & update toast ──
+  "update.auto": "Auto update",
+  "update.autoDesc": "Install silently in the background, applied on next launch",
+  "update.manual": "Manual update",
+  "update.manualDesc": "Show a prompt when a new version is found, you decide",
+  "update.off": "Updates off",
+  "update.offDesc": "Do not check for new versions",
+  "update.available": "A new version is available. Update now?",
+  "update.actionUpdate": "Update",
+  "update.actionIgnore": "Ignore",
+  "update.downloading": "Downloading new version…",
+  "update.ready": "New version ready",
+  "update.actionReload": "Reload page ({s}s)",
 
   // ── Theme options ──
   "theme.system": "System",

@@ -7,9 +7,12 @@ import {
   Check,
   Radio,
   Languages,
+  RefreshCw,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
-import type { ThemeMode } from "../store/useStore";
+import type { ThemeMode, UpdateMode } from "../store/useStore";
 import { toast } from "../lib/toast";
 import {
   NATIVE_LOCALE_NAMES,
@@ -70,12 +73,41 @@ const THEME_OPTIONS: {
 // 语言选项：自动检测 + 8 种语言（label 固定用本族语名，desc 用当前界面语言）
 const LANGUAGE_OPTIONS: LanguagePref[] = ["system", ...SUPPORTED_LOCALES];
 
+// 更新方式选项：自动 / 手动 / 关闭，与主题选项同构（图标 + 名称/描述文案 key）
+const UPDATE_OPTIONS: {
+  value: UpdateMode;
+  labelKey: MsgKey;
+  icon: ReactNode;
+  descKey: MsgKey;
+}[] = [
+  {
+    value: "auto",
+    labelKey: "update.auto",
+    icon: <RefreshCw size={16} />,
+    descKey: "update.autoDesc",
+  },
+  {
+    value: "manual",
+    labelKey: "update.manual",
+    icon: <Bell size={16} />,
+    descKey: "update.manualDesc",
+  },
+  {
+    value: "off",
+    labelKey: "update.off",
+    icon: <BellOff size={16} />,
+    descKey: "update.offDesc",
+  },
+];
+
 export function SettingsPanel() {
   const { t } = useI18n();
   const themeMode = useStore((s) => s.themeMode);
   const setThemeMode = useStore((s) => s.setThemeMode);
   const language = useStore((s) => s.language);
   const setLanguage = useStore((s) => s.setLanguage);
+  const updateMode = useStore((s) => s.updateMode);
+  const setUpdateMode = useStore((s) => s.setUpdateMode);
   const channels = useStore((s) => s.channels);
 
   return (
@@ -154,6 +186,42 @@ export function SettingsPanel() {
                 <span className="settings__option-text">
                   <span className="settings__option-name">{label}</span>
                   <span className="settings__option-desc">{desc}</span>
+                </span>
+                {active && (
+                  <span className="settings__option-check">
+                    <Check size={14} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="settings__section">
+        <header className="settings__section-head">
+          <h2>{t("settings.updates")}</h2>
+          <p>{t("settings.updatesDesc")}</p>
+        </header>
+        <div className="settings__options">
+          {UPDATE_OPTIONS.map((opt) => {
+            const active = updateMode === opt.value;
+            return (
+              <button
+                key={opt.value}
+                className={`settings__option ${active ? "is-active" : ""}`}
+                onClick={() => {
+                  setUpdateMode(opt.value);
+                  toast.success(
+                    t("toast.updateModeSwitched", { name: t(opt.labelKey) }),
+                  );
+                }}
+                aria-pressed={active}
+              >
+                <span className="settings__option-icon">{opt.icon}</span>
+                <span className="settings__option-text">
+                  <span className="settings__option-name">{t(opt.labelKey)}</span>
+                  <span className="settings__option-desc">{t(opt.descKey)}</span>
                 </span>
                 {active && (
                   <span className="settings__option-check">

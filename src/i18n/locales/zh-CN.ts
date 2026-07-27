@@ -75,6 +75,7 @@ export const dict = {
   "toast.historyCleared": "已清空播放历史",
   "toast.themeSwitched": "已切换至{name}模式",
   "toast.langSwitched": "已切换至{name}",
+  "toast.updateModeSwitched": "更新方式：{name}",
   "toast.streamFailover": "当前流不可用，已切换备用信号源",
   "toast.welcome": "欢迎来到 SignalTV",
   "toast.loading": "加载中",
@@ -176,6 +177,22 @@ export const dict = {
   "settings.channelsCount": "{count} 路频道",
   "settings.noSignup": "无注册 · 无广告 · 无追踪",
   "settings.dataSource": "频道数据来自公开的 iptv-org 开源项目，本站不存储、不转发任何视频流。",
+  "settings.updates": "更新",
+  "settings.updatesDesc": "选择发现新版本时的处理方式。",
+
+  // ── 更新选项与更新 toast ──
+  "update.auto": "自动更新",
+  "update.autoDesc": "后台静默安装，下次打开生效",
+  "update.manual": "手动更新",
+  "update.manualDesc": "发现新版本时弹出提示，由你决定",
+  "update.off": "关闭更新",
+  "update.offDesc": "不检查新版本",
+  "update.available": "有新版本可用，是否更新？",
+  "update.actionUpdate": "更新",
+  "update.actionIgnore": "忽略",
+  "update.downloading": "正在下载新版本…",
+  "update.ready": "新版本已就绪",
+  "update.actionReload": "刷新页面 ({s}s)",
 
   // ── 主题选项 ──
   "theme.system": "跟随系统",

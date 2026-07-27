@@ -58,6 +58,7 @@ export const dict: Dict = {
   "toast.historyCleared": "시청 기록을 삭제했습니다",
   "toast.themeSwitched": "{name} 모드로 전환했습니다",
   "toast.langSwitched": "언어를 {name}(으)로 변경했습니다",
+  "toast.updateModeSwitched": "업데이트 방식: {name}",
   "toast.streamFailover": "현재 스트림을 사용할 수 없어 예비 신호로 전환했습니다",
   "toast.welcome": "SignalTV에 오신 것을 환영합니다",
   "toast.loading": "불러오는 중",
@@ -162,6 +163,22 @@ export const dict: Dict = {
   "settings.noSignup": "가입 없음 · 광고 없음 · 추적 없음",
   "settings.dataSource":
     "채널 데이터는 공개 오픈소스 프로젝트 iptv-org에서 가져옵니다. 본 사이트는 어떤 영상 스트림도 저장하거나 중계하지 않습니다.",
+  "settings.updates": "업데이트",
+  "settings.updatesDesc": "새 버전 발견 시 처리 방식을 선택합니다.",
+
+  // ── 업데이트 옵션과 업데이트 토스트 ──
+  "update.auto": "자동 업데이트",
+  "update.autoDesc": "백그라운드에서 조용히 설치, 다음 실행 시 적용",
+  "update.manual": "수동 업데이트",
+  "update.manualDesc": "새 버전 발견 시 알림을 표시하고 적용은 직접 결정",
+  "update.off": "업데이트 끄기",
+  "update.offDesc": "새 버전을 확인하지 않음",
+  "update.available": "새 버전이 있습니다. 업데이트할까요?",
+  "update.actionUpdate": "업데이트",
+  "update.actionIgnore": "무시",
+  "update.downloading": "새 버전 다운로드 중…",
+  "update.ready": "새 버전 준비 완료",
+  "update.actionReload": "페이지 새로고침 ({s}s)",
 
   // ── 테마 옵션 ──
   "theme.system": "시스템 따르기",

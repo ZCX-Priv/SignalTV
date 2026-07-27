@@ -7,7 +7,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // prompt 模式：新 SW 安装后进入 waiting，由 src/lib/updater.ts 决定何时激活
+      registerType: 'prompt',
+      // 关闭插件自动注入的注册脚本，注册统一由 updater.ts 手动接管
+      injectRegister: false,
       includeAssets: ['favicon.png'],
       manifest: {
         name: 'SignalTV',

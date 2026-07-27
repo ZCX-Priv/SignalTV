@@ -2923,6 +2923,66 @@
   outline-offset: 1px;
 }
 
+/* 更新 toast 扩展：操作按钮行 + 下载进度条（内容区内部，垂直堆叠） */
+.signaltv-toast__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.signaltv-toast__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease),
+    color 0.15s var(--ease);
+}
+.signaltv-toast__btn:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 1px;
+}
+.signaltv-toast__btn--primary {
+  background: var(--signaltv);
+  border: 1px solid var(--signaltv);
+  color: #fff;
+}
+.signaltv-toast__btn--primary:hover {
+  filter: brightness(1.1);
+}
+.signaltv-toast__btn--ghost {
+  background: transparent;
+  border: 1px solid var(--line-2);
+  color: var(--ink-dim);
+}
+.signaltv-toast__btn--ghost:hover {
+  background: var(--bg-3);
+  color: var(--ink);
+}
+/* 进度条：细条形，宽度百分比过渡。属状态指示，与 latency 呼吸灯同理，
+   在减弱动态豁免范围内（index.css 全局兜底仅杀 animation，width transition 保留） */
+.signaltv-toast__progress {
+  display: block;
+  height: 3px;
+  margin-top: 8px;
+  background: var(--bg-3);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.signaltv-toast__progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--cyan);
+  border-radius: inherit;
+  transition: width 0.15s var(--ease-soft);
+}
+
 /* 注：reduced-motion 下的 toast 动画禁用已由 index.css 全局兜底规则覆盖，
    近零时长 + both 保证进入/退出直接呈现终态，不停在初始帧 */
 
