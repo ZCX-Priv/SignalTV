@@ -7,7 +7,8 @@ import {
   isHLSProvider,
 } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
-import { Loader2, AlertTriangle, Play } from "lucide-react";
+import { Loader2, AlertTriangle, Play, RotateCcw } from "lucide-react";
+import { useStore } from "../store/useStore";
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
 
@@ -73,11 +74,32 @@ const zhCNLayoutTranslations = {
 
 type PlayerState = "idle" | "loading" | "ready" | "paused" | "error";
 
+/** 当前页面为 https 且流为 http → 被浏览器混合内容策略拦截，需明确提示用户 */
+function isBlockedMixedContent(url: string | null): boolean {
+  return (
+    !!url &&
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    url.startsWith("http://")
+  );
+}
+
 interface TvPlayerProps {
   url: string | null;
   onStateChange?: (s: PlayerState) => void;
   onMessageChange?: (m: string | null) => void;
   onLatencyChange?: (ms: number | null) => void;
+  /**
+   * 当前流播放失败时调用；返回 true 表示父组件已切换到下一路流
+   * （url 即将变化，保持 loading），返回 false 表示已无备用流 → 显示错误。
+   */
+  onStreamError?: () => boolean;
+  /** 错误面板"重试"按钮：从第一路流重新开始 */
+  onRetry?: () => void;
+  /** 已尝试的流数（含当前），用于错误面板展示 */
+  streamTried?: number;
+  /** 该频道的流总数 */
+  streamTotal?: number;
 }
 
 export function TvPlayer({
@@ -85,6 +107,10 @@ export function TvPlayer({
   onStateChange,
   onMessageChange,
   onLatencyChange,
+  onStreamError,
+  onRetry,
+  streamTried,
+  streamTotal,
 }: TvPlayerProps) {
   const [state, setState] = useState<PlayerState>("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -93,6 +119,9 @@ export function TvPlayer({
   const playerRef = useRef<MediaPlayerInstance>(null);
   // handlePlayFail 的 setTimeout handle，用于卸载/切换时清理
   const autoPlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 每路 url 仅首次 canplay 自动播放：rebuffer 后的 canplay 不再强制 play()，
+  // 避免覆盖用户手动暂停的意图
+  const hasAutoPlayedRef = useRef(false);
 
   // 状态向上同步
   useEffect(() => {
@@ -109,6 +138,7 @@ export function TvPlayer({
 
   // url 切换时重置状态并清理上一次的采样定时器
   useEffect(() => {
+    hasAutoPlayedRef.current = false;
     if (!url) {
       setState("idle");
       setLatency(null);
@@ -178,9 +208,13 @@ export function TvPlayer({
   // canPlay 触发后主动调用 play()：绕过 vidstack autoPlay 的 reduced motion 拦截，
   // 直接走浏览器原生自动播放策略（依赖用户点击 ChannelCard 产生的粘性激活 hasBeenActive）。
   // 失败由 onPlayFail 处理（注意不是 onAutoPlayFail，因为 autoPlaying signal 始终为 false）。
+  // 仅首次 canplay 自动播放：rebuffer 恢复后的 canplay 不再强制 play()。
   function handleCanPlay() {
-    setState("ready");
+    // "点击播放"覆盖层显示中时不覆写为 ready，避免覆盖层消失但视频未播放
+    setState((s) => (s === "paused" ? s : "ready"));
     startLatencySampling();
+    if (hasAutoPlayedRef.current) return;
+    hasAutoPlayedRef.current = true;
     const player = playerRef.current;
     if (!player) return;
     // remoteControl.play() 仅 dispatch media-play-request 事件（返回 void），
@@ -250,24 +284,36 @@ export function TvPlayer({
           if (isHLSProvider(provider)) {
             // 使用本地 hls.js,避免 vidstack 默认从 CDN 加载
             provider.library = Hls;
+            // 弱网友好配置：按播放器尺寸封顶清晰度，缓冲区保守，
+            // slow 网络（首屏实测 < 500KB/s）下进一步缩小缓冲长度
+            const slow = useStore.getState().networkProfile === "slow";
+            provider.config = {
+              capLevelToPlayerSize: true,
+              maxBufferLength: slow ? 10 : 15,
+              maxMaxBufferLength: 30,
+              startLevel: -1,
+            };
           }
         }}
         onError={(detail) => {
-          setState("error");
-          setMessage(detail.message ?? "此直播流不可用。");
           if (latencyTimerRef.current) {
             clearInterval(latencyTimerRef.current);
             latencyTimerRef.current = null;
           }
+          // 先尝试故障转移：父组件切到下一路流（url 即将变化 → 重新 loading）
+          if (onStreamError?.()) {
+            setState("loading");
+            setMessage(null);
+            return;
+          }
+          setState("error");
+          setMessage(detail.message ?? "此直播流不可用。");
         }}
         onCanPlay={handleCanPlay}
         onPlayFail={handlePlayFail}
         onPlay={() => {
           // 用户手动播放成功后，从 paused 状态恢复到 ready
           if (state === "paused") setState("ready");
-        }}
-        onWaiting={() => {
-          // 缓冲时保持当前状态，不重置
         }}
       >
         <MediaProvider />
@@ -298,7 +344,26 @@ export function TvPlayer({
         <div className="player__overlay player__overlay--error">
           <AlertTriangle size={28} />
           <h3 className="display">信号丢失</h3>
-          <p>{message ?? "此直播流不可用。"}</p>
+          <p>
+            {isBlockedMixedContent(url)
+              ? "浏览器安全策略拦截了非加密（http）信号源，无法在当前页面播放。"
+              : message ?? "此直播流不可用。"}
+          </p>
+          {streamTried !== undefined && streamTotal !== undefined && streamTotal > 1 && (
+            <p className="mono player__error-note">
+              已尝试 {streamTried}/{streamTotal} 路流，均无法播放。
+            </p>
+          )}
+          {onRetry && (
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={onRetry}
+              style={{ marginTop: 10 }}
+            >
+              <RotateCcw size={13} /> 重试
+            </button>
+          )}
           <p className="player__error-note mono">
             许多免费信号受地区限制或间歇性离线，请尝试同一电视台的其他频道。
           </p>

@@ -164,8 +164,13 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      字体载荷裁剪：CSS 实际使用的字重范围为 300-700（变量字重 340/360/420/560 等），
+      Fraunces/Geist 上限从 900/800 收紧到 700，减小弱网首屏字体下载量。
+      Noto Serif SC（--font-display 中文后备）与 Noto Sans SC（--font-sans/mono 中文后备）均在用，保留。
+    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Geist:wght@300..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@300..700&family=Noto+Sans+SC:wght@300..700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@300..700&family=Noto+Sans+SC:wght@300..700&display=swap"
       rel="stylesheet"
     />
     <!-- 首屏关键数据源 preconnect：iptv-org API（频道/流/分类/国家 JSON）+ flagcdn（国旗图片） -->

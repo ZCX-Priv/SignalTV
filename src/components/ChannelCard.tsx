@@ -2,7 +2,7 @@ import { memo, type CSSProperties } from "react";
 import { Play, Star, Tv2 } from "lucide-react";
 import type { ChannelWithStream } from "../types";
 import { useStore } from "../store/useStore";
-import { channelPosition, flagUrl, flagSvgUrl, countryGradient, prettyCategory } from "../lib/format";
+import { channelPosition, flagUrl, flagPngBgUrl, countryGradient, prettyCategory } from "../lib/format";
 import { toast } from "../lib/toast";
 import { LatencyTag } from "./LatencyTag";
 
@@ -14,28 +14,31 @@ interface Props {
 export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) {
   const openChannel = useStore((s) => s.openChannel);
   const toggleFavorite = useStore((s) => s.toggleFavorite);
-  const favorites = useStore((s) => s.favorites);
-  const isFav = favorites.includes(channel.id);
+  // 直接订阅布尔结果（zustand 比较原始值）：收藏任一频道时
+  // 只有相关卡片重渲染，而非订阅整个 favorites 数组引发全卡片重渲染
+  const isFav = useStore((s) => s.favorites.includes(channel.id));
   const latency = useStore((s) => s.latency.get(channel.id));
 
   const cat = channel.categories[0];
   const pos = channelPosition(channel.id);
 
-  const flagSvg = flagSvgUrl(channel.country);
-  const mediaBackground = flagSvg
+  // 卡片背景用 w160 PNG 国旗：CSS background 无法懒加载，
+  // 整幅 SVG 单张可达数百 KB，60 张卡片即时下载会拖垮弱网首屏
+  const flagBg = flagPngBgUrl(channel.country);
+  const mediaBackground = flagBg
     ? [
         "radial-gradient(120% 80% at 50% 30%, rgba(255, 59, 48, 0.10), transparent 60%)",
-        `url("${flagSvg}")`,
+        `url("${flagBg}")`,
         countryGradient(channel.country),
       ]
     : [
         "radial-gradient(120% 80% at 50% 30%, rgba(255, 59, 48, 0.10), transparent 60%)",
         countryGradient(channel.country),
       ];
-  const mediaBlend = flagSvg ? "normal, overlay, normal" : "normal, normal";
+  const mediaBlend = flagBg ? "normal, overlay, normal" : "normal, normal";
   const mediaStyle: CSSProperties = {
     backgroundImage: mediaBackground.join(", "),
-    backgroundSize: flagSvg ? "cover, cover, cover" : "cover, cover",
+    backgroundSize: flagBg ? "cover, cover, cover" : "cover, cover",
     backgroundPosition: "center, center, center",
     backgroundRepeat: "no-repeat, no-repeat, no-repeat",
     backgroundBlendMode: mediaBlend,

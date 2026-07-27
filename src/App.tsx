@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import { useStore } from "./store/useStore";
+import { useFilteredChannels } from "./hooks/useChannels";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { Hero } from "./components/Hero";
@@ -16,6 +17,19 @@ import { toast } from "./lib/toast";
 const PlayerModal = lazy(() =>
   import("./components/PlayerModal").then((m) => ({ default: m.PlayerModal })),
 );
+
+// 频道内容区：在此处统一计算一次过滤结果，作为 prop 下发给
+// FilterBar 与 ChannelGrid，避免两处各自调用 useFilteredChannels
+// 对 5000+ 频道重复过滤+排序。
+function ChannelsView() {
+  const list = useFilteredChannels();
+  return (
+    <>
+      <FilterBar list={list} />
+      <ChannelGrid list={list} />
+    </>
+  );
+}
 
 function App() {
   const init = useStore((s) => s.init);
@@ -52,14 +66,18 @@ function App() {
   // syncThemeCache（store 内部函数）会在 setTheme/setThemeMode/onRehydrateStorage
   // 三个变更点统一同步 <html data-theme>，无需 App.tsx 重复订阅。
 
-  // 全局 ⌘K / Ctrl+K 聚焦搜索框
+  // 全局 ⌘K / Ctrl+K 聚焦搜索框；移动端搜索框收起（display:none）时
+  // 先通过 store 展开再聚焦，避免快捷键静默失灵
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        const input = document.querySelector<HTMLInputElement>(".search__input");
-        input?.focus();
-        input?.select();
+        useStore.getState().setSearchOpen(true);
+        requestAnimationFrame(() => {
+          const input = document.querySelector<HTMLInputElement>(".search__input");
+          input?.focus();
+          input?.select();
+        });
       }
     }
     window.addEventListener("keydown", onKey);
@@ -115,10 +133,7 @@ function App() {
             {isPanel ? (
               isStatus ? <StatusPanel /> : <SettingsPanel />
             ) : (
-              <>
-                <FilterBar />
-                <ChannelGrid />
-              </>
+              <ChannelsView />
             )}
           </div>
         </main>

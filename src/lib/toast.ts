@@ -76,8 +76,10 @@ function clearTimer(id: string): void {
 }
 
 function scheduleAutoDismiss(id: string, duration: number): void {
-  if (duration === Infinity) return;
+  // 先清掉旧定时器：否则把有限时长 toast 更新为 Infinity 后，
+  // 旧定时器仍会触发 dismiss
   clearTimer(id);
+  if (duration === Infinity) return;
   const timer = setTimeout(() => {
     toastStore.getState().dismiss(id);
   }, duration);

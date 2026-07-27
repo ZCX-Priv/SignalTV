@@ -108,17 +108,6 @@ export function describeView(
       };
     }
 
-    case "search": {
-      const q = view.q.trim().slice(0, 60);
-      return {
-        title: q ? `${SITE_NAME} | 搜索"${q}"的电视频道结果` : `${SITE_NAME} - 免费在线看电视直播`,
-        description: q
-          ? `在 ${SITE_NAME} 中搜索"${q}"匹配的电视直播频道，免费在线观看。`
-          : HOME_DESCRIPTION,
-        canonical,
-      };
-    }
-
     case "status": {
       return {
         title: `${SITE_NAME} | 信号源状态`,
@@ -135,6 +124,24 @@ export function describeView(
       };
     }
   }
+}
+
+/**
+ * 搜索关键词的 SEO 元信息：搜索走 filter.q 实时过滤（非独立 view），
+ * 由 Header 在输入 debounce 后调用，仅更新 title/description。
+ */
+export function describeSearch(q: string): SeoMeta {
+  const origin = getSiteOrigin();
+  const canonical = `${origin}/`;
+  const trimmed = q.trim().slice(0, 60);
+  if (!trimmed) {
+    return { title: HOME_TITLE, description: HOME_DESCRIPTION, canonical };
+  }
+  return {
+    title: `${SITE_NAME} | 搜索“${trimmed}”的电视频道结果`,
+    description: `在 ${SITE_NAME} 中搜索“${trimmed}”匹配的电视直播频道，免费在线观看。`,
+    canonical,
+  };
 }
 
 /** 找到或创建一个 meta 标签并设置 content */
@@ -215,8 +222,7 @@ export function initSeo(): void {
   if (origin !== PLACEHOLDER_ORIGIN) {
     // 同步静态 link/meta 中的绝对 URL
     setLinkHref("canonical", `${origin}/`);
-    setLinkHref("alternate", `${origin}/`);
-    // hreflang="x-default" 的 link 也需要更新——通过遍历所有 alternate
+    // hreflang 后备 link（含 x-default）统一更新
     const alternates = document.head.querySelectorAll<HTMLLinkElement>(
       'link[rel="alternate"][hreflang]',
     );

@@ -1,6 +1,10 @@
 import { Radio } from "lucide-react";
+import { useStore } from "../store/useStore";
 
 export function Loader() {
+  // 真实加载阶段（init 更新）：弱网下让用户看到实际进度（含已下载字节数），
+  // 而非静态文案死等
+  const loadStage = useStore((s) => s.loadStage);
   return (
     <div className="loader">
       <div className="loader__inner">
@@ -23,8 +27,7 @@ export function Loader() {
           <p>{"> 正在连接信号源"}</p>
           <p>{"> 正在拉取频道表"}</p>
           <p>{"> 正在拉取信号流"}</p>
-          <p>{"> 正在合并信号表"}</p>
-          <p>{"> 正在同步广播网格"}<span className="loader__cursor">_</span></p>
+          <p>{`> ${loadStage || "正在同步广播网格"}`}<span className="loader__cursor">_</span></p>
         </div>
       </div>
 

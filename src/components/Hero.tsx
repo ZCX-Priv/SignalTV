@@ -8,6 +8,10 @@ import { toast } from "../lib/toast";
 // 精选分类列表——每次加载从这些分类中随机挑一个频道作为首屏主推
 const FEATURE_CATEGORIES = ["movies", "news", "sports", "music", "documentary", "entertainment"];
 
+// 会话级缓存选中的精选频道 id：Hero 在离开/回到首页时会重新挂载，
+// 若每次都重新随机会导致精选卡片频繁跳变；缓存后整个会话保持稳定
+let sessionFeaturedId: string | null = null;
+
 export function Hero() {
   const all = useAllChannels();
   const openChannel = useStore((s) => s.openChannel);
@@ -23,8 +27,14 @@ export function Hero() {
         c.categories.some((cat) => FEATURE_CATEGORIES.includes(cat)),
     );
     if (pool.length === 0) return undefined;
-    // 每次会话随机挑选，但限制范围
+    // 优先复用本次会话已选中的频道（重挂载不重新随机）
+    if (sessionFeaturedId) {
+      const cached = pool.find((c) => c.id === sessionFeaturedId);
+      if (cached) return cached;
+    }
+    // 首次（或缓存频道已不存在）随机挑选，但限制范围
     const idx = Math.floor(Math.random() * Math.min(pool.length, 400));
+    sessionFeaturedId = pool[idx].id;
     return pool[idx];
   }, [all]);
 

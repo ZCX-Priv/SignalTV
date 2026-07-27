@@ -3,6 +3,7 @@ import { Globe2, Search, X } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { fmt } from "../lib/format";
 import { toast } from "../lib/toast";
+import { pushModal, trapFocus } from "../lib/modalStack";
 import type { CountryInfo } from "../types";
 
 interface CountryPickerModalProps {
@@ -18,26 +19,25 @@ export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
 
   const [q, setQ] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  // 打开时重置关键字、聚焦输入框、锁 body 滚动、ESC 关闭
+  // 打开时重置关键字、聚焦输入框；模态栈统一处理 ESC（只关栈顶）与 body 滚动锁
   useEffect(() => {
     if (!open) return;
     setQ("");
+    const release = pushModal(onClose);
+    const prevFocus = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
     // 仅在非触摸设备上自动聚焦，避免移动端强制弹出虚拟键盘导致 panel 溢出可见区域
     const id = requestAnimationFrame(() => {
       if (!window.matchMedia("(pointer: coarse)").matches) {
         inputRef.current?.focus();
       }
     });
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
     return () => {
       cancelAnimationFrame(id);
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      release();
+      prevFocus?.focus?.();
     };
   }, [open, onClose]);
 
@@ -102,7 +102,14 @@ export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
   return (
     <div className="country-picker" role="dialog" aria-modal="true" aria-label="全部国家">
       <div className="country-picker__backdrop" />
-      <div className="country-picker__panel">
+      <div
+        className="country-picker__panel"
+        ref={panelRef}
+        tabIndex={-1}
+        onKeyDown={(e) => {
+          if (panelRef.current) trapFocus(e.nativeEvent, panelRef.current);
+        }}
+      >
         <header className="country-picker__header">
           <div className="country-picker__title">
             <Globe2 size={14} />

@@ -17,7 +17,6 @@ export function StatusPanel() {
   const categories = useStore((s) => s.categories);
   const countries = useStore((s) => s.countries);
   const latency = useStore((s) => s.latency);
-  const latencyLoading = useStore((s) => s.latencyLoading);
 
   // 派生连接状态
   const status = error
@@ -95,7 +94,7 @@ export function StatusPanel() {
           <div className="status__probe-row">
             <span className="status__probe-label">状态</span>
             <span className="status__probe-value mono">
-              {latencyLoading ? "探测中…" : probedCount > 0 ? "已就绪" : "未启动"}
+              {probedCount > 0 ? "已就绪" : "未启动"}
             </span>
           </div>
           <div className="status__probe-row">

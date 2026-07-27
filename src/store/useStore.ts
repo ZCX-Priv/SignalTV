@@ -9,6 +9,7 @@ import {
   api,
   buildChannelIndex,
   buildCountryInfo,
+  getMeasuredSpeed,
 } from "../lib/api";
 import { probeBatch } from "../lib/latency";
 import { idbGet, idbStorage } from "../lib/idb";
@@ -20,8 +21,9 @@ let pendingLatency = new Map<string, number>();
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 const LATENCY_FLUSH_MS = 200;
 
-// runLatencyProbe 持有的 AbortController，用于组件卸载或视图切换时取消探测
-let latencyAbortController: AbortController | null = null;
+// 探测 in-flight 去重：探测需 1-3s 才写入 latency，期间滚动触发的下一批
+// 会重复探测同一批 URL，用此集合拦截，避免浪费带宽（弱网致命）
+const probeInFlight = new Set<string>();
 
 function batchSetLatency(id: string, ms: number) {
   pendingLatency.set(id, ms);
@@ -38,9 +40,15 @@ function batchSetLatency(id: string, ms: number) {
   }, LATENCY_FLUSH_MS);
 }
 
-// 弱网检测：navigator.connection.effectiveType 为 2g/slow-2g 或 saveData 时返回 true
-// Safari/Firefox 不支持 Network Information API 时返回 false（不阻断功能）
-function isWeakNetwork(): boolean {
+// 弱网判定：首选首屏加载实测速度（getMeasuredSpeed），低于 500KB/s 判为 slow；
+// 样本全部命中缓存（无有效样本）时回退到 Network Information API。
+export type NetworkProfile = "fast" | "slow";
+
+const SLOW_SPEED_THRESHOLD = 500_000; // 500KB/s
+
+// 回退路径：navigator.connection 的 saveData/2g/slow-2g 判为弱网
+// （Safari/Firefox 不支持时返回 false，不阻断功能）
+function connectionSaysWeak(): boolean {
   if (typeof navigator === "undefined") return false;
   const conn = (
     navigator as {
@@ -51,6 +59,15 @@ function isWeakNetwork(): boolean {
   if (conn.saveData) return true;
   const t = conn.effectiveType;
   return t === "slow-2g" || t === "2g";
+}
+
+/** 聚合实测速度优先，无有效样本时回退 Network Information API */
+function resolveNetworkProfile(): NetworkProfile {
+  const speed = getMeasuredSpeed();
+  if (speed !== null) {
+    return speed < SLOW_SPEED_THRESHOLD ? "slow" : "fast";
+  }
+  return connectionSaysWeak() ? "slow" : "fast";
 }
 
 export type Theme = "dark" | "light";
@@ -156,7 +173,6 @@ export type View =
   | { kind: "category"; id: string }
   | { kind: "country"; code: string }
   | { kind: "favorites" }
-  | { kind: "search"; q: string }
   | { kind: "status" }
   | { kind: "settings" };
 
@@ -168,10 +184,13 @@ interface State {
   loaded: boolean;
   loading: boolean;
   error: string | null;
+  /** 首屏加载阶段提示（Loader 展示真实进度，弱网下尤其重要） */
+  loadStage: string;
+  /** 网络画像：首屏实测 < 500KB/s 判为 slow，控制探测并发与 hls 缓冲策略 */
+  networkProfile: NetworkProfile;
 
   // 延迟探测
   latency: Map<string, number>; // 频道id → 延迟ms，-1 表示失败
-  latencyLoading: boolean;
 
   // 界面状态
   view: View;
@@ -183,6 +202,7 @@ interface State {
   recentCountries: string[]; // 最近使用的国家 code，最新在前
   sidebarCollapsed: boolean; // 桌面端侧边栏收起
   mobileSidebarOpen: boolean; // 移动端抽屉式侧边栏开关
+  searchOpen: boolean; // 移动端搜索框展开（上移到 store 供 Ctrl+K 共用）
   theme: Theme; // 实际渲染主题（dark|light），由 themeMode 派生
   themeMode: ThemeMode; // 用户主题偏好（system|light|dark），持久化
 
@@ -195,10 +215,10 @@ interface State {
   pushRecent: (id: string) => void;
   pushRecentCategory: (id: string) => void;
   pushRecentCountry: (code: string) => void;
-  runLatencyProbe: () => Promise<void>;
   probeLatencyForIds: (ids: string[]) => Promise<void>;
   toggleSidebar: () => void;
   setMobileSidebar: (open: boolean) => void;
+  setSearchOpen: (open: boolean) => void;
   setTheme: (t: Theme) => void;
   setThemeMode: (m: ThemeMode) => void;
 }
@@ -212,6 +232,8 @@ export const useStore = create<State>()(
       loaded: false,
       loading: false,
       error: null,
+      loadStage: "",
+      networkProfile: "fast",
 
       view: { kind: "home" },
       filter: { q: "", categoryId: null, countryCode: null, sort: "default", nsfw: false },
@@ -221,22 +243,42 @@ export const useStore = create<State>()(
       recentCategories: [],
       recentCountries: [],
       latency: new Map(),
-      latencyLoading: false,
       sidebarCollapsed: false,
       mobileSidebarOpen: false,
+      searchOpen: false,
       theme: getSystemTheme(),
       themeMode: "system",
 
       init: async () => {
         if (get().loaded || get().loading) return;
-        set({ loading: true, error: null });
+        set({ loading: true, error: null, loadStage: "正在连接信号源…" });
         try {
+          // 完成计数：四个请求并行，每个完成时更新阶段提示
+          let done = 0;
+          const track = <T,>(p: Promise<T>, label: string): Promise<T> =>
+            p.then((r) => {
+              done++;
+              set({ loadStage: `${label}已就绪 (${done}/4)` });
+              return r;
+            });
+          // 大文件下载进度（弱网下让用户看到真实字节数，而非死等），
+          // 300ms 节流，两个并行文件共用时间窗口
+          let lastProgress = 0;
+          const fmtBytes = (b: number) =>
+            b >= 1_048_576 ? `${(b / 1_048_576).toFixed(1)}MB` : `${Math.round(b / 1024)}KB`;
+          const onProgress = (label: string) => (bytes: number) => {
+            const now = Date.now();
+            if (now - lastProgress < 300) return;
+            lastProgress = now;
+            set({ loadStage: `正在拉取${label} · ${fmtBytes(bytes)}` });
+          };
           const [channels, streams, categories, countries] = await Promise.all([
-            api.channels(),
-            api.streams(),
-            api.categories(),
-            api.countries(),
+            track(api.channels(undefined, onProgress("频道表")), "频道表"),
+            track(api.streams(undefined, onProgress("信号流")), "信号流"),
+            track(api.categories(), "分类表"),
+            track(api.countries(), "国家表"),
           ]);
+          set({ loadStage: "正在合并信号表…" });
           const idx = buildChannelIndex(channels, streams);
           const countryInfo = buildCountryInfo(countries, idx);
           const cats = categories
@@ -248,10 +290,14 @@ export const useStore = create<State>()(
             countries: countryInfo,
             loaded: true,
             loading: false,
+            loadStage: "",
+            // 加载完成后据实测速度判定网络画像（< 500KB/s → slow）
+            networkProfile: resolveNetworkProfile(),
           });
         } catch (e) {
           set({
             loading: false,
+            loadStage: "",
             error: e instanceof Error ? e.message : "加载广播数据失败。",
           });
         }
@@ -294,56 +340,39 @@ export const useStore = create<State>()(
         set((s) => ({
           recentCountries: [code, ...s.recentCountries.filter((r) => r !== code)].slice(0, 24),
         })),
-      runLatencyProbe: async () => {
-        if (get().latencyLoading) return;
-        // 弱网（2g/slow-2g/saveData）下跳过全量探测，避免挤占首屏带宽
-        if (isWeakNetwork()) return;
-        const channels = get().channels;
-        const existing = get().latency;
-        const urls = new Map<string, string>();
-        for (const [id, c] of channels) {
-          // 跳过已探测的频道，避免与 probeLatencyForIds 重复
-          if (c.streamUrl && !existing.has(id)) urls.set(id, c.streamUrl);
-        }
-        if (urls.size === 0) return;
-        set({ latencyLoading: true });
-        // 持有 AbortController 引用，供取消使用（如组件卸载）
-        const controller = new AbortController();
-        latencyAbortController = controller;
-        try {
-          await probeBatch(
-            urls,
-            16,
-            (id, ms) => batchSetLatency(id, ms),
-            controller.signal,
-          );
-        } finally {
-          if (latencyAbortController === controller) {
-            latencyAbortController = null;
-          }
-          set({ latencyLoading: false });
-        }
-      },
       probeLatencyForIds: async (ids) => {
-        // 弱网下跳过按需探测，latency 标签会显示"未探测"
-        if (isWeakNetwork()) return;
+        // 播放器打开时暂停探测，避免与视频流抢带宽（弱网下尤其致命）；
+        // 关闭播放器后 ChannelGrid 的 effect 会重新触发补测
+        if (get().activeChannelId !== null) return;
         const channels = get().channels;
         const existing = get().latency;
         const urls = new Map<string, string>();
         for (const id of ids) {
           const c = channels.get(id);
-          // 只探测有流且未探测过的频道
-          if (c?.streamUrl && !existing.has(id)) urls.set(id, c.streamUrl);
+          // 只探测有流、未探测过且不在 in-flight 中的频道
+          if (c?.streamUrl && !existing.has(id) && !probeInFlight.has(id)) {
+            urls.set(id, c.streamUrl);
+          }
         }
         if (urls.size === 0) return;
+        for (const id of urls.keys()) probeInFlight.add(id);
+        // slow 网络（首屏实测 < 500KB/s）下并发 16 → 4，保留基本可用性信息
+        const concurrency = get().networkProfile === "slow" ? 4 : 16;
         // 按需探测不持有全局 controller，调用方（ChannelGrid）通过
-        // useEffect cleanup 自动停止触发新批次，进行中的请求由 fetch 自身超时兜底
-        await probeBatch(urls, 16, (id, ms) => {
-          batchSetLatency(id, ms);
-        });
+        // useEffect cleanup 自动停止触发新批次，进行中的请求由 fetch 自身超时兑底处理
+        try {
+          await probeBatch(urls, concurrency, (id, ms) => {
+            probeInFlight.delete(id);
+            batchSetLatency(id, ms);
+          });
+        } finally {
+          // 异常/提前退出时清理未回调的 id，避免永久卡在 in-flight
+          for (const id of urls.keys()) probeInFlight.delete(id);
+        }
       },
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setMobileSidebar: (open) => set({ mobileSidebarOpen: open }),
+      setSearchOpen: (open) => set({ searchOpen: open }),
       setTheme: (t) => {
         syncThemeCache(t);
         set({ theme: t });

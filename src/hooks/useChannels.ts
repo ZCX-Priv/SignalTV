@@ -37,6 +37,9 @@ export function useFilteredChannels(): ChannelWithStream[] {
     return m;
   }, [recents]);
 
+  // favorites 转 Set：避免 favorites 视图下每频道 includes O(n) 扫描
+  const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
+
   return useMemo(() => {
     let list = all;
 
@@ -49,12 +52,7 @@ export function useFilteredChannels(): ChannelWithStream[] {
         list = list.filter((c) => c.country === view.code);
         break;
       case "favorites":
-        list = list.filter((c) => favorites.includes(c.id));
-        break;
-      case "search":
-        list = list.filter((c) =>
-          matchesQuery(c, view.q),
-        );
+        list = list.filter((c) => favoritesSet.has(c.id));
         break;
       case "home":
       default:
@@ -127,7 +125,7 @@ export function useFilteredChannels(): ChannelWithStream[] {
     }
 
     return list;
-  }, [all, view, filter, favorites, recentsIndex, latency]);
+  }, [all, view, filter, favoritesSet, recentsIndex, latency]);
 }
 
 function matchesQuery(c: ChannelWithStream, q: string): boolean {

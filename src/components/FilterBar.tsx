@@ -1,16 +1,20 @@
 import { useEffect, useMemo } from "react";
 import { SlidersHorizontal, ArrowDownUp, Globe, Hash, ShieldAlert } from "lucide-react";
 import { useStore } from "../store/useStore";
-import { useFilteredChannels } from "../hooks/useChannels";
 import { toast } from "../lib/toast";
 import type { SortKey } from "../store/useStore";
+import type { ChannelWithStream } from "../types";
 import { Select } from "./Select";
 
 /** Radix Select 中 value="" 等同未选；用哨兵值表示"全部" */
 const ALL = "_all";
 
-export function FilterBar() {
-  const list = useFilteredChannels();
+interface FilterBarProps {
+  /** 由父组件（ChannelsView）统一计算的过滤结果，避免与 ChannelGrid 重复过滤 */
+  list: ChannelWithStream[];
+}
+
+export function FilterBar({ list }: FilterBarProps) {
   const filter = useStore((s) => s.filter);
   const setFilter = useStore((s) => s.setFilter);
   const categories = useStore((s) => s.categories);
@@ -52,7 +56,7 @@ export function FilterBar() {
         return c ? c.name : "国家";
       }
       case "favorites": return "收藏夹";
-      case "search": return `“${view.q}” 的搜索结果`;
+      default: return "频道";
     }
   })();
 

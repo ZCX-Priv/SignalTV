@@ -2,22 +2,32 @@
 
 const FLAG_BASE = "https://flagcdn.com";
 
+// 国家代码来自第三方 API 数据，严格校验字符集后才拼接进 URL/CSS
+const COUNTRY_CODE_RE = /^[a-z]{2}$/i;
+
+function isValidCountryCode(code: string): boolean {
+  return !!code && COUNTRY_CODE_RE.test(code);
+}
+
 /** 根据国家代码获取小尺寸国旗图片 URL。 */
 export function flagUrl(code: string): string | null {
-  if (!code || code.length !== 2) return null;
+  if (!isValidCountryCode(code)) return null;
   return `${FLAG_BASE}/w40/${code.toLowerCase()}.png`;
 }
 
 /** 获取高分辨率国旗（用于首屏/详情）。 */
 export function flagUrlLg(code: string): string | null {
-  if (!code || code.length !== 2) return null;
+  if (!isValidCountryCode(code)) return null;
   return `${FLAG_BASE}/w80/${code.toLowerCase()}.png`;
 }
 
-/** 获取国旗 SVG 矢量图（用于背景暗纹水印），非 2 位代码返回 null。 */
-export function flagSvgUrl(code: string): string | null {
-  if (!code || code.length !== 2) return null;
-  return `${FLAG_BASE}/${code.toLowerCase()}.svg`;
+/**
+ * 卡片背景用中等尺寸 PNG 国旗（CSS background 无法懒加载，
+ * 改用 w160 PNG 替代整幅 SVG，单张从数百 KB 降到几 KB）。
+ */
+export function flagPngBgUrl(code: string): string | null {
+  if (!isValidCountryCode(code)) return null;
+  return `${FLAG_BASE}/w160/${code.toLowerCase()}.png`;
 }
 
 /**
@@ -25,7 +35,7 @@ export function flagSvgUrl(code: string): string | null {
  * 非法代码回退为中性高级灰渐变。
  */
 export function countryGradient(code: string): string {
-  if (!code || code.length !== 2) {
+  if (!isValidCountryCode(code)) {
     return "linear-gradient(135deg, #2a2a33 0%, #16161c 100%)";
   }
   const a = code.charCodeAt(0);

@@ -40,14 +40,12 @@ export interface Country {
   flag: string;
 }
 
-export interface Language {
-  code: string;
-  name: string;
-}
-
 // UI 中使用的合并视图
 export interface ChannelWithStream extends Channel {
+  /** 首选流（streamUrls[0]），保留字段兼容现有调用 */
   streamUrl?: string;
+  /** 按优先级排序的全部可用流（https 优先、无 referrer/user_agent 要求优先、m3u8 优先） */
+  streamUrls: string[];
   streamCount: number;
 }
 

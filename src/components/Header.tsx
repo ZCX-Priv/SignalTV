@@ -3,7 +3,23 @@ import { Search, X, Command, Menu } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useAllChannels } from "../hooks/useChannels";
 import { broadcastDate, clock } from "../lib/format";
+import { applySeo, describeSearch, describeView } from "../lib/seo";
 import { Logo } from "./Logo";
+
+// 时钟隔离成独立组件：每秒 setInterval 只重渲染此小组件，
+// 避免整个 Header（含搜索表单/logo/菜单）每秒重渲染
+function HeaderClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="header__clock mono" title={broadcastDate(now)}>
+      {clock(now)}
+    </div>
+  );
+}
 
 export function Header() {
   const setFilter = useStore((s) => s.setFilter);
@@ -14,7 +30,6 @@ export function Header() {
   const setMobileSidebar = useStore((s) => s.setMobileSidebar);
   const sidebarCollapsed = useStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useStore((s) => s.toggleSidebar);
-  const [now, setNow] = useState(() => new Date());
   // 响应式判定：≤860px 视为移动端，与 CSS 媒体查询断点一致
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 860px)").matches : false,
@@ -23,13 +38,10 @@ export function Header() {
   const [isPhone, setIsPhone] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 510px)").matches : false,
   );
-  const [searchOpen, setSearchOpen] = useState(false);
+  // searchOpen 上移到 store：App 的 Ctrl+K 快捷键需要在移动端先展开再聚焦
+  const searchOpen = useStore((s) => s.searchOpen);
+  const setSearchOpen = useStore((s) => s.setSearchOpen);
   const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   useEffect(() => {
     const mql = window.matchMedia("(max-width: 860px)");
@@ -48,7 +60,7 @@ export function Header() {
   // 退出移动端时重置展开状态，避免残留 is-search-open 影响桌面端
   useEffect(() => {
     if (!isMobile) setSearchOpen(false);
-  }, [isMobile]);
+  }, [isMobile, setSearchOpen]);
 
   // 展开搜索框时自动聚焦输入框（setTimeout 等待 display 切换生效）
   useEffect(() => {
@@ -57,6 +69,27 @@ export function Header() {
       return () => clearTimeout(t);
     }
   }, [isMobile, searchOpen]);
+
+  // 搜索词 SEO：搜索走 filter.q 实时过滤（非独立 view），
+  // debounce 300ms 后同步 title/description；清空时恢复当前视图的 SEO
+  const q = filter.q.trim();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (q) {
+        applySeo(describeSearch(q));
+      } else {
+        const s = useStore.getState();
+        applySeo(
+          describeView(s.view, s.filter, {
+            categories: s.categories,
+            countries: s.countries,
+            channels: s.channels,
+          }),
+        );
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [q]);
 
   const liveCount = channels.length;
 
@@ -157,9 +190,7 @@ export function Header() {
             <strong>{liveCount.toLocaleString("en-US")}</strong> 路信号直播中
           </span>
         </div>
-        <div className="header__clock mono" title={broadcastDate(now)}>
-          {clock(now)}
-        </div>
+        <HeaderClock />
       </div>
     </header>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   X,
   Play,
@@ -12,6 +12,7 @@ import { useStore } from "../store/useStore";
 import { useChannel } from "../hooks/useChannels";
 import { broadcastDate, channelPosition, flagUrl, prettyCategory } from "../lib/format";
 import { toast } from "../lib/toast";
+import { pushModal, trapFocus } from "../lib/modalStack";
 import { LatencyTag } from "./LatencyTag";
 import { TvPlayer } from "./TvPlayer";
 
@@ -23,24 +24,54 @@ export function PlayerModal() {
   const toggleFavorite = useStore((s) => s.toggleFavorite);
   const channels = useStore((s) => s.channels);
 
-  const url = channel?.streamUrl ?? null;
+  // 流故障转移：当前播放的流索引，失败时递增；切频道时重置。
+  // retryToken 用于"重试"时强制 remount TvPlayer（即使 streamIdx 已是 0）。
+  const [streamIdx, setStreamIdx] = useState(0);
+  const [retryToken, setRetryToken] = useState(0);
+  const streamUrls = useMemo(() => channel?.streamUrls ?? [], [channel]);
+  const url = streamUrls[streamIdx] ?? null;
+
+  useEffect(() => {
+    setStreamIdx(0);
+    setRetryToken(0);
+  }, [activeId]);
+
+  // TvPlayer 播放失败 → 切到下一路流；返回是否还有备用流可切
+  const handleStreamError = useCallback(() => {
+    let switched = false;
+    setStreamIdx((i) => {
+      if (i + 1 < streamUrls.length) {
+        switched = true;
+        return i + 1;
+      }
+      return i;
+    });
+    if (switched) toast.info("当前流不可用，已切换备用信号源");
+    return switched;
+  }, [streamUrls.length]);
+
+  // 错误面板"重试"：从第一路流重新开始，retryToken 变化强制 remount
+  const handleRetry = useCallback(() => {
+    setStreamIdx(0);
+    setRetryToken((t) => t + 1);
+  }, []);
+
   const [latency, setLatency] = useState<number | null>(null);
   const [playerState, setPlayerState] = useState<"idle" | "loading" | "ready" | "paused" | "error">("idle");
   const stageRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
   const titlesRef = useRef<HTMLDivElement>(null);
 
-  // ESC 关闭
+  // 模态栈接入：ESC 只关栈顶 + body 滚动锁引用计数 + 焦点圈定
   useEffect(() => {
     if (!activeId) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") openChannel(null);
-    }
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
+    const release = pushModal(() => openChannel(null));
+    const prevFocus = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
     return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      release();
+      prevFocus?.focus?.();
     };
   }, [activeId, openChannel]);
 
@@ -78,7 +109,14 @@ export function PlayerModal() {
   return (
     <div className="player" role="dialog" aria-modal="true" aria-label={`正在播放 ${channel.name}`}>
       <div className="player__backdrop" />
-      <div className="player__panel">
+      <div
+        className="player__panel"
+        ref={panelRef}
+        tabIndex={-1}
+        onKeyDown={(e) => {
+          if (panelRef.current) trapFocus(e.nativeEvent, panelRef.current);
+        }}
+      >
         <header className="player__head">
           <div className="player__head-left">
             <span className="player__ch mono">频道 {channelPosition(channel.id)}</span>
@@ -106,9 +144,14 @@ export function PlayerModal() {
 
         <div className="player__stage" ref={stageRef}>
           <TvPlayer
+            key={`${activeId}-${streamIdx}-${retryToken}`}
             url={url}
             onLatencyChange={setLatency}
             onStateChange={setPlayerState}
+            onStreamError={handleStreamError}
+            onRetry={handleRetry}
+            streamTried={Math.min(streamIdx + 1, streamUrls.length)}
+            streamTotal={streamUrls.length}
           />
 
           <aside className="player__info">

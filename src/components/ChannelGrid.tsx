@@ -1,21 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SearchX, Loader2 } from "lucide-react";
 import { useStore } from "../store/useStore";
-import { useFilteredChannels } from "../hooks/useChannels";
+import type { ChannelWithStream } from "../types";
 import { ChannelCard } from "./ChannelCard";
 
 const PAGE = 60;
 
-export function ChannelGrid() {
-  const list = useFilteredChannels();
+interface ChannelGridProps {
+  /** 由父组件（ChannelsView）统一计算的过滤结果，避免与 FilterBar 重复过滤 */
+  list: ChannelWithStream[];
+}
+
+export function ChannelGrid({ list }: ChannelGridProps) {
   const view = useStore((s) => s.view);
+  const filter = useStore((s) => s.filter);
   const [limit, setLimit] = useState(PAGE);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // 结果集变化时重置分页
+  // 结果集变化时重置分页：依赖 filter 而非仅 list.length，
+  // 避免筛选条件变化但结果数恰好相同时不重置导致展示错乱
   useEffect(() => {
     setLimit(PAGE);
-  }, [view, list.length]);
+  }, [view, filter, list.length]);
 
   // 通过 IntersectionObserver 实现无限滚动
   useEffect(() => {
@@ -37,17 +43,20 @@ export function ChannelGrid() {
 
   const shown = useMemo(() => list.slice(0, limit), [list, limit]);
   const probeLatencyForIds = useStore((s) => s.probeLatencyForIds);
+  const activeChannelId = useStore((s) => s.activeChannelId);
 
   // 可见性优先探测：shown 变化时 debounce 150ms 触发，
   // 让首屏可见频道的延迟标签 1-3 秒内出现，而非等全量探测。
+  // 播放器打开期间暂停（不与视频流抢带宽），关闭后自动补测。
   useEffect(() => {
     if (shown.length === 0) return;
+    if (activeChannelId) return;
     const ids = shown.map((c) => c.id);
     const timer = setTimeout(() => {
       void probeLatencyForIds(ids);
     }, 150);
     return () => clearTimeout(timer);
-  }, [shown, probeLatencyForIds]);
+  }, [shown, probeLatencyForIds, activeChannelId]);
 
   if (list.length === 0) {
     return (

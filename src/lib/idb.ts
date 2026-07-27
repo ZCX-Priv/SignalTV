@@ -13,7 +13,7 @@ let dbPromise: Promise<IDBDatabase> | null = null;
 /** 打开（必要时升级）数据库，确保 `kv` object store 存在。 */
 function openDB(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
-  dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
+  const p = new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
       reject(new Error("IndexedDB 不可用"));
       return;
@@ -28,7 +28,13 @@ function openDB(): Promise<IDBDatabase> {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error ?? new Error("打开 IndexedDB 失败"));
   });
-  return dbPromise;
+  dbPromise = p;
+  // 打开失败时重置缓存：否则被拒绝的 Promise 永久缓存，
+  // 后续所有 IDB 操作永远失败（如浏览器临时拒绝后无法恢复）
+  p.catch(() => {
+    if (dbPromise === p) dbPromise = null;
+  });
+  return p;
 }
 
 /** 在读写事务中执行单个 store 操作，包装为 Promise。 */
