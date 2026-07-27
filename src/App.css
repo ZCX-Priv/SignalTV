@@ -258,12 +258,21 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
+  /* 行高归一：与 .sidebar__label-action 统一为 line-height:1，
+     避免两种行高模型的半行距分摊差异导致文字与"全部"按钮字形错位；
+     min-height 保持行高收紧前的 18px 总高，周边间距节奏不变 */
+  line-height: 1;
+  min-height: 18px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--ink-mute);
 }
 .sidebar__label svg {
   opacity: 0.7;
+  /* 光学对齐：10px CJK 字形墨迹上重下轻（基线上 9px/基线下 1px），
+     墨迹中心比 flex 盒居中的图标中心高 1px；将图标（含"全部"箭头）
+     上移 1px，使图标中心与文字墨迹中心同线 */
+  transform: translateY(-1px);
 }
 .sidebar__label-action {
   margin-left: auto;
@@ -273,7 +282,12 @@
   padding: 2px 6px;
   border-radius: 5px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  /* 字号与 .sidebar__label 一致（整数 10px）：原 9.5px 小数字号会产生
+     0.25px 分数坐标，100% 缩放下与左侧文字各自取整到不同物理像素，
+     形成扎眼的整像素错位；层级差异由颜色与字距体现 */
+  font-size: 10px;
+  /* 与 .sidebar__label 同为 line-height:1，保证 flex 居中后字形中心重合 */
+  line-height: 1;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-mute);
