@@ -2075,7 +2075,7 @@
 /* 入场错峰延迟：按类名绑定而非 nth-child（合并行会替换第 4/5 行位置，
    不能受位置影响）；仅首次挂载时重放（各行不重挂载，[OK] 原地追加）；
    延迟值若调整，需同步 index.css 减弱动效豁免区的对应值，
-   以及 Loader.tsx 中门控合并行的 LOG_STAGGER_END_MS */
+   以及 useStore.ts 中门控合并行/停留时长的 LOG_STAGGER_END_MS */
 .loader__l1 { animation-delay: 0.2s; }
 .loader__l2 { animation-delay: 0.5s; }
 .loader__l3 { animation-delay: 0.8s; }
@@ -2869,6 +2869,11 @@
   flex: 0 0 auto;
   color: var(--ink-mute); /* 默认值，被下方各类型规则覆盖 */
 }
+/* 覆盖 JSX 的 size={14}：1.4em = 标题 13.5px × line-height 1.4，与文案行盒等高 */
+.signaltv-toast__icon svg {
+  width: 1.4em;
+  height: 1.4em;
+}
 .signaltv-toast[data-type="success"] .signaltv-toast__icon { color: var(--lime); }
 .signaltv-toast[data-type="error"]   .signaltv-toast__icon { color: var(--signaltv); }
 .signaltv-toast[data-type="warning"] .signaltv-toast__icon { color: var(--amber); }
@@ -2931,12 +2936,12 @@
   outline-offset: 1px;
 }
 
-/* 更新 toast 扩展：操作按钮行 + 下载进度条（内容区内部，垂直堆叠） */
+/* 更新 toast 扩展：操作按钮与文案同行（位于右侧）+ 下载进度条（内容区内部） */
 .signaltv-toast__actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
+  flex: 0 0 auto;
 }
 .signaltv-toast__btn {
   display: inline-flex;

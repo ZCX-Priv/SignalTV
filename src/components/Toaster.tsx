@@ -61,6 +61,7 @@ function ToastView({ item }: { item: ToastItem }) {
     >
       <span className="signaltv-toast__bar" aria-hidden="true" />
       <span className="signaltv-toast__icon" aria-hidden="true">
+        {/* size={14} 会被 CSS .signaltv-toast__icon svg 覆盖为 1.4em，与标题行高等大 */}
         <Icon size={14} />
       </span>
       <span className="signaltv-toast__content">
@@ -82,21 +83,21 @@ function ToastView({ item }: { item: ToastItem }) {
             />
           </span>
         )}
-        {item.actions && item.actions.length > 0 && (
-          <span className="signaltv-toast__actions">
-            {item.actions.map((action) => (
-              <button
-                key={action.label}
-                type="button"
-                className={`signaltv-toast__btn signaltv-toast__btn--${action.variant ?? "ghost"}`}
-                onClick={action.onClick}
-              >
-                {action.label}
-              </button>
-            ))}
-          </span>
-        )}
       </span>
+      {item.actions && item.actions.length > 0 && (
+        <span className="signaltv-toast__actions">
+          {item.actions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              className={`signaltv-toast__btn signaltv-toast__btn--${action.variant ?? "ghost"}`}
+              onClick={action.onClick}
+            >
+              {action.label}
+            </button>
+          ))}
+        </span>
+      )}
       <button
         type="button"
         className="signaltv-toast__close"

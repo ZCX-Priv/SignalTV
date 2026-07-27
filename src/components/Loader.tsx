@@ -1,16 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Radio } from "lucide-react";
-import { useStore } from "../store/useStore";
+import { LOG_STAGGER_END_MS, useStore } from "../store/useStore";
 import { useI18n } from "../i18n";
-
-// 错峰入场总时长：末行延迟 1.4s + 淡入 0.4s，
-// 须与 App.css .loader__l5 延迟及 fade-in 时长同步
-const LOG_STAGGER_END_MS = 1800;
 
 export function Loader() {
   const { t } = useI18n();
   // 固定五行进度（全部原地更新，不滚动不重挂载）：
-  // 第2、3行完成时原地追加 [OK]；
+  // 第2、3行下载中显示 [n%]，完成时原地换 [OK]；
   // 第4、5行合计大小/速率纯文本原地刷新；
   // 合并阶段经 JS 门控：必须等五行错峰入场全部完成后，
   // 才清掉大小/速率两行并打印"合并信号表"行
@@ -64,11 +60,19 @@ export function Loader() {
               <p className="loader__l1">{`> ${t("loader.logConnect")}`}</p>
               <p className="loader__l2">
                 {`> ${t("loader.logChannels")}`}
-                {progress.channelsReady && <span className="loader__ok"> [OK]</span>}
+                {progress.channelsReady ? (
+                  <span className="loader__ok"> [OK]</span>
+                ) : (
+                  progress.channelsPct !== undefined && ` [${progress.channelsPct}%]`
+                )}
               </p>
               <p className="loader__l3">
                 {`> ${t("loader.logStreams")}`}
-                {progress.streamsReady && <span className="loader__ok"> [OK]</span>}
+                {progress.streamsReady ? (
+                  <span className="loader__ok"> [OK]</span>
+                ) : (
+                  progress.streamsPct !== undefined && ` [${progress.streamsPct}%]`
+                )}
               </p>
               {mergeVisible ? (
                 // 门控通过后：清掉大小/速率两行，原位打印合并行

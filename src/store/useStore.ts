@@ -243,12 +243,20 @@ export interface HistoryEntry {
 // 历史上限：超出截断尾部（最旧），避免持久化体积无限增长
 const HISTORY_LIMIT = 200;
 
+// 错峰入场总时长：末行延迟 1.4s + 淡入 0.4s，须与 App.css .loader__l5 延迟及
+// fade-in 时长同步（Loader 合并行门控与 init 停留时长计算共用）
+export const LOG_STAGGER_END_MS = 1800;
+
 // 首屏加载进度（固定五行 Loader 用）：所有字段均原地刷新，不重挂载
 export interface LoadProgress {
   /** 频道表已就绪 → 第2行 [OK] */
   channelsReady: boolean;
   /** 信号流已就绪 → 第3行 [OK] */
   streamsReady: boolean;
+  /** 频道表下载百分比（0~99；无 Content-Length 时缺省）→ 第2行 [n%] */
+  channelsPct?: number;
+  /** 信号流下载百分比（0~99）→ 第3行 [n%] */
+  streamsPct?: number;
   /** 两大文件合计已下载（如 2.3MB） */
   size?: string;
   /** 合计瞬时速率（如 512KB/s） */
@@ -348,6 +356,8 @@ export const useStore = create<State>()(
 
       init: async () => {
         if (get().loaded || get().loading) return;
+        // 五行日志挂载时刻：错峰入场与停留时长均以此为起点
+        const startAt = Date.now();
         set({
           loading: true,
           error: null,
@@ -370,10 +380,17 @@ export const useStore = create<State>()(
           const fmtBytes = (b: number) =>
             b >= 1_048_576 ? `${(b / 1_048_576).toFixed(1)}MB` : `${Math.round(b / 1024)}KB`;
           const fileBytes = { channels: 0, streams: 0 };
+          // 各文件下载百分比（基于 Content-Length；缺失时不显示）
+          const filePct: { channels?: number; streams?: number } = {};
           let prevTotal = 0;
           let prevTime = 0;
-          const onProgress = (file: keyof typeof fileBytes) => (bytes: number) => {
+          const onProgress = (file: keyof typeof fileBytes) => (bytes: number, totalBytes?: number) => {
             fileBytes[file] = bytes;
+            // gzip 传输下 Content-Length 为压缩后大小、读流字节为解压后，
+            // 比值会超 100%，钳制 99，真正完成由 [OK] 表达
+            if (totalBytes) {
+              filePct[file] = Math.min(99, Math.floor((bytes / totalBytes) * 100));
+            }
             const now = Date.now();
             if (prevTime && now - prevTime < 300) return;
             const total = fileBytes.channels + fileBytes.streams;
@@ -383,7 +400,12 @@ export const useStore = create<State>()(
               : undefined;
             prevTotal = total;
             prevTime = now;
-            patch(speed ? { size: fmtBytes(total), speed } : { size: fmtBytes(total) });
+            patch({
+              size: fmtBytes(total),
+              ...(speed ? { speed } : {}),
+              channelsPct: filePct.channels,
+              streamsPct: filePct.streams,
+            });
           };
           const [channels, streams, categories, countries] = await Promise.all([
             track(api.channels(undefined, onProgress("channels")), { channelsReady: true }),
@@ -391,15 +413,24 @@ export const useStore = create<State>()(
             api.categories(),
             api.countries(),
           ]);
-          // 两行 [OK] 均已显示的时刻：进主页前保证至少停留 1s
-          const okAt = Date.now();
-          patch({ merging: true });
+          // 下载完成：补一次最终大小与全程均值速率（缓存场景下载在 300ms
+          // 节流窗口内结束，末次 tick 被吞、速率恒为 "--"，以均值兕底）
+          const mergingAt = Date.now();
+          const doneBytes = fileBytes.channels + fileBytes.streams;
+          patch({
+            merging: true,
+            size: fmtBytes(doneBytes),
+            speed: `${fmtBytes((doneBytes / Math.max(1, mergingAt - startAt)) * 1000)}/s`,
+          });
           const idx = buildChannelIndex(channels, streams);
           const countryInfo = buildCountryInfo(countries, idx);
           const cats = categories
             .filter((c) => c.id !== "xxx")
             .sort((a, b) => a.name.localeCompare(b.name));
-          const wait = 1000 - (Date.now() - okAt);
+          // 合并行实际显示时刻与 Loader 门控一致（须等错峰入场完成），
+          // 进主页前保证合并行至少可见 1s（缓存命中时也能播完整序列）
+          const mergeShownAt = Math.max(mergingAt, startAt + LOG_STAGGER_END_MS);
+          const wait = mergeShownAt + 1000 - Date.now();
           if (wait > 0) await new Promise((r) => setTimeout(r, wait));
           set({
             channels: idx,
