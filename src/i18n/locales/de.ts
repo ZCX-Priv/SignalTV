@@ -189,6 +189,8 @@ export const dict: Dict = {
   // ── Player-Dialog ──
   "player.dialogAria": "Es läuft {name}",
   "player.signalLocked": "Signal eingerastet",
+  "player.connecting": "Verbinden",
+  "player.connectFailed": "Verbindung fehlgeschlagen",
   "player.closeAria": "Player schließen",
   "player.website": "Webseite",
   "player.factChannel": "Kanalnummer",

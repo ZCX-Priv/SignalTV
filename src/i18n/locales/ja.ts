@@ -184,6 +184,8 @@ export const dict: Dict = {
   // ── プレーヤーモーダル ──
   "player.dialogAria": "{name} を再生中",
   "player.signalLocked": "信号ロック済み",
+  "player.connecting": "接続中",
+  "player.connectFailed": "接続失敗",
   "player.closeAria": "プレーヤーを閉じる",
   "player.website": "公式サイト",
   "player.factChannel": "チャンネル番号",

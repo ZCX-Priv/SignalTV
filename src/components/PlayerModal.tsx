@@ -6,7 +6,7 @@ import {
   Globe2,
   Tv2,
   ExternalLink,
-  Lock,
+  AlertTriangle,
   RotateCcw,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
@@ -160,21 +160,24 @@ export function PlayerModal() {
           <div className="player__head-left">
             <span className="player__ch mono">{t("common.channelPos", { pos: channelPosition(channel.id) })}</span>
             <span className="player__divider" />
-            <span className="player__live mono">
-              <span className="dot" /> {t("common.liveNow")}
-            </span>
+            {/* 连接状态指示：连接中 → 信号已锁定 / 连接失败（随 playerState 三态切换） */}
+            {playerState === "error" ? (
+              <span className="player__live player__live--failed mono">
+                <AlertTriangle size={11} /> {t("player.connectFailed")}
+              </span>
+            ) : playerState === "ready" || playerState === "paused" ? (
+              <span className="player__live player__live--locked mono">
+                <span className="dot" /> {t("player.signalLocked")}
+              </span>
+            ) : (
+              <span className="player__live player__live--connecting mono">
+                <span className="dot" /> {t("player.connecting")}
+              </span>
+            )}
             <span className="player__divider" />
             <span className="mono player__time">{broadcastDate()}</span>
             <span className="player__divider" />
             <LatencyTag ms={latency} className="player__ping" />
-            {playerState === "ready" && (
-              <>
-                <span className="player__divider" />
-                <span className="player__signal-lock mono">
-                  <Lock size={11} /> {t("player.signalLocked")} · {channel.country}
-                </span>
-              </>
-            )}
           </div>
           <div className="player__head-actions">
             <button

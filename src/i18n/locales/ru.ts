@@ -222,6 +222,8 @@ export const dict: Dict = {
   // ── Окно плеера ──
   "player.dialogAria": "Сейчас играет {name}",
   "player.signalLocked": "Сигнал захвачен",
+  "player.connecting": "Подключение",
+  "player.connectFailed": "Сбой подключения",
   "player.closeAria": "Закрыть плеер",
   "player.website": "Сайт",
   "player.factChannel": "Номер канала",

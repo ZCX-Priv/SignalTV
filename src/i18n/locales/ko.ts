@@ -184,6 +184,8 @@ export const dict: Dict = {
   // ── 플레이어 모달 ──
   "player.dialogAria": "{name} 재생 중",
   "player.signalLocked": "신호 고정됨",
+  "player.connecting": "연결 중",
+  "player.connectFailed": "연결 실패",
   "player.closeAria": "플레이어 닫기",
   "player.website": "공식 사이트",
   "player.factChannel": "채널 번호",

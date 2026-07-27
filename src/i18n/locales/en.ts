@@ -187,6 +187,8 @@ export const dict: Dict = {
   // ── Player modal ──
   "player.dialogAria": "Now playing {name}",
   "player.signalLocked": "Signal locked",
+  "player.connecting": "Connecting",
+  "player.connectFailed": "Connection failed",
   "player.closeAria": "Close player",
   "player.website": "Website",
   "player.factChannel": "Channel no.",

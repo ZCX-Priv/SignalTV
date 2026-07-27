@@ -1413,12 +1413,33 @@
   color: var(--signaltv);
   letter-spacing: 0.14em;
 }
-.player__signal-lock {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+/* 连接状态三态：连接中琥珀 / 锁定青色 / 失败沿用基类红色；
+   .dot 底色与脉冲光圈默认是写死的红色，需随状态同步覆盖 */
+.player__live--connecting {
+  color: var(--amber);
+}
+.player__live--connecting .dot {
+  background: var(--amber);
+  box-shadow: 0 0 0 0 rgba(255, 182, 39, 0.55);
+  animation-name: pulse-amber;
+}
+.player__live--locked {
   color: var(--cyan);
-  letter-spacing: 0.14em;
+}
+.player__live--locked .dot {
+  background: var(--cyan);
+  box-shadow: 0 0 0 0 rgba(42, 216, 255, 0.55);
+  animation-name: pulse-cyan;
+}
+@keyframes pulse-amber {
+  0% { box-shadow: 0 0 0 0 rgba(255, 182, 39, 0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(255, 182, 39, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 182, 39, 0); }
+}
+@keyframes pulse-cyan {
+  0% { box-shadow: 0 0 0 0 rgba(42, 216, 255, 0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(42, 216, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(42, 216, 255, 0); }
 }
 .player__time {
   color: var(--ink-mute);

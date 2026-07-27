@@ -198,6 +198,8 @@ export const dict = {
   // ── 播放器弹窗 ──
   "player.dialogAria": "正在播放 {name}",
   "player.signalLocked": "信号已锁定",
+  "player.connecting": "连接中",
+  "player.connectFailed": "连接失败",
   "player.closeAria": "关闭播放器",
   "player.website": "官网",
   "player.factChannel": "频道号",

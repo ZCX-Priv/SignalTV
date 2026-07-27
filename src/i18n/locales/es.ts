@@ -189,6 +189,8 @@ export const dict: Dict = {
   // ── Ventana del reproductor ──
   "player.dialogAria": "Reproduciendo {name}",
   "player.signalLocked": "Señal fijada",
+  "player.connecting": "Conectando",
+  "player.connectFailed": "Conexión fallida",
   "player.closeAria": "Cerrar reproductor",
   "player.website": "Sitio web",
   "player.factChannel": "N.º de canal",
