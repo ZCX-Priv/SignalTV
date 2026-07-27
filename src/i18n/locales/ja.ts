@@ -59,6 +59,7 @@ export const dict: Dict = {
   "toast.themeSwitched": "{name}モードに切り替えました",
   "toast.langSwitched": "言語を{name}に切り替えました",
   "toast.updateModeSwitched": "更新方式：{name}",
+  "toast.tzSwitched": "タイムゾーン：{name}",
   "toast.streamFailover": "現在のストリームが利用できないため、予備信号に切り替えました",
   "toast.welcome": "SignalTV へようこそ",
   "toast.loading": "読み込み中",
@@ -165,6 +166,14 @@ export const dict: Dict = {
     "チャンネルデータは公開のオープンソースプロジェクト iptv-org に由来します。本サイトは映像ストリームの保存・中継を一切行いません。",
   "settings.updates": "更新",
   "settings.updatesDesc": "新バージョン発見時の処理方法を選択します。",
+  "settings.timezone": "タイムゾーン",
+  "settings.timezoneDesc": "時刻表示に使用するタイムゾーンを選択します。既定では自動検出です。",
+  "settings.tzAuto": "自動検出",
+  "settings.tzAutoDesc": "デバイスのタイムゾーンに従う（現在：{name}）",
+
+  // ── タイムゾーンマップ ──
+  "tz.mapAria": "世界地図タイムゾーン選択",
+  "tz.bandAria": "{name} を選択",
 
   // ── 更新オプションと更新トースト ──
   "update.auto": "自動更新",

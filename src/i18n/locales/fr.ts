@@ -59,6 +59,7 @@ export const dict: Dict = {
   "toast.themeSwitched": "Mode « {name} » activé",
   "toast.langSwitched": "Langue changée : {name}",
   "toast.updateModeSwitched": "Mode de mise à jour : {name}",
+  "toast.tzSwitched": "Fuseau horaire : {name}",
   "toast.streamFailover": "Flux indisponible, signal de secours activé",
   "toast.welcome": "Bienvenue sur SignalTV",
   "toast.loading": "Chargement",
@@ -170,6 +171,14 @@ export const dict: Dict = {
     "Les données des chaînes proviennent du projet open source public iptv-org. Ce site ne stocke ni ne relaie aucun flux vidéo.",
   "settings.updates": "Mises à jour",
   "settings.updatesDesc": "Choisissez comment gérer les nouvelles versions.",
+  "settings.timezone": "Fuseau horaire",
+  "settings.timezoneDesc": "Choisissez le fuseau horaire pour l'affichage de l'heure, détecté automatiquement par défaut.",
+  "settings.tzAuto": "Détection automatique",
+  "settings.tzAutoDesc": "Suivre le fuseau de l'appareil (actuel : {name})",
+
+  // ── Carte des fuseaux horaires ──
+  "tz.mapAria": "Sélecteur de fuseau horaire sur carte du monde",
+  "tz.bandAria": "Sélectionner {name}",
 
   // ── Options de mise à jour & toast de mise à jour ──
   "update.auto": "Mise à jour automatique",

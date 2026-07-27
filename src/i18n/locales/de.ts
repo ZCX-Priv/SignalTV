@@ -59,6 +59,7 @@ export const dict: Dict = {
   "toast.themeSwitched": "Zum Modus „{name}“ gewechselt",
   "toast.langSwitched": "Sprache auf {name} umgestellt",
   "toast.updateModeSwitched": "Update-Modus: {name}",
+  "toast.tzSwitched": "Zeitzone: {name}",
   "toast.streamFailover": "Stream nicht verfügbar, auf Ersatzsignal umgeschaltet",
   "toast.welcome": "Willkommen bei SignalTV",
   "toast.loading": "Wird geladen",
@@ -170,6 +171,14 @@ export const dict: Dict = {
     "Die Kanaldaten stammen aus dem öffentlichen Open-Source-Projekt iptv-org. Diese Seite speichert oder überträgt keine Videostreams.",
   "settings.updates": "Updates",
   "settings.updatesDesc": "Wähle, wie neue Versionen behandelt werden.",
+  "settings.timezone": "Zeitzone",
+  "settings.timezoneDesc": "Wähle die Zeitzone für die Zeitanzeige, standardmäßig automatisch erkannt.",
+  "settings.tzAuto": "Automatisch erkennen",
+  "settings.tzAutoDesc": "Geräte-Zeitzone folgen (aktuell: {name})",
+
+  // ── Zeitzonenkarte ──
+  "tz.mapAria": "Weltkarten-Zeitzonenauswahl",
+  "tz.bandAria": "{name} auswählen",
 
   // ── Update-Optionen & Update-Toast ──
   "update.auto": "Automatisch aktualisieren",

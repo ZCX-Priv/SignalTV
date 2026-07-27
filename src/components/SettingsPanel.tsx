@@ -14,6 +14,8 @@ import {
 import { useStore } from "../store/useStore";
 import type { ThemeMode, UpdateMode } from "../store/useStore";
 import { toast } from "../lib/toast";
+import { detectTimeZone } from "../lib/timezone";
+import { TimezoneMap } from "./TimezoneMap";
 import {
   NATIVE_LOCALE_NAMES,
   SUPPORTED_LOCALES,
@@ -108,6 +110,8 @@ export function SettingsPanel() {
   const setLanguage = useStore((s) => s.setLanguage);
   const updateMode = useStore((s) => s.updateMode);
   const setUpdateMode = useStore((s) => s.setUpdateMode);
+  const timezonePref = useStore((s) => s.timezonePref);
+  const setTimezonePref = useStore((s) => s.setTimezonePref);
   const channels = useStore((s) => s.channels);
 
   return (
@@ -196,6 +200,42 @@ export function SettingsPanel() {
             );
           })}
         </div>
+      </section>
+
+      <section className="settings__section">
+        <header className="settings__section-head">
+          <h2>{t("settings.timezone")}</h2>
+          <p>{t("settings.timezoneDesc")}</p>
+        </header>
+        <div className="settings__options">
+          <button
+            className={`settings__option ${timezonePref === "auto" ? "is-active" : ""}`}
+            onClick={() => {
+              if (timezonePref === "auto") return;
+              setTimezonePref("auto");
+              toast.success(
+                t("toast.tzSwitched", { name: t("settings.tzAuto") }),
+              );
+            }}
+            aria-pressed={timezonePref === "auto"}
+          >
+            <span className="settings__option-icon">
+              <Monitor size={16} />
+            </span>
+            <span className="settings__option-text">
+              <span className="settings__option-name">{t("settings.tzAuto")}</span>
+              <span className="settings__option-desc">
+                {t("settings.tzAutoDesc", { name: detectTimeZone() })}
+              </span>
+            </span>
+            {timezonePref === "auto" && (
+              <span className="settings__option-check">
+                <Check size={14} />
+              </span>
+            )}
+          </button>
+        </div>
+        <TimezoneMap />
       </section>
 
       <section className="settings__section">

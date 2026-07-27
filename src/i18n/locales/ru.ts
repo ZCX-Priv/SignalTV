@@ -60,6 +60,7 @@ export const dict: Dict = {
   "toast.themeSwitched": "Включён режим «{name}»",
   "toast.langSwitched": "Язык переключён: {name}",
   "toast.updateModeSwitched": "Режим обновления: {name}",
+  "toast.tzSwitched": "Часовой пояс: {name}",
   "toast.streamFailover": "Поток недоступен, включён резервный сигнал",
   "toast.welcome": "Добро пожаловать в SignalTV",
   "toast.loading": "Загрузка",
@@ -203,6 +204,14 @@ export const dict: Dict = {
     "Данные каналов взяты из открытого проекта iptv-org. Сайт не хранит и не ретранслирует видеопотоки.",
   "settings.updates": "Обновления",
   "settings.updatesDesc": "Выберите, как обрабатывать новые версии.",
+  "settings.timezone": "Часовой пояс",
+  "settings.timezoneDesc": "Выберите часовой пояс для отображения времени, по умолчанию определяется автоматически.",
+  "settings.tzAuto": "Автоопределение",
+  "settings.tzAutoDesc": "Следовать часовому поясу устройства (текущий: {name})",
+
+  // ── Карта часовых поясов ──
+  "tz.mapAria": "Выбор часового пояса на карте мира",
+  "tz.bandAria": "Выбрать {name}",
 
   // ── Параметры обновления и уведомление об обновлении ──
   "update.auto": "Автообновление",

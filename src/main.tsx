@@ -4,10 +4,16 @@ import "./index.css";
 import "./App.css";
 import App from "./App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { getInitialLanguage, getInitialTheme, useStore } from "./store/useStore";
+import {
+  getInitialLanguage,
+  getInitialTheme,
+  getInitialTimezone,
+  useStore,
+} from "./store/useStore";
 import { migrateFromLocalStorage } from "./lib/idb";
 import { initSeo } from "./lib/seo";
 import { initUpdater } from "./lib/updater";
+import { syncActiveTimeZone } from "./lib/timezone";
 import { applyLocaleSideEffects, loadLocale, resolveLocale } from "./i18n";
 
 // 启动流程：
@@ -53,11 +59,15 @@ function initFrauncesItalic() {
 async function bootstrap() {
   // 尽早启动 Fraunces italic 字体加载监听，与后续初始化并行，不阻塞渲染
   initFrauncesItalic();
-  const [, theme, languagePref] = await Promise.all([
+  const [, theme, languagePref, timezonePref] = await Promise.all([
     migrateFromLocalStorage(),
     getInitialTheme(),
     getInitialLanguage(),
+    getInitialTimezone(),
   ]);
+  // 渲染前同步激活时区：首屏时钟/日期直接以目标时区渲染，不等 persist rehydrate
+  syncActiveTimeZone(timezonePref);
+  useStore.setState({ timezonePref });
   // 渲染前就绪目标语言：解析偏好 → 加载语言包 → 同步 store 与 <html lang>
   const locale = resolveLocale(languagePref);
   await loadLocale(locale);

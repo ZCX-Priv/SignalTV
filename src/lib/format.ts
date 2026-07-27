@@ -1,17 +1,24 @@
 // 格式化辅助函数
 
 import { getLocale, t } from "../i18n";
+import { getActiveTimeZone } from "./timezone";
 
 const FLAG_BASE = "https://flagcdn.com";
 
-// Intl.DateTimeFormat 构造成本较高（HeaderClock 每秒调用），按 locale+选项缓存
+// Intl.DateTimeFormat 构造成本较高（HeaderClock 每秒调用），按 locale+选项缓存；
+// timeZone 由激活时区统一注入（用户可在设置页切换），已含在 opts JSON key 中，
+// 切时区后自然命中新缓存项，无需清理旧条目
 const dtfCache = new Map<string, Intl.DateTimeFormat>();
 function dtf(opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
   const locale = getLocale();
-  const key = `${locale}|${JSON.stringify(opts)}`;
+  const merged: Intl.DateTimeFormatOptions = {
+    timeZone: getActiveTimeZone(),
+    ...opts,
+  };
+  const key = `${locale}|${JSON.stringify(merged)}`;
   let f = dtfCache.get(key);
   if (!f) {
-    f = new Intl.DateTimeFormat(locale, opts);
+    f = new Intl.DateTimeFormat(locale, merged);
     dtfCache.set(key, f);
   }
   return f;
@@ -95,16 +102,15 @@ export function broadcastDate(d = new Date()): string {
 
 /** 播放历史的日期分组标签：今天 / 昨天 / 本地化月日。 */
 export function historyDayLabel(ts: number): string {
-  const d = new Date(ts);
-  const now = new Date();
-  const startOfDay = (x: Date) =>
-    new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const diffDays = Math.round(
-    (startOfDay(now) - startOfDay(d)) / 86_400_000,
-  );
-  if (diffDays === 0) return t("format.today");
-  if (diffDays === 1) return t("format.yesterday");
-  return dtf({ month: "long", day: "numeric" }).format(d);
+  // 日界判定时区感知：用激活时区格式化年月日字符串比对，
+  // 而非本地 Date 方法（切时区后本地日界与展示时区日界会错位）
+  const dayKey = (x: number) =>
+    dtf({ year: "numeric", month: "2-digit", day: "2-digit" }).format(x);
+  const now = Date.now();
+  const key = dayKey(ts);
+  if (key === dayKey(now)) return t("format.today");
+  if (key === dayKey(now - 86_400_000)) return t("format.yesterday");
+  return dtf({ month: "long", day: "numeric" }).format(ts);
 }
 
 /** 由频道 id 生成稳定的"频道号"（用于频道号美学展示）。 */

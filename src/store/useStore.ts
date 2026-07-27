@@ -16,6 +16,7 @@ import {
 import { probeBatch } from "../lib/latency";
 import { idbGet, idbStorage } from "../lib/idb";
 import { applySeo, describeView } from "../lib/seo";
+import { syncActiveTimeZone, type TimezonePref } from "../lib/timezone";
 import {
   SUPPORTED_LOCALES,
   applyLocaleSideEffects,
@@ -163,6 +164,25 @@ export async function getInitialLanguage(): Promise<LanguagePref> {
   return "system";
 }
 
+// 异步：从 IndexedDB 读取持久化的时区偏好（main.tsx 在渲染前 await，
+// 据此同步激活时区，保证首屏时钟即为目标时区）。无效/缺失时回落 "auto"。
+export async function getInitialTimezone(): Promise<TimezonePref> {
+  if (typeof window === "undefined") return "auto";
+  try {
+    const raw = await idbGet("signaltv-iptv");
+    if (raw) {
+      const parsed = JSON.parse(raw) as {
+        state?: { timezonePref?: unknown };
+      };
+      const pref = parsed.state?.timezonePref;
+      if (typeof pref === "number" && Number.isInteger(pref)) return pref;
+    }
+  } catch {
+    // 解析失败则回落自动检测
+  }
+  return "auto";
+}
+
 // 主题切换瞬间禁用所有过渡/动画：在 <html> 上加 .theme-transitioning 类，
 // CSS 规则把该类下所有元素的 transition-duration / animation-duration 强制为 0s，
 // 等效于"瞬时切换"，避免带 transition 的元素缓慢过渡到新主题色形成扎眼时差。
@@ -274,6 +294,7 @@ interface State {
   language: LanguagePref; // 用户语言偏好（system|具体 locale），持久化
   locale: Locale; // 实际界面语言，由 language 派生（system 时自动检测）
   updateMode: UpdateMode; // PWA 更新方式（auto|manual|off），持久化
+  timezonePref: TimezonePref; // 时区偏好（auto|UTC 整数偏移），持久化
 
   // 动作
   init: () => Promise<void>;
@@ -294,6 +315,7 @@ interface State {
   setThemeMode: (m: ThemeMode) => void;
   setLanguage: (pref: LanguagePref) => Promise<void>;
   setUpdateMode: (m: UpdateMode) => void;
+  setTimezonePref: (p: TimezonePref) => void;
 }
 
 export const useStore = create<State>()(
@@ -325,6 +347,7 @@ export const useStore = create<State>()(
       language: "system",
       locale: "zh-CN",
       updateMode: "auto",
+      timezonePref: "auto",
 
       init: async () => {
         if (get().loaded || get().loading) return;
@@ -512,6 +535,12 @@ export const useStore = create<State>()(
         );
       },
       setUpdateMode: (m) => set({ updateMode: m }),
+      setTimezonePref: (p) => {
+        // 先同步模块级激活时区再提交 state：订阅组件重渲染时
+        // format.ts 的 dtf() 已能拿到新时区
+        syncActiveTimeZone(p);
+        set({ timezonePref: p });
+      },
     }),
     {
       name: "signaltv-iptv",
@@ -527,6 +556,7 @@ export const useStore = create<State>()(
         themeMode: s.themeMode,
         language: s.language,
         updateMode: s.updateMode,
+        timezonePref: s.timezonePref,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -551,6 +581,10 @@ export const useStore = create<State>()(
         void loadLocale(locale).then(() => applyLocaleSideEffects(locale));
         // 旧版数据没有 updateMode → 回落默认「自动更新」
         if (!state.updateMode) state.updateMode = "auto";
+        // 旧版数据没有 timezonePref → 回落自动检测；同步激活时区
+        // （main.tsx 预读一致时为幂等操作）
+        if (state.timezonePref === undefined) state.timezonePref = "auto";
+        syncActiveTimeZone(state.timezonePref);
       },
     },
   ),

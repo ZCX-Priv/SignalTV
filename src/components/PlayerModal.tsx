@@ -105,6 +105,7 @@ export function PlayerModal() {
   // 自适应正方形 logo：测量标题区高度，通过 CSS 变量驱动 logo 尺寸
   // 纯 CSS 的 aspect-ratio + align-self:stretch 在 flex 中失效（stretch 非 definite size），
   // 改用 ResizeObserver 测量 titles 实际高度，写入 --logo-size 变量
+  // 仅桌面端生效：移动端（≤1080px）由 App.css 媒体查询覆盖为固定 56px 正方形
   useEffect(() => {
     const head = headRef.current;
     const titles = titlesRef.current;

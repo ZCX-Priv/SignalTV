@@ -76,6 +76,7 @@ export const dict = {
   "toast.themeSwitched": "已切换至{name}模式",
   "toast.langSwitched": "已切换至{name}",
   "toast.updateModeSwitched": "更新方式：{name}",
+  "toast.tzSwitched": "时区：{name}",
   "toast.streamFailover": "当前流不可用，已切换备用信号源",
   "toast.welcome": "欢迎来到 SignalTV",
   "toast.loading": "加载中",
@@ -179,6 +180,14 @@ export const dict = {
   "settings.dataSource": "频道数据来自公开的 iptv-org 开源项目，本站不存储、不转发任何视频流。",
   "settings.updates": "更新",
   "settings.updatesDesc": "选择发现新版本时的处理方式。",
+  "settings.timezone": "时区",
+  "settings.timezoneDesc": "选择时间显示使用的时区，默认跟随设备自动检测。",
+  "settings.tzAuto": "自动检测",
+  "settings.tzAutoDesc": "跟随设备时区（当前：{name}）",
+
+  // ── 时区地图 ──
+  "tz.mapAria": "世界地图时区选择",
+  "tz.bandAria": "选择 {name}",
 
   // ── 更新选项与更新 toast ──
   "update.auto": "自动更新",
