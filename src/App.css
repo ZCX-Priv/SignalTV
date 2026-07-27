@@ -2072,8 +2072,7 @@
   margin: 0;
   animation: fade-in 0.4s var(--ease) both;
 }
-/* 入场错峰延迟；第2、3行以 done 为 key 重挂载时，
-   delay + both 使其先空白（清空）再淡入（重新显示） */
+/* 入场错峰延迟：仅首次挂载时重放（各行不重挂载，[OK] 原地追加） */
 .loader__log p:nth-child(1) { animation-delay: 0.2s; }
 .loader__log p:nth-child(2) { animation-delay: 0.5s; }
 .loader__log p:nth-child(3) { animation-delay: 0.8s; }

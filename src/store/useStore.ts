@@ -243,11 +243,8 @@ export interface HistoryEntry {
 // 历史上限：超出截断尾部（最旧），避免持久化体积无限增长
 const HISTORY_LIMIT = 200;
 
-// 首屏加载进度（固定五行 Loader 用）：done 每 +1 触发第2、3行清空重显，
-// size/speed 为两大文件合计，原地刷新
+// 首屏加载进度（固定五行 Loader 用）：所有字段均原地刷新，不重挂载
 export interface LoadProgress {
-  /** 完成请求数 0-4：作为第2、3行的 React key，+1 即重挂载重播入场动画 */
-  done: number;
   /** 频道表已就绪 → 第2行 [OK] */
   channelsReady: boolean;
   /** 信号流已就绪 → 第3行 [OK] */
@@ -354,7 +351,7 @@ export const useStore = create<State>()(
         set({
           loading: true,
           error: null,
-          loadProgress: { done: 0, channelsReady: false, streamsReady: false },
+          loadProgress: { channelsReady: false, streamsReady: false },
         });
         try {
           // 原地合并更新进度（行位置固定，不滚动）
@@ -362,13 +359,10 @@ export const useStore = create<State>()(
             set((s) =>
               s.loadProgress ? { loadProgress: { ...s.loadProgress, ...p } } : {},
             );
-          // 完成计数：四个请求并行，每完成一个 done+1
-          //（Loader 第2、3行以 done 为 key，随之清空重显）
-          let done = 0;
-          const track = <T,>(p: Promise<T>, onDone?: Partial<LoadProgress>): Promise<T> =>
+          // 两大文件完成时原地追加 [OK]（不重挂载，避免闪烁）
+          const track = <T,>(p: Promise<T>, onDone: Partial<LoadProgress>): Promise<T> =>
             p.then((r) => {
-              done++;
-              patch({ done, ...onDone });
+              patch(onDone);
               return r;
             });
           // 大文件下载进度（弱网下让用户看到真实字节数，而非死等）：
@@ -394,15 +388,19 @@ export const useStore = create<State>()(
           const [channels, streams, categories, countries] = await Promise.all([
             track(api.channels(undefined, onProgress("channels")), { channelsReady: true }),
             track(api.streams(undefined, onProgress("streams")), { streamsReady: true }),
-            track(api.categories()),
-            track(api.countries()),
+            api.categories(),
+            api.countries(),
           ]);
+          // 两行 [OK] 均已显示的时刻：进主页前保证至少停留 1s
+          const okAt = Date.now();
           patch({ merging: true });
           const idx = buildChannelIndex(channels, streams);
           const countryInfo = buildCountryInfo(countries, idx);
           const cats = categories
             .filter((c) => c.id !== "xxx")
             .sort((a, b) => a.name.localeCompare(b.name));
+          const wait = 1000 - (Date.now() - okAt);
+          if (wait > 0) await new Promise((r) => setTimeout(r, wait));
           set({
             channels: idx,
             categories: cats,
