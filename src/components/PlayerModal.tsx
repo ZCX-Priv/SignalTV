@@ -73,7 +73,8 @@ export function PlayerModal() {
       }
       return i;
     });
-    if (switched) toast.info(t("toast.streamFailover"));
+    // 同 key 去重：多路流连续失败时只显示一条切换提示（刷新时长而非叠加）
+    if (switched) toast.info(t("toast.streamFailover"), { key: "stream-failover" });
     return switched;
   }, [streamUrls.length, t]);
 

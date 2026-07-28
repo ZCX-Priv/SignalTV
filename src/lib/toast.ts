@@ -47,11 +47,15 @@ export interface ToastItem {
   sticky?: boolean;
   /** 用户点 X 关闭时回调（仅 X，不含程序性 dismiss） */
   onClose?: () => void;
+  /** 去重键：同 key 的 toast 复用同一条目，连续触发时刷新内容与时长而非叠加新条目 */
+  key?: string;
 }
 
 export interface ToastOptions {
   description?: string;
   duration?: number;
+  /** 去重键：见 ToastItem.key */
+  key?: string;
 }
 
 export interface ToastPromiseOptions<T> {
@@ -106,6 +110,22 @@ function scheduleAutoDismiss(id: string, duration: number): void {
 export const toastStore = createStore<ToastState>((set, get) => ({
   toasts: [],
   add: (item) => {
+    // 去重复用：同 key 且未在关闭动画中的条目 → 原地刷新内容并重置自动消失定时器
+    if (item.key) {
+      const existing = get().toasts.find(
+        (t) => t.key === item.key && !t.closing,
+      );
+      if (existing) {
+        get().update(existing.id, {
+          type: item.type,
+          title: item.title,
+          description: item.description,
+          duration: item.duration,
+          createdAt: Date.now(),
+        });
+        return existing.id;
+      }
+    }
     const id = genId();
     const toast: ToastItem = {
       ...item,
@@ -182,6 +202,7 @@ function push(
     title: message,
     description: opts?.description,
     duration: opts?.duration ?? DEFAULT_DURATION,
+    key: opts?.key,
   });
 }
 
@@ -202,6 +223,7 @@ export const toast = {
       title: message,
       description: opts?.description,
       duration: opts?.duration ?? Infinity,
+      key: opts?.key,
     });
   },
   promise: async <T>(
