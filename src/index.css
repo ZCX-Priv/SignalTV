@@ -277,6 +277,8 @@ textarea {
   background: var(--bg-1);
 }
 
+/* 无障碍隐藏工具类：当前无引用，作为 a11y 预留保留（新增仅读屏幕
+   阅读器可见的文本时直接使用），勿当死样式删除 */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -359,10 +361,8 @@ textarea {
     radial-gradient(900px 700px at 110% 10%, rgba(42, 216, 255, 0.025), transparent 55%),
     radial-gradient(800px 800px at 50% 120%, rgba(255, 182, 39, 0.02), transparent 60%);
 }
-/* 白昼下脉冲信号点阴影颜色跟随 */
-[data-theme="light"] .dot {
-  box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.6);
-}
+/* 白昼下脉冲信号点：换用浅色变体动画（初始阴影由动画第一帧接管，
+   与基类相同的 box-shadow 声明属冗余已合并移除） */
 @keyframes pulse-light {
   0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.45); }
   70% { box-shadow: 0 0 0 8px rgba(255, 59, 48, 0); }

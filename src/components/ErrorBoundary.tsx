@@ -3,8 +3,11 @@ import { t } from "../i18n";
 
 interface Props {
   children: ReactNode;
-  /** 自定义降级 UI；未提供时使用默认 fallback（复用 Loader.tsx 中 ErrorState 视觉风格） */
-  fallback?: ReactNode;
+  /**
+   * 自定义降级 UI；未提供时使用默认 fallback（复用 Loader.tsx 中 ErrorState 视觉风格）。
+   * 函数形态可拿到 reset（清除错误重新渲染子树），用于自定义恢复操作。
+   */
+  fallback?: ReactNode | ((reset: () => void) => ReactNode);
   /** 错误上报回调，便于父组件记录或上报到监控平台 */
   onError?: (error: Error, info: ErrorInfo) => void;
 }
@@ -45,7 +48,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render(): ReactNode {
     if (this.state.hasError) {
-      if (this.props.fallback) return this.props.fallback;
+      if (this.props.fallback) {
+        return typeof this.props.fallback === "function"
+          ? this.props.fallback(this.reset)
+          : this.props.fallback;
+      }
       // 默认 fallback：复用 .loader / .loader__inner / .loader__mark--err 样式
       // 保持与 Loader.tsx 中 ErrorState 视觉一致
       return (

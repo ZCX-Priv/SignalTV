@@ -13,6 +13,9 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 // channels.json / streams.json 较大（1-2MB），单独放宽超时
 const LARGE_FILE_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 2;
+// body 读取的 chunk 间隔停滞超时：fetchWithTimeout 的超时只覆盖响应头阶段，
+// 弱网下 body 中途停滞（stall）需单独判定——60s 无新 chunk 即视为网络中断
+const BODY_STALL_TIMEOUT_MS = 60_000;
 
 /** 面向 UI 的错误描述：存文案 key + 插值参数，展示时再翻译（切语言后仍正确） */
 export interface ApiErrorInfo {
@@ -84,17 +87,15 @@ async function fetchWithTimeout(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  // 联动外部 signal：外部 abort 时同步 abort 内部 controller
+  // 联动外部 signal：外部 abort 时同步 abort 内部 controller；
+  // settle 后移除监听，避免重试循环对同一共享 signal 反复堆积闭包
+  const onExternalAbort = () => controller.abort();
   if (signal) {
     if (signal.aborted) {
       clearTimeout(timer);
       controller.abort();
     } else {
-      signal.addEventListener(
-        "abort",
-        () => controller.abort(),
-        { once: true },
-      );
+      signal.addEventListener("abort", onExternalAbort, { once: true });
     }
   }
 
@@ -130,6 +131,7 @@ async function fetchWithTimeout(
     throw err;
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener("abort", onExternalAbort);
   }
 }
 
@@ -139,6 +141,9 @@ async function fetchWithTimeout(
  * 百分比分母由 store 侧用上次会话实测体积提供，不用 Content-Length ——
  * gzip 传输下它是压缩后大小，与解压后字节比值失真）。
  * 无 body（极端环境）时回退 res.text()，不产出样本。
+ * chunk 间隔停滞超时：弱网下连接中途停滞时 reader.read() 会无限挂起
+ * （fetchWithTimeout 的超时在收到响应头后已解除），60s 无新数据即
+ * cancel reader 使 read() 以 reject 结束，由 fetchJson 按可重试错误处理。
  */
 async function readBodyMeasured(
   res: Response,
@@ -149,14 +154,36 @@ async function readBodyMeasured(
   const start = performance.now();
   const chunks: Uint8Array[] = [];
   let bytes = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) {
-      chunks.push(value);
-      bytes += value.length;
-      onProgress?.(bytes);
+  let stallTimer: ReturnType<typeof setTimeout> | null = null;
+  let stalled = false;
+  const armStallTimer = () => {
+    if (stallTimer) clearTimeout(stallTimer);
+    stallTimer = setTimeout(() => {
+      stalled = true;
+      // cancel 后进行中的 read() 以 reject/done 结束，跳出读取循环
+      void reader.cancel(new Error("body stalled")).catch(() => {});
+    }, BODY_STALL_TIMEOUT_MS);
+  };
+  try {
+    armStallTimer();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        // cancel 触发的 read() 可能以 done 而非 reject 结束：
+        // 停滞超时路径必须抛错，否则截断的 body 会进入 JSON.parse
+        if (stalled) throw new Error("body stalled");
+        break;
+      }
+      if (stalled) throw new Error("body stalled");
+      armStallTimer();
+      if (value) {
+        chunks.push(value);
+        bytes += value.length;
+        onProgress?.(bytes);
+      }
     }
+  } finally {
+    if (stallTimer) clearTimeout(stallTimer);
   }
   const ms = performance.now() - start;
   speedSamples.push({ bytes, ms });
@@ -198,7 +225,11 @@ async function fetchJson<T>(url: string, opts: FetchJsonOpts = {}): Promise<T> {
           ? await readBodyMeasured(res, onProgress)
           : await res.text();
       } catch {
-        // body 读取中断（网络闪断）：视为可重试的网络错误
+        // 外部取消导致的读取中断：保留取消语义，不包装为可重试的读取失败
+        if (signal?.aborted) {
+          throw new ApiError("Request cancelled", { key: "api.cancelled" }, undefined, false);
+        }
+        // body 读取中断（网络闪断/停滞超时）：视为可重试的网络错误
         throw new ApiError(
           `Failed to read response ${url}`,
           { key: "api.readFailed", params: { url } },
@@ -226,16 +257,16 @@ async function fetchJson<T>(url: string, opts: FetchJsonOpts = {}): Promise<T> {
       // 指数退避：500ms → 1000ms
       const delay = 500 * Math.pow(2, attempt);
       await new Promise<void>((resolve) => {
-        const t = setTimeout(resolve, delay);
-        // 支持外部 signal 提前取消等待
-        signal?.addEventListener(
-          "abort",
-          () => {
-            clearTimeout(t);
-            resolve();
-          },
-          { once: true },
-        );
+        // 支持外部 signal 提前取消等待；结束后移除监听避免闭包堆积
+        const onAbort = () => {
+          clearTimeout(t);
+          resolve();
+        };
+        const t = setTimeout(() => {
+          signal?.removeEventListener("abort", onAbort);
+          resolve();
+        }, delay);
+        signal?.addEventListener("abort", onAbort, { once: true });
       });
     }
   }
@@ -267,6 +298,10 @@ export const api = {
 
 const HLS_URL_RE = /\.m3u8(\?|$|#)/i;
 
+// 流 URL 协议白名单：第三方数据集可能被污染，伪协议（javascript: 等）
+// 不得进入 video src / hls.js / 延迟探测的消费链路
+const STREAM_PROTOCOL_RE = /^https?:\/\//i;
+
 /**
  * 流优先级评分（越大越优）：
  * - https 优先于 http（页面为 https 时 http 流必被混合内容拦截）
@@ -292,7 +327,8 @@ export function buildChannelIndex(
 ): Map<string, ChannelWithStream> {
   const streamMap = new Map<string, Stream[]>();
   for (const s of streams) {
-    if (!s.url) continue;
+    // 只接受 http/https 协议的流 URL（阻断伪协议注入）
+    if (!s.url || !STREAM_PROTOCOL_RE.test(s.url)) continue;
     const arr = streamMap.get(s.channel);
     if (arr) arr.push(s);
     else streamMap.set(s.channel, [s]);
@@ -308,6 +344,10 @@ export function buildChannelIndex(
     const urls = arr.map((s) => s.url);
     out.set(ch.id, {
       ...ch,
+      // 字段归一化：API 数据个别记录可能缺失/为 null，
+      // 消除下游 .includes / .toLowerCase 的崩溃点
+      country: typeof ch.country === "string" ? ch.country : "",
+      categories: Array.isArray(ch.categories) ? ch.categories : [],
       streamUrl: urls[0],
       streamUrls: urls,
       streamCount: urls.length,

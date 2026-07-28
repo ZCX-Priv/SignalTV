@@ -14,6 +14,7 @@ import { Loader, ErrorState } from "./components/Loader";
 import { Toaster } from "./components/Toaster";
 import { toast } from "./lib/toast";
 import { idbGet, idbSet } from "./lib/idb";
+import { hasOpenModal } from "./lib/modalStack";
 import { t, useI18n } from "./i18n";
 
 // 懒加载播放器 + hls.js（约 250KB）——仅在打开频道时才需要
@@ -100,6 +101,8 @@ function App() {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        // 模态打开时跳过：聚焦被遮罩挡住的搜索框会使焦点逃出 trapFocus 圈定
+        if (hasOpenModal()) return;
         useStore.getState().setSearchOpen(true);
         requestAnimationFrame(() => {
           const input = document.querySelector<HTMLInputElement>(".search__input");
@@ -187,13 +190,25 @@ function App() {
       </div>
 
       <ErrorBoundary
-        fallback={
+        fallback={(reset) => (
+          // 可恢复降级：全屏遮罩必须提供退路（关闭播放 + 重置边界），
+          // 否则 hls chunk 加载失败时遮罩永久覆盖应用且无法操作
           <div className="loader">
             <div className="loader__inner">
               <div className="loader__sub mono">{tr("player.loadFailed")}</div>
+              <button
+                className="btn btn--primary"
+                style={{ marginTop: 18 }}
+                onClick={() => {
+                  useStore.getState().openChannel(null);
+                  reset();
+                }}
+              >
+                {tr("common.close")}
+              </button>
             </div>
           </div>
-        }
+        )}
       >
         <Suspense fallback={null}>
           <PlayerModal />

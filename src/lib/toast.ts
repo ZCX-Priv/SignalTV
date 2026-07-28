@@ -89,9 +89,9 @@ function genId(): string {
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function clearTimer(id: string): void {
-  const t = timers.get(id);
-  if (t) {
-    clearTimeout(t);
+  const timer = timers.get(id);
+  if (timer) {
+    clearTimeout(timer);
     timers.delete(id);
   }
 }
@@ -113,7 +113,7 @@ export const toastStore = createStore<ToastState>((set, get) => ({
     // 去重复用：同 key 且未在关闭动画中的条目 → 原地刷新内容并重置自动消失定时器
     if (item.key) {
       const existing = get().toasts.find(
-        (t) => t.key === item.key && !t.closing,
+        (item2) => item2.key === item.key && !item2.closing,
       );
       if (existing) {
         get().update(existing.id, {
@@ -137,15 +137,15 @@ export const toastStore = createStore<ToastState>((set, get) => ({
       // 滚动上限：未在关闭中的条目超过 5 条时，从头部（最旧）直接淘汰多余的，
       // 不走 180ms 关闭动画，避免快速连发时动画堆积；
       // sticky 条目（更新 toast）跳过淘汰，不被普通 toast 连发挤掉
-      let visible = next.filter((t) => !t.closing).length;
+      let visible = next.filter((it) => !it.closing).length;
       const kept: ToastItem[] = [];
-      for (const t of next) {
-        if (!t.closing && !t.sticky && visible > MAX_VISIBLE_TOASTS) {
+      for (const it of next) {
+        if (!it.closing && !it.sticky && visible > MAX_VISIBLE_TOASTS) {
           visible--;
-          clearTimer(t.id);
+          clearTimer(it.id);
           continue;
         }
-        kept.push(t);
+        kept.push(it);
       }
       return { toasts: kept };
     });
@@ -154,7 +154,7 @@ export const toastStore = createStore<ToastState>((set, get) => ({
   },
   update: (id, patch) => {
     set((s) => ({
-      toasts: s.toasts.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+      toasts: s.toasts.map((it) => (it.id === id ? { ...it, ...patch } : it)),
     }));
     // 若 patch 中包含新的 duration，重新调度自动消失
     if (patch.duration !== undefined) {
@@ -171,8 +171,8 @@ export const toastStore = createStore<ToastState>((set, get) => ({
     clearTimer(id);
     // 标记 closing，等 CSS 动画结束后真正移除
     set((s) => ({
-      toasts: s.toasts.map((t) =>
-        t.id === id && !t.closing ? { ...t, closing: true } : t,
+      toasts: s.toasts.map((it) =>
+        it.id === id && !it.closing ? { ...it, closing: true } : it,
       ),
     }));
     setTimeout(() => {
@@ -181,7 +181,7 @@ export const toastStore = createStore<ToastState>((set, get) => ({
   },
   remove: (id) => {
     clearTimer(id);
-    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+    set((s) => ({ toasts: s.toasts.filter((it) => it.id !== id) }));
   },
 }));
 

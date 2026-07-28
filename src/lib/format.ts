@@ -18,7 +18,13 @@ function dtf(opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
   const key = `${locale}|${JSON.stringify(merged)}`;
   let f = dtfCache.get(key);
   if (!f) {
-    f = new Intl.DateTimeFormat(locale, merged);
+    try {
+      f = new Intl.DateTimeFormat(locale, merged);
+    } catch {
+      // 激活时区名非法（持久化数据被污染等极端情况）→ 回退 UTC，
+      // 保证 HeaderClock 每秒调用不因 RangeError 崩掉整个应用
+      f = new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" });
+    }
     dtfCache.set(key, f);
   }
   return f;

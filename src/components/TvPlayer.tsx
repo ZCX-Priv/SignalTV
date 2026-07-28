@@ -42,6 +42,8 @@ export function TvPlayer({
 }: TvPlayerProps) {
   const { t } = useI18n();
   const [state, setState] = useState<PlayerState>("idle");
+  // message 当前无 UI 消费者：错误详情展示/上抛链路的预留设计
+  //（onMessageChange 同为预留 API 面），勿当死代码删除
   const [message, setMessage] = useState<string | null>(null);
   const [latency, setLatency] = useState<number | null>(null);
   const latencyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -105,15 +107,18 @@ export function TvPlayer({
   function startLatencySampling() {
     if (latencyTimerRef.current) clearInterval(latencyTimerRef.current);
     latencyTimerRef.current = setInterval(() => {
-      const v = document.querySelector<HTMLVideoElement>(
-        ".player__video [data-media-player] video"
-      );
+      const player = playerRef.current;
+      if (!player) return;
+      // 暂停期间不采样（延迟对静止画面无意义），恢复播放后自然继续
+      if (player.state.paused) return;
+      // 限定在本实例的 DOM 子树内取 video：全局选择器在多实例场景会取错元素
+      const v = player.el?.querySelector("video") ?? null;
       // 前置过滤：视频元素不存在 / 未就绪 / 未开始播放 → 保持 null，避免误判
       if (!v || v.readyState < 2 || v.currentTime <= 0) return;
 
       // 优先：通过 vidstack provider 获取 hls.js 实例，读取真实直播延迟
       // hls.latency = estimateLiveEdge() - currentTime（秒），加载前为 0
-      const provider = playerRef.current?.provider;
+      const provider = player.provider;
       if (provider && isHLSProvider(provider)) {
         const hls = provider.instance;
         const latencySec = hls?.latency ?? 0;
@@ -216,11 +221,32 @@ export function TvPlayer({
             // 弱网友好配置：按播放器尺寸封顶清晰度，缓冲区保守，
             // slow 网络（首屏实测 < 500KB/s）下进一步缩小缓冲长度
             const slow = useStore.getState().networkProfile === "slow";
+            // 加载策略：hls.js 默认超时/重试偏宽松，弱网下 fatal 判定
+            // 过晚导致故障转移（切下一路流）等待过长，收紧超时与重试上限
+            const loadPolicy = (timeoutMs: number) => ({
+              default: {
+                maxTimeToFirstByteMs: timeoutMs,
+                maxLoadTimeMs: timeoutMs * 2,
+                timeoutRetry: {
+                  maxNumRetry: 1,
+                  retryDelayMs: 500,
+                  maxRetryDelayMs: 1000,
+                },
+                errorRetry: {
+                  maxNumRetry: slow ? 1 : 2,
+                  retryDelayMs: 500,
+                  maxRetryDelayMs: 2000,
+                },
+              },
+            });
             provider.config = {
               capLevelToPlayerSize: true,
               maxBufferLength: slow ? 10 : 15,
               maxMaxBufferLength: 30,
               startLevel: -1,
+              manifestLoadPolicy: loadPolicy(slow ? 8000 : 10000),
+              playlistLoadPolicy: loadPolicy(slow ? 8000 : 10000),
+              fragLoadPolicy: loadPolicy(slow ? 12000 : 20000),
             };
           }
         }}

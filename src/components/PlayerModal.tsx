@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Play,
@@ -35,10 +36,14 @@ export function PlayerModal() {
   // retryToken 用于"重试"时强制 remount TvPlayer（即使 streamIdx 已是 0）。
   const [streamIdx, setStreamIdx] = useState(0);
   const [retryToken, setRetryToken] = useState(0);
+  // streamIdx 的同步镜像：handleStreamError 需同步判断能否切流，
+  // 不能依赖 setState updater 的同步副作用（React 急切求值非契约行为）
+  const streamIdxRef = useRef(0);
   const streamUrls = useMemo(() => channel?.streamUrls ?? [], [channel]);
   const url = streamUrls[streamIdx] ?? null;
 
   useEffect(() => {
+    streamIdxRef.current = 0;
     setStreamIdx(0);
     setRetryToken(0);
   }, [activeId]);
@@ -65,23 +70,20 @@ export function PlayerModal() {
 
   // TvPlayer 播放失败 → 切到下一路流；返回是否还有备用流可切
   const handleStreamError = useCallback(() => {
-    let switched = false;
-    setStreamIdx((i) => {
-      if (i + 1 < streamUrls.length) {
-        switched = true;
-        return i + 1;
-      }
-      return i;
-    });
+    const next = streamIdxRef.current + 1;
+    if (next >= streamUrls.length) return false;
+    streamIdxRef.current = next;
+    setStreamIdx(next);
     // 同 key 去重：多路流连续失败时只显示一条切换提示（刷新时长而非叠加）
-    if (switched) toast.info(t("toast.streamFailover"), { key: "stream-failover" });
-    return switched;
+    toast.info(t("toast.streamFailover"), { key: "stream-failover" });
+    return true;
   }, [streamUrls.length, t]);
 
   // 错误面板"重试"：从第一路流重新开始，retryToken 变化强制 remount
   const handleRetry = useCallback(() => {
+    streamIdxRef.current = 0;
     setStreamIdx(0);
-    setRetryToken((t) => t + 1);
+    setRetryToken((n) => n + 1);
   }, []);
 
   const [latency, setLatency] = useState<number | null>(null);
@@ -107,6 +109,8 @@ export function PlayerModal() {
   // 纯 CSS 的 aspect-ratio + align-self:stretch 在 flex 中失效（stretch 非 definite size），
   // 改用 ResizeObserver 测量 titles 实际高度，写入 --logo-size 变量
   // 仅桌面端生效：移动端（≤1080px）由 App.css 媒体查询覆盖为固定 56px 正方形
+  // 依赖 displayId 而非 activeId：activeId 变化的那次渲染 displayId 仍为 null
+  //（组件返回 null、refs 为空），若依赖 activeId 则 observer 首次打开永不挂上
   useEffect(() => {
     const head = headRef.current;
     const titles = titlesRef.current;
@@ -118,7 +122,7 @@ export function PlayerModal() {
     const ro = new ResizeObserver(update);
     ro.observe(titles);
     return () => ro.disconnect();
-  }, [activeId]);
+  }, [displayId]);
 
   // 推荐的关联频道（同主分类、不同 id）
   // 必须在 early return 之前调用，遵守 React Hooks 规则
@@ -134,8 +138,16 @@ export function PlayerModal() {
   if (!displayId || !channel) return null;
 
   const isFav = favorites.includes(channel.id);
+  // 官网链接协议白名单：第三方数据集可能被污染，javascript: 等伪协议
+  // 不得进入 href（点击即执行脚本），非 http/https 直接不渲染按钮
+  const websiteUrl =
+    channel.website && /^https?:\/\//i.test(channel.website)
+      ? channel.website
+      : null;
 
-  return (
+  // portal 到 body：与 ConfirmModal 同规范——全屏 fixed 模态不能假设祖先链
+  // 无 transform/filter（否则成为包含块，遮罩被裁剪在内容区）
+  return createPortal(
     <div
       className={`player ${closing ? "is-closing" : ""}`}
       role="dialog"
@@ -198,8 +210,8 @@ export function PlayerModal() {
 
         <div className="player__stage" ref={stageRef}>
           <TvPlayer
-            key={`${activeId}-${streamIdx}-${retryToken}`}
-            url={url}
+            key={`${displayId}-${streamIdx}-${retryToken}`}
+            url={closing ? null : url}
             onLatencyChange={setLatency}
             onStateChange={setPlayerState}
             onStreamError={handleStreamError}
@@ -253,10 +265,10 @@ export function PlayerModal() {
                 <Star size={13} fill={isFav ? "currentColor" : "none"} />
                 {isFav ? t("common.faved") : t("common.fav")}
               </button>
-              {channel.website && (
+              {websiteUrl && (
                 <a
                   className="btn btn--ghost btn--sm"
-                  href={channel.website}
+                  href={websiteUrl}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -313,7 +325,7 @@ export function PlayerModal() {
                     >
                       <span className="related__logo">
                         {c.logo ? (
-                          <img src={c.logo} alt="" onError={(e) => {
+                          <img src={c.logo} alt="" loading="lazy" onError={(e) => {
                             (e.currentTarget as HTMLImageElement).style.opacity = "0";
                           }} />
                         ) : (
@@ -330,6 +342,7 @@ export function PlayerModal() {
           </aside>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

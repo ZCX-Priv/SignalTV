@@ -283,7 +283,7 @@ API 请求带超时（默认 15s，`channels.json` / `streams.json` 放宽到 30
 
 应用在 `index.html` 中静态写入完整 SEO 元信息（`title` / `description` / `keywords` / Open Graph / Twitter Card / JSON-LD `WebApplication` + `Organization` + `FAQPage`），并在运行时通过 `src/lib/seo.ts` 动态维护：
 
-- `initSeo()`：应用启动时调用一次，用真实 `window.location.origin` 覆写 JSON-LD 中的占位 URL `https://signaltv.app/`，同步 `canonical` / `og:url` / `og:image` / `twitter:image` / `hreflang`，部署到任意域名无需重新构建
+- `initSeo()`：应用启动时调用一次，用真实 `window.location.origin` 覆写 JSON-LD 中的占位 URL `https://signaltv.netlify.app/`，同步 `canonical` / `og:url` / `og:image` / `twitter:image` / `hreflang`，部署到任意域名无需重新构建
 - `applySeo(meta)`：视图切换时由 `useStore.setView` 调用，动态更新 `title` / `description` / `canonical` / `og:*` / `twitter:*`
 - `describeView(view, filter, ctx)`：根据当前视图（home / category / country / favorites / search / status / settings）生成对应的 title / description / canonical，包含频道数等动态文案
 - 站点级 SEO 文件：

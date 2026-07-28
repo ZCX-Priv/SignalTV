@@ -526,18 +526,6 @@
   color: var(--ink);
   font-weight: 600;
 }
-.hero__link {
-  color: var(--ink);
-  border-bottom: 1px solid var(--signaltv);
-  padding-bottom: 1px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-.hero__link-icon {
-  display: inline-block;
-  vertical-align: middle;
-}
 .hero__actions {
   display: flex;
   gap: 12px;
@@ -588,6 +576,8 @@
   border-left: 1px solid rgba(255, 255, 255, 0.25);
   margin-left: 4px;
 }
+/* .btn--ghost 无基类定义属有意设计：作为无样式标记类供状态组合
+   选择器（如下）与 JSX 语义标记使用，勿误判为缺失 */
 .btn--ghost.is-fav {
   color: var(--amber);
   border-color: rgba(255, 182, 39, 0.4);
@@ -3082,7 +3072,8 @@
   top: 16px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 9999;
+  /* 高于 grain(9998)/scanlines(9999)：toast 不能被扫描线覆盖产生视觉噪声 */
+  z-index: 10000;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3388,15 +3379,18 @@
 [data-theme="light"] .player__panel {
   box-shadow: 0 40px 120px -30px rgba(26, 26, 31, 0.35), 0 0 0 1px rgba(255, 59, 48, 0.08);
 }
-/* 排除 --paused：paused 覆盖层由前文 1843-1848 行的专属规则接管（纯白文字），
-   此处通用规则只作用于 loading/error 态，避免同特异度下靠后声明覆盖纯白 */
+/* 排除 --paused：paused 覆盖层由 [data-theme="light"] .player__overlay--paused
+   专属规则接管（纯白文字），此处通用规则只作用于 loading/error 态，
+   避免同特异度下靠后声明覆盖纯白 */
 [data-theme="light"] .player__overlay:not(.player__overlay--paused) {
   color: rgba(255, 255, 255, 0.8);
 }
 [data-theme="light"] .player__overlay:not(.player__overlay--paused) p {
   color: rgba(255, 255, 255, 0.6);
 }
-@media (max-width: 768px) {
+/* 断点与移动端抽屉侧栏保持一致（860px，见 .app 单列布局断点），
+   否则 769-860px 区间浅色主题抽屉仍用深色重阴影 */
+@media (max-width: 860px) {
   [data-theme="light"] .sidebar {
     /* 阴影只向右辐射，与深色模式保持一致 */
     box-shadow: 12px 0 32px -10px rgba(26, 26, 31, 0.18);

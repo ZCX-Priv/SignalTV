@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import { Search, SearchX, X } from "lucide-react";
 import { pushModal, trapFocus } from "../lib/modalStack";
@@ -42,6 +43,8 @@ const defaultMatch = (item: PickerItem, needle: string) =>
 /**
  * 通用选择弹窗（分类/国家共用）：统一承载模态栈接入、焦点圈定、
  * 搜索过滤、"最近点击"分组与空态，样式走 .picker__* 一套类。
+ * 用 createPortal 挂到 document.body（项目强制规范）：可复用全屏模态
+ * 不能假设调用方祖先链无 transform/filter，否则 fixed 遮罩会被裁剪。
  */
 export function PickerModal({
   open,
@@ -129,7 +132,7 @@ export function PickerModal({
     );
   }
 
-  return (
+  return createPortal(
     <div className="picker" role="dialog" aria-modal="true" aria-label={title}>
       <div className="picker__backdrop" />
       <div
@@ -208,6 +211,7 @@ export function PickerModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

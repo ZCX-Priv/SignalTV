@@ -25,27 +25,26 @@ function hlsProbe(url: string, timeoutMs: number, externalSignal?: AbortSignal):
     const controller = new AbortController();
     let settled = false;
 
-    // 联动外部 signal：外部 abort 时同步 abort 内部 controller 并立即返回 -1
-    const onExternalAbort = () => {
+    // 统一 settle 出口：清理定时器与外部 signal 监听后再 resolve。
+    // 共享的批量 signal 上不清理监听器会在一次滚动中堆积上千闭包
+    const settle = (ms: number, abort: boolean) => {
       if (settled) return;
       settled = true;
-      controller.abort();
-      resolve(-1);
+      clearTimeout(timer);
+      externalSignal?.removeEventListener("abort", onExternalAbort);
+      if (abort) controller.abort();
+      resolve(ms);
     };
-    if (externalSignal) {
-      if (externalSignal.aborted) {
-        resolve(-1);
-        return;
-      }
-      externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+
+    // 联动外部 signal：外部 abort 时同步 abort 内部 controller 并立即返回 -1
+    const onExternalAbort = () => settle(-1, true);
+    if (externalSignal?.aborted) {
+      resolve(-1);
+      return;
     }
 
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      controller.abort();
-      resolve(-1);
-    }, timeoutMs);
+    const timer = setTimeout(() => settle(-1, true), timeoutMs);
+    externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
     const start = performance.now();
     fetch(url, {
       method: "GET",
@@ -58,19 +57,12 @@ function hlsProbe(url: string, timeoutMs: number, externalSignal?: AbortSignal):
         if (settled) return;
         // 404/403/500 等明确不可用
         if (!res.ok) {
-          clearTimeout(timer);
-          settled = true;
-          controller.abort();
-          resolve(-1);
+          settle(-1, true);
           return;
         }
         // 读取前 16 字节校验 #EXTM3U
         if (!res.body) {
-          const ms = Math.round(performance.now() - start);
-          clearTimeout(timer);
-          settled = true;
-          controller.abort();
-          resolve(ms);
+          settle(Math.round(performance.now() - start), true);
           return;
         }
         const reader = res.body.getReader();
@@ -79,8 +71,6 @@ function hlsProbe(url: string, timeoutMs: number, externalSignal?: AbortSignal):
           .then(({ value }) => {
             if (settled) return;
             const ms = Math.round(performance.now() - start);
-            clearTimeout(timer);
-            settled = true;
             reader.cancel().catch(() => {}); // 主动释放 reader，让浏览器停止下载剩余 body
             let head = new TextDecoder().decode(
               value?.slice(0, 20) ?? new Uint8Array(),
@@ -88,26 +78,11 @@ function hlsProbe(url: string, timeoutMs: number, externalSignal?: AbortSignal):
             // 部分源带 UTF-8 BOM（\uFEFF#EXTM3U），剥离后再校验，避免误判 -1
             if (head.charCodeAt(0) === 0xfeff) head = head.slice(1);
             // 非 m3u8 内容（如 404 HTML 错误页）判为不可用
-            if (!head.startsWith("#EXTM3U")) {
-              resolve(-1);
-              return;
-            }
-            resolve(ms);
+            settle(head.startsWith("#EXTM3U") ? ms : -1, false);
           })
-          .catch(() => {
-            if (settled) return;
-            clearTimeout(timer);
-            settled = true;
-            controller.abort();
-            resolve(-1);
-          });
+          .catch(() => settle(-1, true));
       })
-      .catch(() => {
-        if (settled) return;
-        clearTimeout(timer);
-        settled = true;
-        resolve(-1); // cors 失败/超时/网络错误
-      });
+      .catch(() => settle(-1, false)); // cors 失败/超时/网络错误
   });
 }
 

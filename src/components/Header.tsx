@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, X, Command, Menu } from "lucide-react";
 import { useStore } from "../store/useStore";
-import { useAllChannels } from "../hooks/useChannels";
 import { broadcastDate, clock, fmt } from "../lib/format";
 import { applySeo, describeSearch, describeView } from "../lib/seo";
 import { useI18n } from "../i18n";
@@ -27,7 +26,9 @@ export function Header() {
   const setFilter = useStore((s) => s.setFilter);
   const filter = useStore((s) => s.filter);
   const setView = useStore((s) => s.setView);
-  const channels = useAllChannels();
+  // 只需频道总数：直接订阅 Map.size，避免 useAllChannels 为此
+  // 对万条频道做一次独立的全量排序（Hero 已有一份，useMemo 不跨组件共享）
+  const liveCount = useStore((s) => s.channels.size);
   const mobileSidebarOpen = useStore((s) => s.mobileSidebarOpen);
   const setMobileSidebar = useStore((s) => s.setMobileSidebar);
   const sidebarCollapsed = useStore((s) => s.sidebarCollapsed);
@@ -67,8 +68,8 @@ export function Header() {
   // 展开搜索框时自动聚焦输入框（setTimeout 等待 display 切换生效）
   useEffect(() => {
     if (isMobile && searchOpen) {
-      const t = setTimeout(() => searchInputRef.current?.focus(), 0);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => searchInputRef.current?.focus(), 0);
+      return () => clearTimeout(timer);
     }
   }, [isMobile, searchOpen]);
 
@@ -92,8 +93,6 @@ export function Header() {
     }, 300);
     return () => clearTimeout(timer);
   }, [q]);
-
-  const liveCount = channels.length;
 
   function onMenuClick() {
     if (isMobile) {

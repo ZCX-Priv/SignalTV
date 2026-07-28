@@ -8,6 +8,15 @@
 /** 时区偏好：auto 自动检测 | UTC 整数偏移（小时） */
 export type TimezonePref = "auto" | number;
 
+/**
+ * 手动偏移合法性校验：整数且在 -11..12 内。
+ * 持久化数据可能被污染（如 999），越界值经 offsetToIana 会产出非法
+ * IANA 名使 Intl.DateTimeFormat 构造抛错，读入时必须用此校验拦截。
+ */
+export function isValidTimezoneOffset(n: unknown): n is number {
+  return typeof n === "number" && Number.isInteger(n) && n >= -11 && n <= 12;
+}
+
 /** 检测失败时的兜底时区：东八区 */
 const FALLBACK_TIME_ZONE = "Asia/Shanghai";
 
@@ -39,7 +48,9 @@ const CN_NUMERALS = [
 /** 整点偏移的中文区名：东八区 / 西五区 / 中时区 */
 function cnZoneName(offset: number): string {
   if (offset === 0) return "中时区";
-  return `${offset > 0 ? "东" : "西"}${CN_NUMERALS[Math.abs(offset)]}区`;
+  // 越界兜底：数字表仅覆盖 1..12，异常偏移直接用阿拉伯数字，避免“东undefined区”
+  const numeral = CN_NUMERALS[Math.abs(offset)] ?? String(Math.abs(offset));
+  return `${offset > 0 ? "东" : "西"}${numeral}区`;
 }
 
 /**

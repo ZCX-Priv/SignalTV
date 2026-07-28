@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Play, Star, Globe2, Tv2, ArrowUpRight } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useAllChannels } from "../hooks/useChannels";
@@ -36,9 +36,14 @@ export function Hero() {
     }
     // 首次（或缓存频道已不存在）随机挑选，但限制范围
     const idx = Math.floor(Math.random() * Math.min(pool.length, 400));
-    sessionFeaturedId = pool[idx].id;
     return pool[idx];
   }, [all]);
+
+  // 会话级缓存在 effect 中提交：渲染阶段写模块级变量违反渲染纯度
+  //（StrictMode 双渲染下 Math.random 执行两次结果可能不同）
+  useEffect(() => {
+    if (featured) sessionFeaturedId = featured.id;
+  }, [featured]);
 
   // 右侧"正在播放"轮播频道列表
   const ticker = useMemo(() => {
@@ -162,7 +167,7 @@ export function Hero() {
               {[...ticker, ...ticker].map((c, i) => (
                 <div className="ticker__item" key={`${c.id}-${i}`} onClick={() => openChannel(c.id)}>
                   {c.logo ? (
-                    <img src={c.logo} alt="" onError={(e) => {
+                    <img src={c.logo} alt="" loading="lazy" onError={(e) => {
                       (e.currentTarget as HTMLImageElement).style.opacity = "0";
                     }} />
                   ) : (

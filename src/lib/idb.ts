@@ -25,7 +25,21 @@ function openDB(): Promise<IDBDatabase> {
         db.createObjectStore(STORE_NAME); // keyPath 留空 → 使用 out-of-line keys
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // 连接失效自恢复：浏览器存储清理强制关闭（close）或其他标签页
+      // 升版（versionchange）时，缓存的实例已死，若不置空 dbPromise，
+      // 后续所有 IDB 操作会永久失败直到刷新
+      db.onclose = () => {
+        if (dbPromise === p) dbPromise = null;
+      };
+      db.onversionchange = () => {
+        // 主动关闭旧连接，避免未来升级 DB_VERSION 时旧标签页永久 block 新标签页
+        db.close();
+        if (dbPromise === p) dbPromise = null;
+      };
+      resolve(db);
+    };
     req.onerror = () => reject(req.error ?? new Error("打开 IndexedDB 失败"));
   });
   dbPromise = p;
@@ -37,7 +51,9 @@ function openDB(): Promise<IDBDatabase> {
   return p;
 }
 
-/** 在读写事务中执行单个 store 操作，包装为 Promise。 */
+/** 在读写事务中执行单个 store 操作，包装为 Promise。
+ * 写事务以 tx.oncomplete 为准：put 的 success 事件先于事务 commit，
+ * commit 阶段失败（配额满等）时若已 resolve 会造成写入静默丢失。 */
 function withStore<T>(
   mode: IDBTransactionMode,
   fn: (store: IDBObjectStore) => IDBRequest<T>,
@@ -48,8 +64,16 @@ function withStore<T>(
         const tx = db.transaction(STORE_NAME, mode);
         const store = tx.objectStore(STORE_NAME);
         const req = fn(store);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error ?? new Error("IndexedDB 操作失败"));
+        if (mode === "readonly") {
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error ?? new Error("IndexedDB 操作失败"));
+        } else {
+          tx.oncomplete = () => resolve(req.result);
+          tx.onabort = () =>
+            reject(tx.error ?? req.error ?? new Error("IndexedDB 事务中断"));
+          tx.onerror = () =>
+            reject(tx.error ?? req.error ?? new Error("IndexedDB 操作失败"));
+        }
       }),
   );
 }

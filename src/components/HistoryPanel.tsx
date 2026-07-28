@@ -162,6 +162,22 @@ export function HistoryPanel() {
   // 全选状态相对当前筛选结果判断（筛选后全选只作用于可见条目）
   const allSelected = filtered.length > 0 && filtered.every((e) => selected.has(e.id));
 
+  // 筛选变化时收敛选中集：只保留仍可见的条目，防止"删除所选"
+  // 误删已被筛选滤出视野的记录（计数与可见项也会不一致）
+  useEffect(() => {
+    setSelected((prev) => {
+      if (prev.size === 0) return prev;
+      const visible = new Set(filtered.map((e) => e.id));
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (visible.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [filtered]);
+
   // 入场动画错峰延迟需跨分组/时间桶连续递增：按 filtered 顺序生成 id → 序号
   const indexById = useMemo(() => {
     const m = new Map<string, number>();

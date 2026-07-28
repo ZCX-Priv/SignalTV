@@ -16,7 +16,11 @@ import {
 import { probeBatch } from "../lib/latency";
 import { idbGet, idbSet, idbStorage } from "../lib/idb";
 import { applySeo, describeView } from "../lib/seo";
-import { syncActiveTimeZone, type TimezonePref } from "../lib/timezone";
+import {
+  isValidTimezoneOffset,
+  syncActiveTimeZone,
+  type TimezonePref,
+} from "../lib/timezone";
 import {
   SUPPORTED_LOCALES,
   applyLocaleSideEffects,
@@ -52,10 +56,15 @@ function batchSetLatency(id: string, ms: number) {
 }
 
 // 弱网判定：首选首屏加载实测速度（getMeasuredSpeed），低于 500KB/s 判为 slow；
-// 样本全部命中缓存（无有效样本）时回退到 Network Information API。
+// 样本全部命中缓存（无有效样本）时依次回退：上次会话持久化的实测画像
+// → Network Information API（慢 WiFi 下普遍误报 fast，仅作末位兜底）。
 export type NetworkProfile = "fast" | "slow";
 
 const SLOW_SPEED_THRESHOLD = 500_000; // 500KB/s
+
+// 上次会话实测网络画像的 IDB key：二次访问命中 SW 缓存时无实测样本，
+// 用上次实测值作初值，避免弱网用户被误判 fast 后以 16 并发挤占带宽
+const NETWORK_PROFILE_KEY = "signaltv-network-profile";
 
 // 回退路径：navigator.connection 的 saveData/2g/slow-2g 判为弱网
 // （Safari/Firefox 不支持时返回 false，不阻断功能）
@@ -72,12 +81,13 @@ function connectionSaysWeak(): boolean {
   return t === "slow-2g" || t === "2g";
 }
 
-/** 聚合实测速度优先，无有效样本时回退 Network Information API */
-function resolveNetworkProfile(): NetworkProfile {
+/** 实测速度 > 上次会话持久化画像 > Network Information API，逐级回退 */
+function resolveNetworkProfile(persisted: NetworkProfile | null): NetworkProfile {
   const speed = getMeasuredSpeed();
   if (speed !== null) {
     return speed < SLOW_SPEED_THRESHOLD ? "slow" : "fast";
   }
+  if (persisted) return persisted;
   return connectionSaysWeak() ? "slow" : "fast";
 }
 
@@ -108,6 +118,11 @@ function getSystemTheme(): Theme {
 function syncThemeCache(theme: Theme): void {
   if (typeof document !== "undefined") {
     document.documentElement.dataset.theme = theme;
+    // 同步 theme-color meta：移动端浏览器地址栏/状态栏颜色随主题切换
+    //（值与 index.css 的 --bg 变量保持一致）
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme === "light" ? "#f5f1e8" : "#0a0a0f");
   }
   if (typeof window === "undefined") return;
   try {
@@ -117,27 +132,39 @@ function syncThemeCache(theme: Theme): void {
   }
 }
 
+// 启动期共享的持久化快照：theme/language/timezone/updateMode 四处预读
+// 都解析同一个 IDB key（signaltv-iptv），缓存单次读取避免重复 IO
+let bootStatePromise: Promise<Record<string, unknown> | null> | null = null;
+export function getBootPersistedState(): Promise<Record<string, unknown> | null> {
+  if (!bootStatePromise) {
+    bootStatePromise = idbGet("signaltv-iptv")
+      .then((raw) => {
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as { state?: Record<string, unknown> };
+        return parsed.state ?? null;
+      })
+      .catch(() => null);
+  }
+  return bootStatePromise;
+}
+
 // 首次访问跟随系统 prefers-color-scheme；用户手动切换后持久化覆盖
 // 异步：从 IndexedDB 读取持久化的主题（main.tsx 在渲染前 await 此函数，
 // 拿到结果后会通过 useStore.setState 同步给 store）
 export async function getInitialTheme(): Promise<Theme> {
   if (typeof window === "undefined") return "dark";
-  try {
-    const raw = await idbGet("signaltv-iptv");
-    if (raw) {
-      const parsed = JSON.parse(raw) as {
-        state?: { theme?: Theme; themeMode?: ThemeMode };
-      };
-      // 优先按 themeMode 推导实际渲染值（兼容旧版只有 theme 字段的持久化）
-      const mode = parsed.state?.themeMode;
-      if (mode === "system") return getSystemTheme();
-      if (mode === "light" || mode === "dark") return mode;
-      if (parsed.state?.theme === "dark" || parsed.state?.theme === "light") {
-        return parsed.state.theme;
-      }
+  const state = (await getBootPersistedState()) as {
+    theme?: Theme;
+    themeMode?: ThemeMode;
+  } | null;
+  if (state) {
+    // 优先按 themeMode 推导实际渲染值（兼容旧版只有 theme 字段的持久化）
+    const mode = state.themeMode;
+    if (mode === "system") return getSystemTheme();
+    if (mode === "light" || mode === "dark") return mode;
+    if (state.theme === "dark" || state.theme === "light") {
+      return state.theme;
     }
-  } catch {
-    // 解析失败则回落到系统偏好
   }
   return getSystemTheme();
 }
@@ -146,40 +173,25 @@ export async function getInitialTheme(): Promise<Theme> {
 // 据此预加载语言包，避免首屏文案闪烁）。无效/缺失时回落到 "system" 自动检测。
 export async function getInitialLanguage(): Promise<LanguagePref> {
   if (typeof window === "undefined") return "system";
-  try {
-    const raw = await idbGet("signaltv-iptv");
-    if (raw) {
-      const parsed = JSON.parse(raw) as {
-        state?: { language?: string };
-      };
-      const lang = parsed.state?.language;
-      if (lang === "system") return lang;
-      if (lang && (SUPPORTED_LOCALES as readonly string[]).includes(lang)) {
-        return lang as Locale;
-      }
-    }
-  } catch {
-    // 解析失败则回落到自动检测
+  const state = (await getBootPersistedState()) as { language?: string } | null;
+  const lang = state?.language;
+  if (lang === "system") return lang;
+  if (lang && (SUPPORTED_LOCALES as readonly string[]).includes(lang)) {
+    return lang as Locale;
   }
   return "system";
 }
 
 // 异步：从 IndexedDB 读取持久化的时区偏好（main.tsx 在渲染前 await，
-// 据此同步激活时区，保证首屏时钟即为目标时区）。无效/缺失时回落 "auto"。
+// 据此同步激活时区，保证首屏时钟即为目标时区）。无效/越界/缺失时回落 "auto"。
 export async function getInitialTimezone(): Promise<TimezonePref> {
   if (typeof window === "undefined") return "auto";
-  try {
-    const raw = await idbGet("signaltv-iptv");
-    if (raw) {
-      const parsed = JSON.parse(raw) as {
-        state?: { timezonePref?: unknown };
-      };
-      const pref = parsed.state?.timezonePref;
-      if (typeof pref === "number" && Number.isInteger(pref)) return pref;
-    }
-  } catch {
-    // 解析失败则回落自动检测
-  }
+  const state = (await getBootPersistedState()) as {
+    timezonePref?: unknown;
+  } | null;
+  const pref = state?.timezonePref;
+  // 钳制到 -11..12：污染数据（如 999）会产出非法 IANA 名使首屏时钟崩溃
+  if (isValidTimezoneOffset(pref)) return pref;
   return "auto";
 }
 
@@ -393,6 +405,17 @@ export const useStore = create<State>()(
           error: null,
           loadProgress: { channelsReady: false, streamsReady: false },
         });
+        // 上次会话实测的网络画像：本次命中 SW 缓存无实测样本时作为判定依据；
+        // 提前写入 state 让加载完成前的首批探测就用对并发
+        let persistedProfile: NetworkProfile | null = null;
+        void idbGet(NETWORK_PROFILE_KEY)
+          .then((v) => {
+            if (v === "slow" || v === "fast") {
+              persistedProfile = v;
+              if (!get().loaded) set({ networkProfile: v });
+            }
+          })
+          .catch(() => {});
         try {
           // 原地合并更新进度（行位置固定，不滚动）
           const patch = (p: Partial<LoadProgress>) =>
@@ -492,6 +515,13 @@ export const useStore = create<State>()(
           patch({ mergeOk: true });
           // 全流程唯一停留：合并行 [OK] 后 1s 进主页
           await new Promise((r) => setTimeout(r, 1000));
+          // 加载完成后据实测速度判定网络画像（< 500KB/s → slow）；
+          // 无实测样本（缓存命中）时回退上次会话持久化的实测画像
+          const profile = resolveNetworkProfile(persistedProfile);
+          // 仅在有实测样本时持久化，供下次会话（缓存命中无样本）作初值
+          if (getMeasuredSpeed() !== null) {
+            void idbSet(NETWORK_PROFILE_KEY, profile).catch(() => {});
+          }
           set({
             channels: idx,
             categories: cats,
@@ -499,8 +529,7 @@ export const useStore = create<State>()(
             loaded: true,
             loading: false,
             loadProgress: null,
-            // 加载完成后据实测速度判定网络画像（< 500KB/s → slow）
-            networkProfile: resolveNetworkProfile(),
+            networkProfile: profile,
           });
         } catch (e) {
           set({
@@ -576,8 +605,15 @@ export const useStore = create<State>()(
         const urls = new Map<string, string>();
         for (const id of ids) {
           const c = channels.get(id);
-          // 只探测有流、未探测过且不在 in-flight 中的频道
-          if (c?.streamUrl && !existing.has(id) && !probeInFlight.has(id)) {
+          // 只探测有流、未探测过且不在 in-flight / 节流待刷队列中的频道
+          //（探测结果先进 pendingLatency 等 200ms flush，窗口期内若不查
+          // 该队列会对同一 URL 重复发起探测，弱网下白白浪费带宽）
+          if (
+            c?.streamUrl &&
+            !existing.has(id) &&
+            !pendingLatency.has(id) &&
+            !probeInFlight.has(id)
+          ) {
             urls.set(id, c.streamUrl);
           }
         }
@@ -658,6 +694,20 @@ export const useStore = create<State>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+        // 持久化数组/对象字段形状校验：IDB 数据被污染为非法形状时，
+        // 下游的 includes/filter/展开操作会直接 TypeError，污染则回落默认值
+        if (!Array.isArray(state.favorites)) state.favorites = [];
+        if (!Array.isArray(state.recents)) state.recents = [];
+        if (!Array.isArray(state.recentCategories)) state.recentCategories = [];
+        if (!Array.isArray(state.recentCountries)) state.recentCountries = [];
+        state.history = Array.isArray(state.history)
+          ? state.history.filter(
+              (h) => !!h && typeof h.id === "string" && typeof h.at === "number",
+            )
+          : [];
+        if (typeof state.gridLayouts !== "object" || state.gridLayouts === null) {
+          state.gridLayouts = DEFAULT_GRID_LAYOUTS;
+        }
         // 旧版持久化数据没有 themeMode → 从 theme 推断（保留旧用户的实际偏好），
         // 否则新字段缺失会导致"跟随系统"语义意外覆盖用户已选主题
         if (!state.themeMode) {
@@ -679,9 +729,13 @@ export const useStore = create<State>()(
         void loadLocale(locale).then(() => applyLocaleSideEffects(locale));
         // 旧版数据没有 updateMode → 回落默认「自动更新」
         if (!state.updateMode) state.updateMode = "auto";
-        // 旧版数据没有 timezonePref → 回落自动检测；同步激活时区
+        // 旧版数据没有 timezonePref → 回落自动检测；越界/非法值同样回落
+        //（污染数据会产出非法 IANA 名使时钟崩溃）；同步激活时区
         // （main.tsx 预读一致时为幂等操作）
         if (state.timezonePref === undefined) state.timezonePref = "auto";
+        if (state.timezonePref !== "auto" && !isValidTimezoneOffset(state.timezonePref)) {
+          state.timezonePref = "auto";
+        }
         syncActiveTimeZone(state.timezonePref);
         // 旧版数据没有 gridLayouts → 用遗留的单一 gridLayout（若有）作为
         // 浏览页初值，其余作用域回落默认；已有时也兜底补齐缺失键

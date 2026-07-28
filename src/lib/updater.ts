@@ -21,7 +21,7 @@
 import { registerSW } from "virtual:pwa-register";
 import { toastStore } from "./toast";
 import { idbGet, idbSet } from "./idb";
-import { useStore } from "../store/useStore";
+import { useStore, getBootPersistedState } from "../store/useStore";
 import type { UpdateMode } from "../store/useStore";
 import { t } from "../i18n";
 
@@ -87,13 +87,23 @@ function fnv1a(text: string): string {
   return (h >>> 0).toString(16);
 }
 
-// 取 sw.js 文本算版本哈希；失败返回 null（离线/网络异常时不阻断提示流程）
+// 取 sw.js 文本算版本哈希；失败/超时返回 null（离线/停滞网络下不阻断提示流程）
 async function computeVersionId(): Promise<string | null> {
   if (!swScriptUrl) return null;
   try {
-    const res = await fetch(swScriptUrl, { cache: "no-store" });
-    if (!res.ok) return null;
-    return fnv1a(await res.text());
+    // 10s 超时：停滞网络下无限挂起会拖延 manual 模式的 toast 弹出
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const res = await fetch(swScriptUrl, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!res.ok) return null;
+      return fnv1a(await res.text());
+    } finally {
+      clearTimeout(timer);
+    }
   } catch {
     return null;
   }
@@ -139,14 +149,11 @@ function waitForHydration(): Promise<void> {
 // 不能读 store 默认值；与 useStore 的 getInitial* 同模式的原始解析）
 async function getBootUpdateMode(): Promise<UpdateMode> {
   try {
-    const raw = await idbGet("signaltv-iptv");
-    if (raw) {
-      const parsed = JSON.parse(raw) as {
-        state?: { updateMode?: UpdateMode };
-      };
-      const m = parsed.state?.updateMode;
-      if (m === "manual" || m === "off") return m;
-    }
+    const state = (await getBootPersistedState()) as {
+      updateMode?: UpdateMode;
+    } | null;
+    const m = state?.updateMode;
+    if (m === "manual" || m === "off") return m;
   } catch {
     // 解析失败按默认 auto 处理
   }
@@ -503,7 +510,11 @@ export function initUpdater(): void {
         const installing = r.installing;
         if (!installing) return;
         installing.addEventListener("statechange", () => {
-          if (installing.state !== "redundant" || retryScheduled) return;
+          if (installing.state !== "redundant") return;
+          // 显式检查触发的安装失败：复位标志，否则后续周期检查
+          // 发现的新版本会误走显式弹窗分支（无视 auto/off 模式）
+          explicitCheck = false;
+          if (retryScheduled) return;
           retryScheduled = true;
           setTimeout(() => {
             retryScheduled = false;

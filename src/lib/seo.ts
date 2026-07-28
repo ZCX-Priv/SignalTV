@@ -1,5 +1,5 @@
 // 运行时 SEO 工具：在 SPA 视图切换时动态更新 title/description/canonical/og:*
-// 并把 index.html 中静态 JSON-LD 的占位 URL（https://signaltv.app/）覆写为真实 origin
+// 并把 index.html 中静态 JSON-LD 的占位 URL（https://signaltv.netlify.app/）覆写为真实 origin
 // 让部署到任意域名都能输出正确的绝对 URL，无需重新构建
 
 import type { Category, ChannelWithStream, CountryInfo } from "../types";
@@ -9,7 +9,7 @@ import { getLocale, t } from "../i18n";
 export const SITE_NAME = "SignalTV";
 
 /** index.html 中静态写入的占位 origin，运行时会被覆写为真实 origin */
-export const PLACEHOLDER_ORIGIN = "https://signaltv.app";
+export const PLACEHOLDER_ORIGIN = "https://signaltv.netlify.app";
 
 /** 运行时获取真实 origin（SSR / 构建环境回落到占位符） */
 export function getSiteOrigin(): string {

@@ -7,6 +7,8 @@
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0a0f" />
+    <!-- referrer 策略：频道浏览痕迹不向 iptv-org/flagcdn/任意 logo 主机泄露完整 URL -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
 
     <!-- 站点基础描述（面向搜索引擎与社交分享，去除专业术语） -->
     <title>SignalTV - 免费在线看电视直播频道，全球数千路信号即开即看</title>
@@ -34,12 +36,12 @@
     <meta name="color-scheme" content="dark light" />
 
     <!-- Canonical：占位 URL，运行时由 src/lib/seo.ts 用 window.location.href 覆写为真实地址 -->
-    <link rel="canonical" href="https://signaltv.app/" />
+    <link rel="canonical" href="https://signaltv.netlify.app/" />
 
     <!-- 多语言后备（静态默认简体中文；界面支持 8 语言，由运行时 i18n 切换，
          SPA 同 URL 无独立语言页面，故仅声明默认与 x-default） -->
-    <link rel="alternate" hreflang="zh-CN" href="https://signaltv.app/" />
-    <link rel="alternate" hreflang="x-default" href="https://signaltv.app/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://signaltv.netlify.app/" />
+    <link rel="alternate" hreflang="x-default" href="https://signaltv.netlify.app/" />
 
     <!-- Open Graph：微信/微博/Twitter/Facebook 分享卡片 -->
     <meta property="og:type" content="website" />
@@ -50,8 +52,8 @@
       property="og:description"
       content="聚合全球数千路电视频道，涵盖新闻、电影、体育、音乐等分类，无需注册即开即看。"
     />
-    <meta property="og:url" content="https://signaltv.app/" />
-    <meta property="og:image" content="https://signaltv.app/pwa-512x512.png" />
+    <meta property="og:url" content="https://signaltv.netlify.app/" />
+    <meta property="og:image" content="https://signaltv.netlify.app/pwa-512x512.png" />
     <meta property="og:image:alt" content="SignalTV - 免费电视直播" />
 
     <!-- Twitter Card -->
@@ -61,7 +63,7 @@
       name="twitter:description"
       content="聚合全球数千路电视频道，涵盖新闻、电影、体育、音乐等分类，无需注册即开即看。"
     />
-    <meta name="twitter:image" content="https://signaltv.app/pwa-512x512.png" />
+    <meta name="twitter:image" content="https://signaltv.netlify.app/pwa-512x512.png" />
 
     <!-- JSON-LD：WebApplication（GEO 关键，声明实体类型与免费属性） -->
     <script type="application/ld+json">
@@ -69,7 +71,7 @@
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "SignalTV",
-        "url": "https://signaltv.app/",
+        "url": "https://signaltv.netlify.app/",
         "description": "SignalTV 是一个免费在线看电视直播的网站，聚合全球数千路电视频道，涵盖新闻、电影、体育、音乐、纪录片等分类，无需注册即开即看。",
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "Any (Web Browser)",
@@ -90,7 +92,7 @@
           "深色与浅色主题切换",
           "可安装为桌面与移动端应用，离线访问已缓存的频道列表"
         ],
-        "screenshot": "https://signaltv.app/pwa-512x512.png"
+        "screenshot": "https://signaltv.netlify.app/pwa-512x512.png"
       }
     </script>
 
@@ -100,8 +102,8 @@
         "@context": "https://schema.org",
         "@type": "Organization",
         "name": "SignalTV",
-        "url": "https://signaltv.app/",
-        "logo": "https://signaltv.app/pwa-512x512.png",
+        "url": "https://signaltv.netlify.app/",
+        "logo": "https://signaltv.netlify.app/pwa-512x512.png",
         "description": "SignalTV 提供免费在线看电视直播的 Web 应用，聚合全球数千路公共电视信号源。"
       }
     </script>
@@ -170,11 +172,22 @@
       字体载荷裁剪：CSS 实际使用的字重范围为 300-700（变量字重 340/360/420/560 等），
       Fraunces/Geist 上限从 900/800 收紧到 700，减小弱网首屏字体下载量。
       Noto Serif SC（--font-display 中文后备）与 Noto Sans SC（--font-sans/mono 中文后备）均在用，保留。
+      异步加载：media="print" 不阻塞首次渲染（弱网 0.5-1Mbps 下该 CSS
+      含 CJK 大字体族，阻塞式加载会拖住首帧），onload 后切回 all 生效；
+      字体就绪前由 fallback 字体渲染（display=swap 同义行为），noscript 兜底。
     -->
     <link
       href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@300..700&family=Noto+Sans+SC:wght@300..700&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@300..700&family=Noto+Sans+SC:wght@300..700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
     <!-- 首屏关键数据源 preconnect：iptv-org API（频道/流/分类/国家 JSON）+ flagcdn（国旗图片） -->
     <link rel="preconnect" href="https://iptv-org.github.io" crossorigin />
     <link rel="dns-prefetch" href="https://iptv-org.github.io" />
@@ -187,20 +200,22 @@
     -->
     <script>
       (function () {
+        var theme = null;
         try {
           var t = localStorage.getItem("signaltv-theme-cache");
-          if (t === "light" || t === "dark") {
-            document.documentElement.dataset.theme = t;
-          } else {
-            var m =
-              window.matchMedia &&
-              window.matchMedia("(prefers-color-scheme: light)");
-            document.documentElement.dataset.theme =
-              m && m.matches ? "light" : "dark";
-          }
+          if (t === "light" || t === "dark") theme = t;
         } catch (e) {
-          /* localStorage 不可用，保持浏览器默认 */
+          /* localStorage 不可用（隐私模式）→ 走下方系统偏好回退 */
         }
+        /* 系统偏好回退在 try 块外：localStorage 抛异常时也要生效，
+           否则浅色系统用户在隐私模式下会闪深色 */
+        if (!theme) {
+          var m =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: light)");
+          theme = m && m.matches ? "light" : "dark";
+        }
+        document.documentElement.dataset.theme = theme;
       })();
     </script>
   </head>
