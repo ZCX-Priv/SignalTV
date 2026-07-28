@@ -7,7 +7,9 @@ import { useI18n } from "../i18n";
 import { ChannelCard } from "./ChannelCard";
 import { EmptyState } from "./EmptyState";
 
-const PAGE = 60;
+const PAGE = 60;   // 首屏一次性渲染量，保证首屏立即填满
+const BATCH = 12;  // 流式补给批量：约 2-3 行卡片，单批渲染开销小到可逐帧完成
+const BUFFER = 1200; // 预补缓冲（px）：哨兵距视口底不足约一屏半时开始补给
 
 interface ChannelGridProps {
   /** 由父组件（ChannelsView）统一计算的过滤结果，避免与 FilterBar 重复过滤 */
@@ -27,25 +29,35 @@ export function ChannelGrid({ list }: ChannelGridProps) {
     setLimit(PAGE);
   }, [view, filter, list.length]);
 
-  // 通过 IntersectionObserver 实现无限滚动。
-  // 依赖含 limit：IO 回调只在交叉状态翻转时触发，快滚时加载一页后
-  // 哨兵若仍在视口内不会再触发（断流→底部空白）；每页重建 observer，
-  // observe() 对仍处交叉态的哨兵立即触发回调，链式补页直到哨兵离开视口
+  // 滚动驱动的实时流式补给：替代原 IntersectionObserver「到点补一大页」，
+  // 每次滚动经 rAF 节流后检查哨兵与视口底的距离，进入 BUFFER 预补区即补一小批。
+  // 依赖含 limit：每补一批渲染后 effect 重跑并立即复检，形成逐帧小批量补给链，
+  // 直到缓冲填满自然停止——内容随滚动连续流入，快滚也不会断流成片。
+  // scroll 事件不冒泡，监听须挂在实际滚动容器 .app__main 上而非 window。
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            setLimit((l) => Math.min(l + PAGE, list.length));
-          }
-        }
-      },
-      { rootMargin: "900px 0px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
+    let raf = 0;
+    const replenish = () => {
+      raf = 0;
+      const s = sentinelRef.current;
+      if (!s) return;
+      if (s.getBoundingClientRect().top < window.innerHeight + BUFFER) {
+        setLimit((l) => Math.min(l + BATCH, list.length));
+      }
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(replenish);
+    };
+    replenish();
+    const scroller = el.closest(".app__main");
+    scroller?.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      scroller?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [list.length, limit]);
 
   const shown = useMemo(() => list.slice(0, limit), [list, limit]);
@@ -103,7 +115,7 @@ export function ChannelGrid({ list }: ChannelGridProps) {
       {limit < list.length && (
         <div className="grid-loadmore" ref={sentinelRef}>
           <Loader2 size={14} className="spin" />
-          <span className="mono">{t("grid.loadingMore", { count: Math.min(PAGE, list.length - limit) })}</span>
+          <span className="mono">{t("grid.loadingMore", { count: Math.min(BATCH, list.length - limit) })}</span>
         </div>
       )}
 

@@ -58,7 +58,9 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
   return (
     <article
       className="card"
-      style={{ animationDelay: `${Math.min(index, 24) * 28}ms` }}
+      // 入场错峰仅限首屏前 24 张；流式追加的卡片零延迟立即淡入，
+      // 避免 fade-up both 的延迟隐形期在快滚时造成底部空白后成片浮现
+      style={{ animationDelay: `${index < 24 ? index * 28 : 0}ms` }}
       onClick={() => openChannel(channel.id)}
     >
       <div className="card__media" style={mediaStyle}>
