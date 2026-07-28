@@ -246,8 +246,9 @@ function startDownload(): void {
   if (downloading || reloading || !toastId) return;
   downloading = true;
   const id = toastId;
+  // 标题直接换成「正在下载更新…」，不走描述行（创建时本无 description）
   toastStore.getState().update(id, {
-    description: t("update.downloading"),
+    title: t("update.downloading"),
     actions: [],
     progress: 0,
   });
