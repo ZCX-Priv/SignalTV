@@ -159,7 +159,7 @@ export const dict: Dict = {
   "settings.language": "Language",
   "settings.languageDesc": "Choose the interface language. Auto-detects your browser by default.",
   "settings.langAuto": "Auto detect",
-  "settings.langAutoDesc": "Follow browser language (currently {name})",
+  "settings.langAutoDesc": "Follow browser language",
   "settings.about": "About",
   "settings.githubAria": "GitHub repository",
   "settings.tagline": "Public TV signals · Free live streaming",

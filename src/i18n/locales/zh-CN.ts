@@ -171,7 +171,7 @@ export const dict = {
   "settings.language": "语言",
   "settings.languageDesc": "选择界面语言，默认跟随浏览器自动检测。",
   "settings.langAuto": "自动检测",
-  "settings.langAutoDesc": "跟随浏览器语言（当前：{name}）",
+  "settings.langAutoDesc": "跟随浏览器语言",
   "settings.about": "关于",
   "settings.githubAria": "GitHub 仓库",
   "settings.tagline": "公共电视信号源 · 免费在线直播",

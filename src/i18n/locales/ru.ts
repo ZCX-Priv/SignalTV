@@ -189,7 +189,7 @@ export const dict: Dict = {
   "settings.languageDesc":
     "Выберите язык интерфейса. По умолчанию язык браузера определяется автоматически.",
   "settings.langAuto": "Автоопределение",
-  "settings.langAutoDesc": "Следовать языку браузера (сейчас: {name})",
+  "settings.langAutoDesc": "Следовать языку браузера",
   "settings.about": "О приложении",
   "settings.githubAria": "Репозиторий GitHub",
   "settings.tagline": "Публичные ТВ-сигналы · Бесплатный прямой эфир",

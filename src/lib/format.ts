@@ -55,10 +55,14 @@ export function flagPngBgUrl(code: string): string | null {
 /**
  * 由国家代码哈希生成稳定的双色高级渐变。
  * 非法代码回退为中性高级灰渐变。
+ * theme 决定明暗变体：dark 为深色底（默认），light 为中等亮度高饱和的彩色变体，
+ * 保持同源色相，避免浅底下泛白发灰。
  */
-export function countryGradient(code: string): string {
+export function countryGradient(code: string, theme: "dark" | "light" = "dark"): string {
   if (!isValidCountryCode(code)) {
-    return "linear-gradient(135deg, #2a2a33 0%, #16161c 100%)";
+    return theme === "light"
+      ? "linear-gradient(135deg, #d9d2c0 0%, #c4bca6 100%)"
+      : "linear-gradient(135deg, #2a2a33 0%, #16161c 100%)";
   }
   const a = code.charCodeAt(0);
   const b = code.charCodeAt(1);
@@ -66,8 +70,8 @@ export function countryGradient(code: string): string {
   h = h >>> 0;
   const hue = h % 360;
   const hue2 = (hue + 28) % 360; // 相近色相，保证协调
-  const c1 = `hsl(${hue} 34% 22%)`;
-  const c2 = `hsl(${hue2} 30% 14%)`;
+  const c1 = theme === "light" ? `hsl(${hue} 48% 74%)` : `hsl(${hue} 34% 22%)`;
+  const c2 = theme === "light" ? `hsl(${hue2} 44% 62%)` : `hsl(${hue2} 30% 14%)`;
   return `linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`;
 }
 

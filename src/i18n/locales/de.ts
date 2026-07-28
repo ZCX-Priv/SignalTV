@@ -161,7 +161,7 @@ export const dict: Dict = {
   "settings.languageDesc":
     "Sprache der Oberfläche wählen. Standardmäßig wird der Browser automatisch erkannt.",
   "settings.langAuto": "Automatisch",
-  "settings.langAutoDesc": "Browsersprache folgen (aktuell {name})",
+  "settings.langAutoDesc": "Browsersprache folgen",
   "settings.about": "Über",
   "settings.githubAria": "GitHub-Repository",
   "settings.tagline": "Öffentliche TV-Signale · Kostenloses Live-Streaming",

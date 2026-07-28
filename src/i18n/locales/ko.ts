@@ -156,7 +156,7 @@ export const dict: Dict = {
   "settings.language": "언어",
   "settings.languageDesc": "인터페이스 언어를 선택합니다. 기본값은 브라우저 언어 자동 감지입니다.",
   "settings.langAuto": "자동 감지",
-  "settings.langAutoDesc": "브라우저 언어 따르기 (현재: {name})",
+  "settings.langAutoDesc": "브라우저 언어 따르기",
   "settings.about": "정보",
   "settings.githubAria": "GitHub 저장소",
   "settings.tagline": "공영 TV 신호 · 무료 라이브 스트리밍",

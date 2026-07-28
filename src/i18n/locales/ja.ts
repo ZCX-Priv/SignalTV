@@ -156,7 +156,7 @@ export const dict: Dict = {
   "settings.language": "言語",
   "settings.languageDesc": "画面の表示言語を選択します。既定ではブラウザーの言語を自動検出します。",
   "settings.langAuto": "自動検出",
-  "settings.langAutoDesc": "ブラウザーの言語に従う（現在：{name}）",
+  "settings.langAutoDesc": "ブラウザーの言語に従う",
   "settings.about": "このアプリについて",
   "settings.githubAria": "GitHub リポジトリ",
   "settings.tagline": "公共テレビ信号 · 無料ライブ配信",

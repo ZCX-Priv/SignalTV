@@ -18,7 +18,6 @@ import { TimezoneMap } from "./TimezoneMap";
 import {
   NATIVE_LOCALE_NAMES,
   SUPPORTED_LOCALES,
-  detectLocale,
   useI18n,
   type LanguagePref,
   type MsgKey,
@@ -167,9 +166,9 @@ export function SettingsPanel() {
             const isAuto = pref === "system";
             // 选项名：自动检测用当前界面语言；具体语言固定用本族语名（国际惯例）
             const label = isAuto ? t("settings.langAuto") : NATIVE_LOCALE_NAMES[pref];
-            // 描述：自动检测项展示当前检测结果；语言项展示其在当前界面语言下的名称
+            // 描述：自动检测项展示跟随策略说明；语言项展示其在当前界面语言下的名称
             const desc = isAuto
-              ? t("settings.langAutoDesc", { name: NATIVE_LOCALE_NAMES[detectLocale()] })
+              ? t("settings.langAutoDesc")
               : t(`lang.${pref}` as MsgKey);
             return (
               <button

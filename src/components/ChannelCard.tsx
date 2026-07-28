@@ -20,6 +20,9 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
   // 只有相关卡片重渲染，而非订阅整个 favorites 数组引发全卡片重渲染
   const isFav = useStore((s) => s.favorites.includes(channel.id));
   const latency = useStore((s) => s.latency.get(channel.id));
+  // 实际渲染主题（dark|light）：国旗背景是内联样式，无法被
+  // [data-theme="light"] CSS 规则覆盖，需随主题重算渐变遮罩配色
+  const theme = useStore((s) => s.theme);
 
   const cat = channel.categories[0];
   const pos = channelPosition(channel.id);
@@ -31,20 +34,25 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
     ? [
         "radial-gradient(120% 80% at 50% 30%, rgba(255, 59, 48, 0.10), transparent 60%)",
         `url("${flagBg}")`,
-        countryGradient(channel.country),
+        countryGradient(channel.country, theme),
       ]
     : [
         "radial-gradient(120% 80% at 50% 30%, rgba(255, 59, 48, 0.10), transparent 60%)",
-        countryGradient(channel.country),
+        countryGradient(channel.country, theme),
       ];
-  const mediaBlend = flagBg ? "normal, overlay, normal" : "normal, normal";
+  // 国旗层混合模式随主题：暗底用 overlay 压暗提饱和（暗色多彩）；
+  // 浅底下 overlay 会整体提亮导致泛白，改用 multiply 让国旗色与彩底相乘，保留色彩
+  const mediaBlend = flagBg
+    ? `normal, ${theme === "light" ? "multiply" : "overlay"}, normal`
+    : "normal, normal";
   const mediaStyle: CSSProperties = {
     backgroundImage: mediaBackground.join(", "),
     backgroundSize: flagBg ? "cover, cover, cover" : "cover, cover",
     backgroundPosition: "center, center, center",
     backgroundRepeat: "no-repeat, no-repeat, no-repeat",
     backgroundBlendMode: mediaBlend,
-    backgroundColor: "#16161c",
+    // 白昼模式用主题变量贴合米色底，避免深色遮罩覆盖浅色卡片
+    backgroundColor: theme === "light" ? "var(--bg-3)" : "#16161c",
   };
 
   return (
