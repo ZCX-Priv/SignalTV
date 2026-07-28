@@ -104,6 +104,8 @@ export const dict: Dict = {
   // ── Channel grid ──
   "grid.emptyTitle": "No signal",
   "grid.emptyDesc": "No channels match the current filters. Try widening your search.",
+  "grid.favEmptyTitle": "No favorites yet",
+  "grid.favEmptyDesc": "Tap the favorite button while browsing channels and they'll show up here.",
   "grid.loadingMore": {
     one: "Loading {count} more signal…",
     other: "Loading {count} more signals…",
@@ -191,6 +193,11 @@ export const dict: Dict = {
   "update.downloading": "Downloading new version…",
   "update.ready": "New version ready",
   "update.actionReload": "Reload page ({s}s)",
+  "settings.checkUpdate": "Check for updates",
+  "update.checking": "Checking for updates…",
+  "update.latest": "You're on the latest version",
+  "update.foundDownloading": "New version found, downloading in the background…",
+  "update.checkFailed": "Update check failed. Check your network and try again.",
 
   // ── Theme options ──
   "theme.system": "System",

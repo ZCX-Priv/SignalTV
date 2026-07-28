@@ -104,6 +104,8 @@ export const dict: Dict = {
   // ── Grille de chaînes ──
   "grid.emptyTitle": "Pas de signal",
   "grid.emptyDesc": "Aucune chaîne ne correspond aux filtres actuels. Élargissez la recherche.",
+  "grid.favEmptyTitle": "Aucun favori pour l'instant",
+  "grid.favEmptyDesc": "Appuyez sur le bouton favori en parcourant les chaînes : elles apparaîtront ici.",
   "grid.loadingMore": {
     one: "Chargement de {count} signal supplémentaire…",
     other: "Chargement de {count} signaux supplémentaires…",
@@ -193,6 +195,11 @@ export const dict: Dict = {
   "update.downloading": "Téléchargement de la nouvelle version…",
   "update.ready": "Nouvelle version prête",
   "update.actionReload": "Recharger la page ({s}s)",
+  "settings.checkUpdate": "Rechercher des mises à jour",
+  "update.checking": "Recherche de mises à jour…",
+  "update.latest": "Vous êtes déjà à jour",
+  "update.foundDownloading": "Nouvelle version trouvée, téléchargement en arrière-plan…",
+  "update.checkFailed": "Échec de la vérification. Vérifiez votre réseau puis réessayez.",
 
   // ── Options de thème ──
   "theme.system": "Système",

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Settings as SettingsIcon,
   Monitor,
@@ -14,6 +14,7 @@ import {
 import { useStore } from "../store/useStore";
 import type { ThemeMode, UpdateMode } from "../store/useStore";
 import { toast } from "../lib/toast";
+import { checkForUpdates } from "../lib/updater";
 import { TimezoneMap } from "./TimezoneMap";
 import {
   NATIVE_LOCALE_NAMES,
@@ -100,6 +101,10 @@ const UPDATE_OPTIONS: {
   },
 ];
 
+// 手动检查更新提示的最短展示时长：检查通常瞬间完成，
+// 不补足时长则「正在检查更新…」一闪而过不可感知
+const CHECK_TOAST_MIN_MS = 1200;
+
 export function SettingsPanel() {
   const { t } = useI18n();
   const themeMode = useStore((s) => s.themeMode);
@@ -111,6 +116,27 @@ export function SettingsPanel() {
   const timezonePref = useStore((s) => s.timezonePref);
   const setTimezonePref = useStore((s) => s.setTimezonePref);
   const channels = useStore((s) => s.channels);
+  // 手动检查更新进行中：按钮禁用 + 图标旋转
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  // 点「检查更新」：info 提示（不转圈）至少展示 CHECK_TOAST_MIN_MS 后再转
+  // 成功/信息/错误结果提示；发现已就绪新版（available）时交互式更新
+  // toast 由 updater 弹出，此处仅收掉检查中提示
+  const handleCheckUpdate = async () => {
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    const checkingId = toast.info(t("update.checking"), { duration: Infinity });
+    const startedAt = Date.now();
+    const result = await checkForUpdates().catch(() => "failed" as const);
+    // 补足最短展示时长，按钮旋转态与提示同步持续到结果弹出
+    const remain = CHECK_TOAST_MIN_MS - (Date.now() - startedAt);
+    if (remain > 0) await new Promise((r) => setTimeout(r, remain));
+    toast.dismiss(checkingId);
+    if (result === "latest") toast.success(t("update.latest"));
+    else if (result === "downloading") toast.info(t("update.foundDownloading"));
+    else if (result === "failed") toast.error(t("update.checkFailed"));
+    setCheckingUpdate(false);
+  };
 
   return (
     <div className="settings">
@@ -237,9 +263,24 @@ export function SettingsPanel() {
       </section>
 
       <section className="settings__section">
-        <header className="settings__section-head">
-          <h2>{t("settings.updates")}</h2>
-          <p>{t("settings.updatesDesc")}</p>
+        <header className="settings__section-head settings__section-head--row">
+          <div className="settings__section-head-text">
+            <h2>{t("settings.updates")}</h2>
+            <p>{t("settings.updatesDesc")}</p>
+          </div>
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm settings__check-update"
+            onClick={() => void handleCheckUpdate()}
+            disabled={checkingUpdate}
+            aria-label={t("settings.checkUpdate")}
+          >
+            <RefreshCw size={13} className={checkingUpdate ? "spin" : undefined} />
+            {/* 移动端（≤1080px）文字隐藏仅留图标，见 App.css */}
+            <span className="settings__check-update-label">
+              {t("settings.checkUpdate")}
+            </span>
+          </button>
         </header>
         <div className="settings__options">
           {UPDATE_OPTIONS.map((opt) => {

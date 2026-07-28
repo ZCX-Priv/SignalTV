@@ -120,6 +120,8 @@ export const dict = {
   // ── 频道网格 ──
   "grid.emptyTitle": "无信号",
   "grid.emptyDesc": "没有频道匹配当前筛选条件，请尝试扩大搜索范围。",
+  "grid.favEmptyTitle": "暂无收藏",
+  "grid.favEmptyDesc": "浏览频道时点击收藏按钮，喜欢的频道会集中在这里。",
   "grid.loadingMore": "正在加载 {count} 路信号…",
   "grid.footer": "显示 {total} 路信号中的 {shown} 路",
 
@@ -202,6 +204,11 @@ export const dict = {
   "update.downloading": "正在下载新版本…",
   "update.ready": "新版本已就绪",
   "update.actionReload": "刷新页面 ({s}s)",
+  "settings.checkUpdate": "检查更新",
+  "update.checking": "正在检查更新…",
+  "update.latest": "当前已是最新版本",
+  "update.foundDownloading": "发现新版本，正在后台下载…",
+  "update.checkFailed": "检查更新失败，请检查网络后重试",
 
   // ── 主题选项 ──
   "theme.system": "跟随系统",

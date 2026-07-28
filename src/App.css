@@ -2372,6 +2372,28 @@
   margin: 0;
   line-height: 1.5;
 }
+/* 区块头右侧带操作按钮的行布局（更新区块「检查更新」） */
+.settings__section-head--row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.settings__check-update {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.settings__check-update:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+/* 移动端：按钮仅显示图标（可访问名称由 aria-label 提供） */
+@media (max-width: 1080px) {
+  .settings__check-update .settings__check-update-label {
+    display: none;
+  }
+}
 .settings__options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

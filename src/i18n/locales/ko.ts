@@ -104,6 +104,8 @@ export const dict: Dict = {
   // ── 채널 그리드 ──
   "grid.emptyTitle": "신호 없음",
   "grid.emptyDesc": "현재 필터에 맞는 채널이 없습니다. 검색 범위를 넓혀 보세요.",
+  "grid.favEmptyTitle": "아직 즐겨찾기가 없습니다",
+  "grid.favEmptyDesc": "채널을 둘러보며 즐겨찾기 버튼을 누르면 여기에 모입니다.",
   "grid.loadingMore": "신호 {count}개 불러오는 중…",
   "grid.footer": "신호 {total}개 중 {shown}개 표시",
 
@@ -188,6 +190,11 @@ export const dict: Dict = {
   "update.downloading": "새 버전 다운로드 중…",
   "update.ready": "새 버전 준비 완료",
   "update.actionReload": "페이지 새로고침 ({s}s)",
+  "settings.checkUpdate": "업데이트 확인",
+  "update.checking": "업데이트 확인 중…",
+  "update.latest": "이미 최신 버전입니다",
+  "update.foundDownloading": "새 버전을 발견했습니다. 백그라운드에서 다운로드 중…",
+  "update.checkFailed": "업데이트 확인에 실패했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
 
   // ── 테마 옵션 ──
   "theme.system": "시스템 따르기",

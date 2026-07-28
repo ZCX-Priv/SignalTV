@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SearchX, Loader2 } from "lucide-react";
+import { SearchX, Loader2, Heart } from "lucide-react";
 import { useStore } from "../store/useStore";
 import type { ChannelWithStream } from "../types";
 import { fmt } from "../lib/format";
@@ -48,6 +48,7 @@ export function ChannelGrid({ list }: ChannelGridProps) {
   const shown = useMemo(() => list.slice(0, limit), [list, limit]);
   const probeLatencyForIds = useStore((s) => s.probeLatencyForIds);
   const activeChannelId = useStore((s) => s.activeChannelId);
+  const favoritesCount = useStore((s) => s.favorites.length);
 
   // 可见性优先探测：shown 变化时 debounce 150ms 触发，
   // 让首屏可见频道的延迟标签 1-3 秒内出现，而非等全量探测。
@@ -63,6 +64,17 @@ export function ChannelGrid({ list }: ChannelGridProps) {
   }, [shown, probeLatencyForIds, activeChannelId]);
 
   if (list.length === 0) {
+    // 收藏页且没有任何收藏：专属空态（图标与侧边栏收藏夹入口一致）；
+    // 有收藏但被搜索/筛选过滤为空时仍走通用「无信号」空态
+    if (view.kind === "favorites" && favoritesCount === 0) {
+      return (
+        <EmptyState
+          icon={<Heart size={28} />}
+          title={t("grid.favEmptyTitle")}
+          desc={t("grid.favEmptyDesc")}
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<SearchX size={28} />}

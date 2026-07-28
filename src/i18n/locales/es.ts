@@ -104,6 +104,8 @@ export const dict: Dict = {
   // ── Cuadrícula de canales ──
   "grid.emptyTitle": "Sin señal",
   "grid.emptyDesc": "Ningún canal coincide con los filtros actuales. Amplía la búsqueda.",
+  "grid.favEmptyTitle": "Aún no hay favoritos",
+  "grid.favEmptyDesc": "Pulsa el botón de favorito mientras exploras canales y aparecerán aquí.",
   "grid.loadingMore": {
     one: "Cargando {count} señal más…",
     other: "Cargando {count} señales más…",
@@ -193,6 +195,11 @@ export const dict: Dict = {
   "update.downloading": "Descargando la nueva versión…",
   "update.ready": "Nueva versión lista",
   "update.actionReload": "Recargar página ({s}s)",
+  "settings.checkUpdate": "Buscar actualizaciones",
+  "update.checking": "Buscando actualizaciones…",
+  "update.latest": "Ya tienes la última versión",
+  "update.foundDownloading": "Nueva versión encontrada, descargando en segundo plano…",
+  "update.checkFailed": "No se pudo comprobar la actualización. Revisa tu red e inténtalo de nuevo.",
 
   // ── Opciones de tema ──
   "theme.system": "Sistema",

@@ -104,6 +104,8 @@ export const dict: Dict = {
   // ── Kanalraster ──
   "grid.emptyTitle": "Kein Signal",
   "grid.emptyDesc": "Keine Kanäle entsprechen den aktuellen Filtern. Suche erweitern.",
+  "grid.favEmptyTitle": "Noch keine Favoriten",
+  "grid.favEmptyDesc": "Tippen Sie beim Stöbern auf die Favoriten-Schaltfläche – Ihre Lieblingskanäle erscheinen dann hier.",
   "grid.loadingMore": {
     one: "{count} weiteres Signal wird geladen…",
     other: "{count} weitere Signale werden geladen…",
@@ -193,6 +195,11 @@ export const dict: Dict = {
   "update.downloading": "Neue Version wird heruntergeladen…",
   "update.ready": "Neue Version bereit",
   "update.actionReload": "Seite neu laden ({s}s)",
+  "settings.checkUpdate": "Nach Updates suchen",
+  "update.checking": "Suche nach Updates…",
+  "update.latest": "Sie verwenden bereits die neueste Version",
+  "update.foundDownloading": "Neue Version gefunden, wird im Hintergrund geladen…",
+  "update.checkFailed": "Updateprüfung fehlgeschlagen. Bitte Netzwerk prüfen und erneut versuchen.",
 
   // ── Themenoptionen ──
   "theme.system": "System",

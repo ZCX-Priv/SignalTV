@@ -12,6 +12,9 @@
 //   永久跳过该版本；点 X 仅本会话静默，下次进入页面再提示。
 // - off：不周期检查更新，也不提示。
 //
+// 设置页「检查更新」按钮走 checkForUpdates()：用户显式意图，绕过 off
+// 模式与周期间隔限制，无论当前模式发现新版本都弹交互式 toast。
+//
 // 版本标识：onNeedRefresh 不携带版本号，取 sw.js 文本做 FNV-1a 哈希
 // 作为 versionId（sw.js 内含 precache revision，每次构建必变）。
 // fetch 失败时 versionId 为 null → 跳过忽略匹配，照常提示（宁可多提示不可漏）。
@@ -36,7 +39,8 @@ const RELOAD_COUNTDOWN_S = 10;
 const RELOAD_FALLBACK_MS = 3000;
 // 等待 zustand persist rehydrate 的兜底超时（IDB 异常时不至于永久卡住）
 const HYDRATION_TIMEOUT_MS = 3000;
-// 启动期无感激活：等待 controllerchange 的超时（超时则本次继续用旧版）
+// 启动期无感激活：等待 controllerchange 的兜底超时（超时同样重载，
+// 详见 activateWaitingBeforeBoot —— SKIP_WAITING 发出后绝不继续跑旧版）
 const BOOT_ACTIVATE_TIMEOUT_MS = 2000;
 // 启动期自动重载的防循环护栏 key（sessionStorage）
 const RELOAD_GUARD_KEY = "signaltv-update-reloading";
@@ -54,8 +58,10 @@ let promptedVersionId: string | null = null; // 本会话最近一次弹过 toas
 let toastId: string | null = null; // 更新 toast 的 id（null = 未展示）
 let dismissedThisSession = false; // 用户点 X：本会话不再弹同版本
 let downloading = false; // 已点「更新」，进度/倒计时流程中（防重入）
-let reloading = false; // 已触发 applyAndReload（防重入）
+let reloading = false; // 已触发整页重载（防重入）
 let retryScheduled = false; // 安装失败后的单次重试已排期
+let checking = false; // checkForUpdates 进行中（防重入）
+let explicitCheck = false; // 用户显式「检查更新」触发的下载中，完成后强制弹 toast
 let lastCheckAt = 0;
 let progressTimer: ReturnType<typeof setInterval> | null = null;
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
@@ -91,6 +97,23 @@ async function computeVersionId(): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+// 等待离开首屏加载页：Loader 可见期间不弹更新 toast（会盖在加载日志上），
+// 等应用进入稳定态（加载完成 loaded，或失败进入错误屏）后再展示
+function waitForAppReady(): Promise<void> {
+  const settled = () => {
+    const s = useStore.getState();
+    return s.loaded || s.error !== null;
+  };
+  if (settled()) return Promise.resolve();
+  return new Promise((resolve) => {
+    const unsub = useStore.subscribe(() => {
+      if (!settled()) return;
+      unsub();
+      resolve();
+    });
+  });
 }
 
 // 等待 persist rehydrate 完成：SW 的 waiting 事件可能早于 IDB 中
@@ -132,11 +155,14 @@ async function getBootUpdateMode(): Promise<UpdateMode> {
 
 /**
  * 启动期无感激活：main.tsx bootstrap 在 React 挂载前 await。
- * auto 模式且存在上个会话装好的 waiting SW 时，发 SKIP_WAITING 并在
- * controllerchange（新 SW 确认接管）后整页重载 —— 此时页面仅有
- * index.html 主题底色，重载表现为一次正常加载，无旧版闪现/黑屏
- *（reload 严格发生在新 SW 接管之后，顺序确定，无并发窗口）。
- * 激活成功时返回的 Promise 永不 resolve，阻止后续 bootstrap 挂载旧版。
+ * auto 模式且存在上个会话装好的 waiting SW 时（waiting 仅在全部资源
+ * 预缓存完成后才会出现，天然保证「没下载完不替换」），发 SKIP_WAITING
+ * 并在 controllerchange（新 SW 确认接管）后整页重载 —— 此时页面仅有
+ * index.html 主题底色，重载表现为一次正常加载，无旧版闪现/黑屏。
+ * 一旦发出 SKIP_WAITING，Promise 永不 resolve、必定重载：激活指令无法
+ * 撤回，若超时后继续挂载旧版，新 SW 随后激活会清理旧预缓存
+ *（cleanupOutdatedCaches）并接管页面（clientsClaim），旧版懒加载 chunk
+ * 拉取即失败（曾表现为「播放器加载失败」等各式错误）。
  */
 export async function activateWaitingBeforeBoot(): Promise<void> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
@@ -159,26 +185,28 @@ export async function activateWaitingBeforeBoot(): Promise<void> {
   const waiting = reg?.waiting;
   if (!waiting) return;
   if ((await getBootUpdateMode()) !== "auto") return;
-  await new Promise<void>((resolve) => {
-    const onChange = () => {
-      clearTimeout(timeout);
-      try {
-        sessionStorage.setItem(RELOAD_GUARD_KEY, "1");
-      } catch {
-        // 护栏写入失败也照常重载（前面已确认 sessionStorage 可读）
-      }
+  await new Promise<void>(() => {
+    // 故意永不 resolve：任一路径都会重载，阻止 bootstrap 继续挂载旧版
+    let done = false;
+    const reload = () => {
+      if (done) return;
+      done = true;
       window.location.reload();
-      // 故意不 resolve：页面即将卸载，阻止 bootstrap 继续挂载旧版
     };
-    const timeout = setTimeout(() => {
-      // 激活超时 → 本次继续用旧版渲染，下次进入再试
-      navigator.serviceWorker.removeEventListener("controllerchange", onChange);
-      resolve();
-    }, BOOT_ACTIVATE_TIMEOUT_MS);
-    navigator.serviceWorker.addEventListener("controllerchange", onChange, {
+    // 正常路径：新 SW 确认接管后重载，进入完整新版本
+    navigator.serviceWorker.addEventListener("controllerchange", reload, {
       once: true,
     });
+    // 防循环护栏先于 SKIP_WAITING 写入：任一路径的重载都受护栏保护
+    try {
+      sessionStorage.setItem(RELOAD_GUARD_KEY, "1");
+    } catch {
+      // 护栏写入失败也照常激活重载（前面已确认 sessionStorage 可读）
+    }
     waiting.postMessage({ type: "SKIP_WAITING" });
+    // 兜底：激活超时同样重载 —— 激活确实卡死时重载后仍由旧 SW 控制、
+    // 照常进旧版（护栏已消费不会循环）；激活稍慢完成则重载即进新版
+    setTimeout(reload, BOOT_ACTIVATE_TIMEOUT_MS);
   });
 }
 
@@ -322,6 +350,11 @@ function showUpdateToast(): void {
 // manual 模式分派：忽略版本/本会话已关闭 → 静默，否则弹 toast
 async function dispatchManual(): Promise<void> {
   if (reloading || toastId) return;
+  // Loader 可见期不弹：等进入正式界面后再展示（延迟期间仅推迟展示，
+  // 判定在真正展示前执行，用户中途切走 manual 模式则不再弹出）
+  await waitForAppReady();
+  if (reloading || toastId) return;
+  if (useStore.getState().updateMode !== "manual") return;
   // 本会话点过 X：同版本不再弹；周期检查发现更新的版本（哈希不同）则重新提示
   if (dismissedThisSession) {
     if (versionId === null || versionId === promptedVersionId) return;
@@ -339,6 +372,13 @@ async function handleNewVersion(): Promise<void> {
   updateAvailable = true;
   await waitForHydration();
   versionId = await computeVersionId();
+  // 用户显式「检查更新」触发的下载完成：跳过模式/忽略判定直接弹交互式 toast
+  if (explicitCheck) {
+    explicitCheck = false;
+    dismissedThisSession = false;
+    if (!reloading && !toastId) showUpdateToast();
+    return;
+  }
   applyMode(useStore.getState().updateMode);
 }
 
@@ -357,6 +397,50 @@ function applyMode(mode: UpdateMode): void {
   }
   // manual
   void dispatchManual();
+}
+
+// ── 手动检查（设置页「检查更新」按钮） ──
+
+/** 手动检查结果：available=新版已就绪并已弹提示；downloading=发现新版下载中；latest=已是最新；failed=检查失败 */
+export type CheckUpdateResult =
+  | "available"
+  | "downloading"
+  | "latest"
+  | "failed";
+
+/**
+ * 用户显式检查更新：绕过 off 模式与周期间隔限制，无论当前 updateMode
+ * 为何，发现新版本都弹交互式更新 toast（不改变持久化的模式偏好）。
+ */
+export async function checkForUpdates(): Promise<CheckUpdateResult> {
+  if (checking || !registration) return "failed";
+  checking = true;
+  try {
+    // 已存在装好的 waiting SW：显式检查视为新意图，
+    // 跳过忽略版本/本会话关闭判定直接弹出
+    if (registration.waiting) {
+      updateAvailable = true;
+      dismissedThisSession = false;
+      if (versionId === null) versionId = await computeVersionId();
+      if (!reloading && !toastId) showUpdateToast();
+      return "available";
+    }
+    lastCheckAt = Date.now();
+    // 先立显式标记再触发检查：install 极快完成时 onNeedRefresh 也能命中显式分支
+    explicitCheck = true;
+    try {
+      await registration.update();
+    } catch {
+      // 离线/网络异常
+      explicitCheck = false;
+      return "failed";
+    }
+    if (registration.installing || registration.waiting) return "downloading";
+    explicitCheck = false;
+    return "latest";
+  } finally {
+    checking = false;
+  }
 }
 
 // ── 周期检查 ──
@@ -379,6 +463,19 @@ async function maybeCheck(minGap: number): Promise<void> {
  */
 export function initUpdater(): void {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+  // 安全网：会话运行中 controller 被更换（多标签页激活新 SW、强刷旁路等）
+  // 意味着旧预缓存已/即将被 cleanupOutdatedCaches 清理，旧页面继续运行会
+  // 出现懒加载 chunk 失效等各式错误 → 立即整页重载进入完整新版本。
+  // 仅在本页加载时已有 controller 才监听：首次安装的 clients.claim
+  // 不应触发重载（避免首访误刷）。
+  if (navigator.serviceWorker.controller) {
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloading) return;
+      reloading = true;
+      window.location.reload();
+    });
+  }
 
   registerSW({
     immediate: true,

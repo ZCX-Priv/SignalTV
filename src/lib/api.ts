@@ -135,18 +135,17 @@ async function fetchWithTimeout(
 
 /**
  * 手动读流并计量：累计字节数与耗时，产出一条测速样本，
- * 同时通过 onProgress 回报已下载字节数与总大小（供 Loader 显示进度/百分比）。
+ * 同时通过 onProgress 回报已下载（解压后）字节数（供 Loader 显示进度；
+ * 百分比分母由 store 侧用上次会话实测体积提供，不用 Content-Length ——
+ * gzip 传输下它是压缩后大小，与解压后字节比值失真）。
  * 无 body（极端环境）时回退 res.text()，不产出样本。
  */
 async function readBodyMeasured(
   res: Response,
-  onProgress?: (bytes: number, totalBytes?: number) => void,
+  onProgress?: (bytes: number) => void,
 ): Promise<string> {
   const reader = res.body?.getReader();
   if (!reader) return res.text();
-  // Content-Length 为传输（可能压缩后）大小，仅供百分比估算；缺失时不回报
-  const lenHeader = res.headers.get("content-length");
-  const totalBytes = lenHeader ? Number(lenHeader) || undefined : undefined;
   const start = performance.now();
   const chunks: Uint8Array[] = [];
   let bytes = 0;
@@ -156,7 +155,7 @@ async function readBodyMeasured(
     if (value) {
       chunks.push(value);
       bytes += value.length;
-      onProgress?.(bytes, totalBytes);
+      onProgress?.(bytes);
     }
   }
   const ms = performance.now() - start;
@@ -175,8 +174,8 @@ interface FetchJsonOpts {
   signal?: AbortSignal;
   /** 手动读流计量下载速度（仅大文件开启） */
   measure?: boolean;
-  /** 下载进度回调（仅 measure 时生效；totalBytes 来自 Content-Length，可能缺失） */
-  onProgress?: (bytes: number, totalBytes?: number) => void;
+  /** 下载进度回调（仅 measure 时生效；回报解压后已下载字节数） */
+  onProgress?: (bytes: number) => void;
 }
 
 /**
@@ -246,14 +245,14 @@ async function fetchJson<T>(url: string, opts: FetchJsonOpts = {}): Promise<T> {
 }
 
 export const api = {
-  channels: (signal?: AbortSignal, onProgress?: (bytes: number, totalBytes?: number) => void) =>
+  channels: (signal?: AbortSignal, onProgress?: (bytes: number) => void) =>
     fetchJson<Channel[]>(`${BASE}/channels.json`, {
       timeoutMs: LARGE_FILE_TIMEOUT_MS,
       signal,
       measure: true,
       onProgress,
     }),
-  streams: (signal?: AbortSignal, onProgress?: (bytes: number, totalBytes?: number) => void) =>
+  streams: (signal?: AbortSignal, onProgress?: (bytes: number) => void) =>
     fetchJson<Stream[]>(`${BASE}/streams.json`, {
       timeoutMs: LARGE_FILE_TIMEOUT_MS,
       signal,

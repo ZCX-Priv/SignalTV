@@ -104,6 +104,8 @@ export const dict: Dict = {
   // ── チャンネルグリッド ──
   "grid.emptyTitle": "信号なし",
   "grid.emptyDesc": "現在の条件に一致するチャンネルがありません。検索範囲を広げてみてください。",
+  "grid.favEmptyTitle": "お気に入りはまだありません",
+  "grid.favEmptyDesc": "チャンネルを見ながらお気に入りボタンを押すと、ここにまとめて表示されます。",
   "grid.loadingMore": "さらに {count} の信号を読み込み中…",
   "grid.footer": "{total} の信号のうち {shown} を表示中",
 
@@ -188,6 +190,11 @@ export const dict: Dict = {
   "update.downloading": "新バージョンをダウンロード中…",
   "update.ready": "新バージョンの準備完了",
   "update.actionReload": "ページを再読み込み ({s}s)",
+  "settings.checkUpdate": "更新を確認",
+  "update.checking": "更新を確認しています…",
+  "update.latest": "すでに最新バージョンです",
+  "update.foundDownloading": "新しいバージョンが見つかりました。バックグラウンドでダウンロード中…",
+  "update.checkFailed": "更新の確認に失敗しました。ネットワークを確認して再試行してください。",
 
   // ── テーマ ──
   "theme.system": "システムに従う",

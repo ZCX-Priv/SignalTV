@@ -115,6 +115,8 @@ export const dict: Dict = {
   // ── Сетка каналов ──
   "grid.emptyTitle": "Нет сигнала",
   "grid.emptyDesc": "Ни один канал не подходит под фильтры. Попробуйте расширить поиск.",
+  "grid.favEmptyTitle": "Пока нет избранного",
+  "grid.favEmptyDesc": "Нажимайте кнопку избранного при просмотре каналов — они появятся здесь.",
   "grid.loadingMore": {
     one: "Загружается ещё {count} сигнал…",
     few: "Загружается ещё {count} сигнала…",
@@ -226,6 +228,11 @@ export const dict: Dict = {
   "update.downloading": "Загрузка новой версии…",
   "update.ready": "Новая версия готова",
   "update.actionReload": "Обновить страницу ({s}с)",
+  "settings.checkUpdate": "Проверить обновления",
+  "update.checking": "Проверка обновлений…",
+  "update.latest": "У вас уже последняя версия",
+  "update.foundDownloading": "Найдена новая версия, загружается в фоне…",
+  "update.checkFailed": "Не удалось проверить обновления. Проверьте сеть и попробуйте снова.",
 
   // ── Темы ──
   "theme.system": "Как в системе",

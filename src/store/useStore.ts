@@ -14,7 +14,7 @@ import {
   type ApiErrorInfo,
 } from "../lib/api";
 import { probeBatch } from "../lib/latency";
-import { idbGet, idbStorage } from "../lib/idb";
+import { idbGet, idbSet, idbStorage } from "../lib/idb";
 import { applySeo, describeView } from "../lib/seo";
 import { syncActiveTimeZone, type TimezonePref } from "../lib/timezone";
 import {
@@ -250,15 +250,23 @@ export const LOG_STAGGER_END_MS = 1800;
 // 合并行打 [OK] 前至少显示光标的时长，避免行与 [OK] 同帧出现
 const MERGE_MIN_VISIBLE_MS = 600;
 
+// 两大文件上次会话实测解压后字节数的 IDB key：作为下次下载进度
+// 百分比的分母。不能用 Content-Length：gzip 传输下它是压缩后大小、
+// 读流字节是解压后，比值下载十几个百分点就超 100% 被钳到 99，进度失真
+const BYTES_KEY = {
+  channels: "signaltv-bytes-channels",
+  streams: "signaltv-bytes-streams",
+} as const;
+
 // 首屏加载进度（固定五行 Loader 用）：所有字段均原地刷新，不重挂载
 export interface LoadProgress {
   /** 频道表已就绪 → 第2行 [OK] */
   channelsReady: boolean;
   /** 信号流已就绪 → 第3行 [OK] */
   streamsReady: boolean;
-  /** 频道表下载百分比（0~99；无 Content-Length 时缺省）→ 第2行 [n%] */
+  /** 频道表下载百分比（0~99；分母为上次会话实测体积，首次访问无基准时缺省）→ 第2行 [n%] */
   channelsPct?: number;
-  /** 信号流下载百分比（0~99）→ 第3行 [n%] */
+  /** 信号流下载百分比（0~99，同上）→ 第3行 [n%] */
   streamsPct?: number;
   /** 两大文件合计已下载（如 2.3MB） */
   size?: string;
@@ -385,16 +393,28 @@ export const useStore = create<State>()(
           const fmtBytes = (b: number) =>
             b >= 1_048_576 ? `${(b / 1_048_576).toFixed(1)}MB` : `${Math.round(b / 1024)}KB`;
           const fileBytes = { channels: 0, streams: 0 };
-          // 各文件下载百分比（基于 Content-Length；缺失时不显示）
+          // 进度百分比分母：上次会话实测的解压后字节数（异步读取，
+          // 就绪前不显示百分比；首次访问无记录时整程缺省，回退为仅 [OK]）
+          const expectedBytes: { channels?: number; streams?: number } = {};
+          for (const file of ["channels", "streams"] as const) {
+            void idbGet(BYTES_KEY[file])
+              .then((v) => {
+                const n = Number(v);
+                if (Number.isFinite(n) && n > 0) expectedBytes[file] = n;
+              })
+              .catch(() => {});
+          }
+          // 各文件下载百分比（基于上次实测体积；无基准时不显示）
           const filePct: { channels?: number; streams?: number } = {};
           let prevTotal = 0;
           let prevTime = 0;
-          const onProgress = (file: keyof typeof fileBytes) => (bytes: number, totalBytes?: number) => {
+          const onProgress = (file: keyof typeof fileBytes) => (bytes: number) => {
             fileBytes[file] = bytes;
-            // gzip 传输下 Content-Length 为压缩后大小、读流字节为解压后，
-            // 比值会超 100%，钳制 99，真正完成由 [OK] 表达
-            if (totalBytes) {
-              filePct[file] = Math.min(99, Math.floor((bytes / totalBytes) * 100));
+            // 会话间体积漂移很小（iptv-org 日更 ±几个百分点），百分比真实
+            // 平滑推进；体积增长时比值可能略超 100%，钳制 99，真正完成由 [OK] 表达
+            const expected = expectedBytes[file];
+            if (expected) {
+              filePct[file] = Math.min(99, Math.floor((bytes / expected) * 100));
             }
             const now = Date.now();
             if (prevTime && now - prevTime < 300) return;
@@ -423,6 +443,13 @@ export const useStore = create<State>()(
           ]).then((r) => {
             mergingAt = Date.now();
             const doneBytes = fileBytes.channels + fileBytes.streams;
+            // 记录本次实测体积，作为下次会话进度百分比的分母
+            //（bytes=0 表示走了无 body 回退路径，无实测值不写入）
+            for (const file of ["channels", "streams"] as const) {
+              if (fileBytes[file] > 0) {
+                void idbSet(BYTES_KEY[file], String(fileBytes[file])).catch(() => {});
+              }
+            }
             patch({
               merging: true,
               size: fmtBytes(doneBytes),
