@@ -12,14 +12,18 @@
 //   永久跳过该版本；点 X 仅本会话静默，下次进入页面再提示。
 // - off：不周期检查更新，也不提示。
 //
-// 设置页「检查更新」按钮走 checkForUpdates()：用户显式意图，绕过 off
-// 模式与周期间隔限制，无论当前模式发现新版本都弹交互式 toast。
+// 设置页「检查更新」按钮走 checkForUpdates()：用户显式意图，绕过周期
+// 间隔限制，按当前模式分流（off 模式下按钮已在设置页隐藏）：
+// - manual：发现新版本弹交互式 toast（步骤与周期检查一致）；
+// - auto：全程单条进度 toast 接管：「发现新版本，正在下载…」进度条
+//   → 「正在安装…」→ success「已完成更新」，不弹交互式 toast；
+//   waiting SW 保持不动，仍按 auto 语义下次启动无感激活。
 //
 // 版本标识：onNeedRefresh 不携带版本号，取 sw.js 文本做 FNV-1a 哈希
 // 作为 versionId（sw.js 内含 precache revision，每次构建必变）。
 // fetch 失败时 versionId 为 null → 跳过忽略匹配，照常提示（宁可多提示不可漏）。
 import { registerSW } from "virtual:pwa-register";
-import { toastStore } from "./toast";
+import { toastStore, toast } from "./toast";
 import { idbGet, idbSet } from "./idb";
 import { useStore, getBootPersistedState } from "../store/useStore";
 import type { UpdateMode } from "../store/useStore";
@@ -48,6 +52,15 @@ const RELOAD_GUARD_KEY = "signaltv-update-reloading";
 const ONLINE_CHECK_GAP_MS = 60 * 1000;
 // SW 安装失败（如下载中断）后的单次重试延迟：60s
 const INSTALL_RETRY_DELAY_MS = 60 * 1000;
+// auto 显式检查：模拟下载进度封顶百分比（真实安装完成前不跑满，
+// onNeedRefresh 到达后才跳 100 转「正在安装…」）
+const AUTO_FLOW_PROGRESS_CAP = 90;
+// auto 显式检查：模拟进度推进到封顶的总时长
+const AUTO_FLOW_PROGRESS_MS = 4000;
+// auto 显式检查：waiting 已存在（资源早已下载完）时快速跑满的时长
+const AUTO_FLOW_FAST_MS = 600;
+// auto 显式检查：「正在安装…」停留时长，之后收掉进度 toast 弹「已完成更新」
+const AUTO_FLOW_INSTALL_MS = 1000;
 
 // ── 模块级状态 ──
 let registration: ServiceWorkerRegistration | null = null;
@@ -61,7 +74,10 @@ let downloading = false; // 已点「更新」，进度/倒计时流程中（防
 let reloading = false; // 已触发整页重载（防重入）
 let retryScheduled = false; // 安装失败后的单次重试已排期
 let checking = false; // checkForUpdates 进行中（防重入）
-let explicitCheck = false; // 用户显式「检查更新」触发的下载中，完成后强制弹 toast
+let explicitCheck = false; // manual 模式显式检查的下载中，完成后强制弹交互式 toast
+let explicitAutoCheck = false; // auto 模式显式检查的下载中，完成后走单 toast 进度流程收尾
+let autoFlowToastId: string | null = null; // auto 显式检查的进度 toast id
+let autoFlowTimer: ReturnType<typeof setInterval> | null = null;
 let lastCheckAt = 0;
 let progressTimer: ReturnType<typeof setInterval> | null = null;
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
@@ -376,11 +392,96 @@ async function dispatchManual(): Promise<void> {
 
 // ── 决策入口 ──
 
+// ── auto 模式显式检查：单 toast 进度流程 ──
+
+function clearAutoFlowTimer(): void {
+  if (autoFlowTimer !== null) {
+    clearInterval(autoFlowTimer);
+    autoFlowTimer = null;
+  }
+}
+
+// 创建「发现新版本，正在下载…」进度 toast：
+// - cap < 100：模拟进度封顶等待真实安装完成（finishAutoFlow 跳满）；
+// - cap = 100（waiting 已存在，资源早已下载好）：快速跑满后直接进入安装提示
+function startAutoFlow(durationMs: number, cap: number): void {
+  if (autoFlowToastId) return;
+  const id = toastStore.getState().add({
+    type: "info",
+    title: t("update.foundDownloading"),
+    duration: Infinity,
+    sticky: true,
+    progress: 0,
+    // 用户点 X：仅收掉进度提示，下载安装照常在后台继续
+    onClose: () => {
+      clearAutoFlowTimer();
+      autoFlowToastId = null;
+    },
+  });
+  autoFlowToastId = id;
+  const startedAt = Date.now();
+  autoFlowTimer = setInterval(() => {
+    const pct = Math.min(
+      cap,
+      Math.round(((Date.now() - startedAt) / durationMs) * 100),
+    );
+    toastStore.getState().update(id, { progress: pct });
+    if (pct >= cap && autoFlowTimer !== null) {
+      clearAutoFlowTimer();
+      // cap=100 快路径：不等 onNeedRefresh（早已触发过），直接转安装提示
+      if (cap >= 100) showAutoFlowInstalled(id);
+    }
+  }, 100);
+}
+
+// 进度跑满后：标题切「正在安装…」，短暂停留后收掉并弹 success「已完成更新」
+function showAutoFlowInstalled(id: string): void {
+  toastStore.getState().update(id, {
+    title: t("update.installing"),
+    progress: 100,
+  });
+  setTimeout(() => {
+    if (autoFlowToastId !== id) return; // 用户已手动关闭
+    autoFlowToastId = null;
+    toastStore.getState().dismiss(id);
+    toast.success(t("update.done"));
+  }, AUTO_FLOW_INSTALL_MS);
+}
+
+// 真实安装完成（onNeedRefresh 到达）：进度跳满 → 安装提示 → 完成提示；
+// 进度 toast 已被用户关闭时仅弹完成提示（更新确实已就绪）
+function finishAutoFlow(): void {
+  explicitAutoCheck = false;
+  clearAutoFlowTimer();
+  if (autoFlowToastId) {
+    showAutoFlowInstalled(autoFlowToastId);
+  } else {
+    toast.success(t("update.done"));
+  }
+}
+
+// 安装失败（installing → redundant）：收掉进度 toast 转错误提示，复位标志
+function failAutoFlow(): void {
+  explicitAutoCheck = false;
+  clearAutoFlowTimer();
+  if (autoFlowToastId) {
+    toastStore.getState().dismiss(autoFlowToastId);
+    autoFlowToastId = null;
+    toast.error(t("update.checkFailed"));
+  }
+}
+
 async function handleNewVersion(): Promise<void> {
   updateAvailable = true;
   await waitForHydration();
   versionId = await computeVersionId();
-  // 用户显式「检查更新」触发的下载完成：跳过模式/忽略判定直接弹交互式 toast
+  // auto 模式显式检查：真实安装完成 → 进度跳满转「正在安装…」→「已完成更新」，
+  // 不弹交互式 toast（waiting SW 保持不动，下次启动无感激活）
+  if (explicitAutoCheck) {
+    finishAutoFlow();
+    return;
+  }
+  // manual 模式显式检查触发的下载完成：跳过忽略判定直接弹交互式 toast
   if (explicitCheck) {
     explicitCheck = false;
     dismissedThisSession = false;
@@ -409,42 +510,61 @@ function applyMode(mode: UpdateMode): void {
 
 // ── 手动检查（设置页「检查更新」按钮） ──
 
-/** 手动检查结果：available=新版已就绪并已弹提示；downloading=发现新版下载中；latest=已是最新；failed=检查失败 */
+/** 手动检查结果：available=新版已就绪并已弹提示；downloading=manual 模式发现新版下载中；handled=auto 模式已由 updater 的进度 toast 接管提示；latest=已是最新；failed=检查失败 */
 export type CheckUpdateResult =
   | "available"
   | "downloading"
+  | "handled"
   | "latest"
   | "failed";
 
 /**
- * 用户显式检查更新：绕过 off 模式与周期间隔限制，无论当前 updateMode
- * 为何，发现新版本都弹交互式更新 toast（不改变持久化的模式偏好）。
+ * 用户显式检查更新：绕过周期间隔限制，按当前 updateMode 分流
+ *（不改变持久化的模式偏好）：
+ * - manual：发现新版本弹交互式更新 toast（更新/忽略/X）；
+ * - auto/off：全程单条进度 toast：下载进度 → 正在安装 → 已完成更新
+ *（off 模式下按钮已隐藏，此处仅作兼容兜底）。
  */
 export async function checkForUpdates(): Promise<CheckUpdateResult> {
   if (checking || !registration) return "failed";
   checking = true;
   try {
-    // 已存在装好的 waiting SW：显式检查视为新意图，
-    // 跳过忽略版本/本会话关闭判定直接弹出
+    const mode = useStore.getState().updateMode;
+    // 已存在装好的 waiting SW：显式检查视为新意图
     if (registration.waiting) {
       updateAvailable = true;
       dismissedThisSession = false;
       if (versionId === null) versionId = await computeVersionId();
-      if (!reloading && !toastId) showUpdateToast();
-      return "available";
+      if (mode === "manual") {
+        // 跳过忽略版本/本会话关闭判定直接弹出
+        if (!reloading && !toastId) showUpdateToast();
+        return "available";
+      }
+      // auto：资源早已下载完 → 进度快速跑满 →「正在安装…」→「已完成更新」
+      startAutoFlow(AUTO_FLOW_FAST_MS, 100);
+      return "handled";
     }
     lastCheckAt = Date.now();
-    // 先立显式标记再触发检查：install 极快完成时 onNeedRefresh 也能命中显式分支
-    explicitCheck = true;
+    // 先立显式标记再触发检查：install 极快完成时 onNeedRefresh 也能命中对应分支
+    if (mode === "manual") explicitCheck = true;
+    else explicitAutoCheck = true;
     try {
       await registration.update();
     } catch {
       // 离线/网络异常
       explicitCheck = false;
+      explicitAutoCheck = false;
       return "failed";
     }
-    if (registration.installing || registration.waiting) return "downloading";
+    if (registration.installing || registration.waiting) {
+      if (mode === "manual") return "downloading";
+      // auto：新版本正在下载安装 → 进度 toast 接管后续提示；
+      // explicitAutoCheck 已被复位说明 install 极快，finishAutoFlow 已弹完成提示
+      if (explicitAutoCheck) startAutoFlow(AUTO_FLOW_PROGRESS_MS, AUTO_FLOW_PROGRESS_CAP);
+      return "handled";
+    }
     explicitCheck = false;
+    explicitAutoCheck = false;
     return "latest";
   } finally {
     checking = false;
@@ -512,8 +632,10 @@ export function initUpdater(): void {
         installing.addEventListener("statechange", () => {
           if (installing.state !== "redundant") return;
           // 显式检查触发的安装失败：复位标志，否则后续周期检查
-          // 发现的新版本会误走显式弹窗分支（无视 auto/off 模式）
+          // 发现的新版本会误走显式分支（无视模式偏好）；
+          // auto 进度流程进行中则收掉进度 toast 转错误提示
           explicitCheck = false;
+          failAutoFlow();
           if (retryScheduled) return;
           retryScheduled = true;
           setTimeout(() => {

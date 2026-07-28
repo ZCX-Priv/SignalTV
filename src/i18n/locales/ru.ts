@@ -261,6 +261,8 @@ export const dict: Dict = {
   "update.checking": "Проверка обновлений…",
   "update.latest": "У вас уже последняя версия",
   "update.foundDownloading": "Найдена новая версия, загружается в фоне…",
+  "update.installing": "Установка…",
+  "update.done": "Обновление завершено",
   "update.checkFailed": "Не удалось проверить обновления. Проверьте сеть и попробуйте снова.",
 
   // ── Темы ──

@@ -3323,6 +3323,12 @@
 [data-theme="light"] .player__overlay:not(.player__overlay--paused) p {
   color: rgba(255, 255, 255, 0.6);
 }
+/* 覆盖层背景在任何主题下都是深色的（信号丢失/加载中盖在黑色播放区上），
+   但 .player__overlay h3 写死 color: var(--ink)，白昼模式下 --ink 是深灰
+   → 标题强制纯白，保证「信号丢失」等标题永远清晰可读 */
+[data-theme="light"] .player__overlay:not(.player__overlay--paused) h3 {
+  color: #ffffff;
+}
 /* 断点与移动端抽屉侧栏保持一致（860px，见 .app 单列布局断点），
    否则 769-860px 区间浅色主题抽屉仍用深色重阴影 */
 @media (max-width: 860px) {

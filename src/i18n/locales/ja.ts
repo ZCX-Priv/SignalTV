@@ -208,6 +208,8 @@ export const dict: Dict = {
   "update.checking": "更新を確認しています…",
   "update.latest": "すでに最新バージョンです",
   "update.foundDownloading": "新しいバージョンが見つかりました。バックグラウンドでダウンロード中…",
+  "update.installing": "インストール中…",
+  "update.done": "更新が完了しました",
   "update.checkFailed": "更新の確認に失敗しました。ネットワークを確認して再試行してください。",
 
   // ── テーマ ──

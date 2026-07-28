@@ -219,6 +219,8 @@ export const dict: Dict = {
   "update.checking": "Buscando actualizaciones…",
   "update.latest": "Ya tienes la última versión",
   "update.foundDownloading": "Nueva versión encontrada, descargando en segundo plano…",
+  "update.installing": "Instalando…",
+  "update.done": "Actualización completada",
   "update.checkFailed": "No se pudo comprobar la actualización. Revisa tu red e inténtalo de nuevo.",
 
   // ── Opciones de tema ──

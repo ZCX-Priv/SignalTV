@@ -120,8 +120,9 @@ export function SettingsPanel() {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   // 点「检查更新」：info 提示（不转圈）至少展示 CHECK_TOAST_MIN_MS 后再转
-  // 成功/信息/错误结果提示；发现已就绪新版（available）时交互式更新
-  // toast 由 updater 弹出，此处仅收掉检查中提示
+  // 成功/信息/错误结果提示；available（manual 交互式 toast）与 handled
+  //（auto 单条进度 toast 全程接管）均由 updater 弹出，此处只收掉检查中
+  // 提示、不再叠加任何 toast（避免双 toast）
   const handleCheckUpdate = async () => {
     if (checkingUpdate) return;
     setCheckingUpdate(true);
@@ -268,19 +269,23 @@ export function SettingsPanel() {
             <h2>{t("settings.updates")}</h2>
             <p>{t("settings.updatesDesc")}</p>
           </div>
-          <button
-            type="button"
-            className="btn btn--ghost btn--sm settings__check-update"
-            onClick={() => void handleCheckUpdate()}
-            disabled={checkingUpdate}
-            aria-label={t("settings.checkUpdate")}
-          >
-            <RefreshCw size={13} className={checkingUpdate ? "spin" : undefined} />
-            {/* 移动端（≤1080px）文字隐藏仅留图标，见 App.css */}
-            <span className="settings__check-update-label">
-              {t("settings.checkUpdate")}
-            </span>
-          </button>
+          {/* off 模式不渲染检查更新按钮：关闭更新即不提供任何更新入口，
+              切回 auto/manual 时随 updateMode 响应式恢复显示 */}
+          {updateMode !== "off" && (
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm settings__check-update"
+              onClick={() => void handleCheckUpdate()}
+              disabled={checkingUpdate}
+              aria-label={t("settings.checkUpdate")}
+            >
+              <RefreshCw size={13} className={checkingUpdate ? "spin" : undefined} />
+              {/* 移动端（≤1080px）文字隐藏仅留图标，见 App.css */}
+              <span className="settings__check-update-label">
+                {t("settings.checkUpdate")}
+              </span>
+            </button>
+          )}
         </header>
         <div className="settings__options">
           {UPDATE_OPTIONS.map((opt) => {

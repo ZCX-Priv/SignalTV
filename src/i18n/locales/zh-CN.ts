@@ -222,6 +222,8 @@ export const dict = {
   "update.checking": "正在检查更新…",
   "update.latest": "当前已是最新版本",
   "update.foundDownloading": "发现新版本，正在后台下载…",
+  "update.installing": "正在安装…",
+  "update.done": "已完成更新",
   "update.checkFailed": "检查更新失败，请检查网络后重试",
 
   // ── 主题选项 ──

@@ -219,6 +219,8 @@ export const dict: Dict = {
   "update.checking": "Recherche de mises à jour…",
   "update.latest": "Vous êtes déjà à jour",
   "update.foundDownloading": "Nouvelle version trouvée, téléchargement en arrière-plan…",
+  "update.installing": "Installation…",
+  "update.done": "Mise à jour terminée",
   "update.checkFailed": "Échec de la vérification. Vérifiez votre réseau puis réessayez.",
 
   // ── Options de thème ──
