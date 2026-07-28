@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import {
   CircleCheck,
   CircleX,
@@ -51,8 +52,26 @@ export function Toaster() {
 function ToastView({ item }: { item: ToastItem }) {
   const { t } = useI18n();
   const Icon = TOAST_ICONS[item.type];
+  const rootRef = useRef<HTMLDivElement>(null);
+  // sticky toast（更新 toast）生命周期内出现过的最大渲染宽度
+  const maxWidthRef = useRef(0);
+  // 宽度锁定（只增不减）：更新 toast 从「按钮阶段」切到「进度条阶段」时
+  // 内容变窄，锁定为历史最大宽度避免突然收缩；倒计时按钮 (Ns) 每秒文字
+  // 变化的宽度抖动同理被抹平。仅 sticky 生效，普通 toast 观感不变。
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!item.sticky || !el) return;
+    const w = el.getBoundingClientRect().width;
+    if (w <= maxWidthRef.current) return;
+    maxWidthRef.current = w;
+    // 覆盖关系：内联 min-width 优先级高于 CSS 的 max-width: 100%（规范定义
+    // min-width 胜出），故此处自行用 92vw 钳制 —— 与 .signaltv-toaster 的
+    // max-width: min(92vw, 440px) 上限一致，防止窗口缩小后撑出视口
+    el.style.minWidth = `min(${Math.ceil(w)}px, 92vw)`;
+  });
   return (
     <div
+      ref={rootRef}
       className="signaltv-toast"
       data-type={item.type}
       data-closing={item.closing ? "true" : "false"}
