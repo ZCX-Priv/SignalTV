@@ -102,7 +102,7 @@ export const dict: Dict = {
   "sort.nsfwFirst": "アダルトコンテンツ優先",
 
   // ── チャンネルグリッド ──
-  "grid.emptyTitle": "信号なし。",
+  "grid.emptyTitle": "信号なし",
   "grid.emptyDesc": "現在の条件に一致するチャンネルがありません。検索範囲を広げてみてください。",
   "grid.loadingMore": "さらに {count} の信号を読み込み中…",
   "grid.footer": "{total} の信号のうち {shown} を表示中",
@@ -115,9 +115,9 @@ export const dict: Dict = {
   "history.title": "視聴履歴",
   "history.countRecords": "{count} 件の記録",
   "history.clear": "履歴を消去",
-  "history.emptyTitle": "視聴履歴はまだありません。",
+  "history.emptyTitle": "視聴履歴はまだありません",
   "history.emptyDesc": "チャンネルを再生すると、すべての視聴がタイムラインとしてここに記録されます。",
-  "history.noMatchTitle": "一致する記録がありません。",
+  "history.noMatchTitle": "一致する記録がありません",
   "history.noMatchDesc":
     "現在の条件に一致する記録がありません。別のカテゴリーや国を試してください。",
   "history.replay": "{name} をもう一度再生",
@@ -267,6 +267,7 @@ export const dict: Dict = {
   "picker.searchCountries": "国名または地域コードを検索…",
   "picker.searchCountriesAria": "国を検索",
   "picker.noCountries": "一致する国がありません",
+  "picker.noMatchDesc": "別のキーワードでお試しください。",
 
   // ── API エラー ──
   "api.requestFailed": "リクエスト失敗 {url}: {status}",

@@ -102,7 +102,7 @@ export const dict: Dict = {
   "sort.nsfwFirst": "Contenu adulte d'abord",
 
   // ── Grille de chaînes ──
-  "grid.emptyTitle": "Pas de signal.",
+  "grid.emptyTitle": "Pas de signal",
   "grid.emptyDesc": "Aucune chaîne ne correspond aux filtres actuels. Élargissez la recherche.",
   "grid.loadingMore": {
     one: "Chargement de {count} signal supplémentaire…",
@@ -118,10 +118,10 @@ export const dict: Dict = {
   "history.title": "Historique de lecture",
   "history.countRecords": { one: "{count} entrée", other: "{count} entrées" },
   "history.clear": "Effacer l'historique",
-  "history.emptyTitle": "Aucun historique pour le moment.",
+  "history.emptyTitle": "Aucun historique pour le moment",
   "history.emptyDesc":
     "Lancez une chaîne et chaque visionnage sera consigné ici sous forme de chronologie.",
-  "history.noMatchTitle": "Aucune entrée correspondante.",
+  "history.noMatchTitle": "Aucune entrée correspondante",
   "history.noMatchDesc":
     "Aucune entrée ne correspond aux filtres actuels. Essayez une autre catégorie ou un autre pays.",
   "history.replay": "Rejouer {name}",
@@ -272,6 +272,7 @@ export const dict: Dict = {
   "picker.searchCountries": "Rechercher pays ou codes de région…",
   "picker.searchCountriesAria": "Rechercher des pays",
   "picker.noCountries": "Aucun pays correspondant",
+  "picker.noMatchDesc": "Essayez un autre mot-clé.",
 
   // ── Erreurs API ──
   "api.requestFailed": "Échec de la requête {url} : {status}",

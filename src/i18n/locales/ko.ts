@@ -102,7 +102,7 @@ export const dict: Dict = {
   "sort.nsfwFirst": "성인 콘텐츠 우선",
 
   // ── 채널 그리드 ──
-  "grid.emptyTitle": "신호 없음.",
+  "grid.emptyTitle": "신호 없음",
   "grid.emptyDesc": "현재 필터에 맞는 채널이 없습니다. 검색 범위를 넓혀 보세요.",
   "grid.loadingMore": "신호 {count}개 불러오는 중…",
   "grid.footer": "신호 {total}개 중 {shown}개 표시",
@@ -115,9 +115,9 @@ export const dict: Dict = {
   "history.title": "시청 기록",
   "history.countRecords": "기록 {count}건",
   "history.clear": "기록 삭제",
-  "history.emptyTitle": "아직 시청 기록이 없습니다.",
+  "history.emptyTitle": "아직 시청 기록이 없습니다",
   "history.emptyDesc": "채널을 재생하면 모든 시청이 타임라인 형태로 여기에 기록됩니다.",
-  "history.noMatchTitle": "일치하는 기록이 없습니다.",
+  "history.noMatchTitle": "일치하는 기록이 없습니다",
   "history.noMatchDesc":
     "현재 필터에 맞는 기록이 없습니다. 다른 카테고리나 국가를 시도해 보세요.",
   "history.replay": "{name} 다시 재생",
@@ -267,6 +267,7 @@ export const dict: Dict = {
   "picker.searchCountries": "국가 또는 지역 코드 검색…",
   "picker.searchCountriesAria": "국가 검색",
   "picker.noCountries": "일치하는 국가가 없습니다",
+  "picker.noMatchDesc": "다른 키워드로 시도해 보세요.",
 
   // ── API 오류 ──
   "api.requestFailed": "요청 실패 {url}: {status}",

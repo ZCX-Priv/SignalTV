@@ -102,7 +102,7 @@ export const dict: Dict = {
   "sort.nsfwFirst": "Contenido adulto primero",
 
   // ── Cuadrícula de canales ──
-  "grid.emptyTitle": "Sin señal.",
+  "grid.emptyTitle": "Sin señal",
   "grid.emptyDesc": "Ningún canal coincide con los filtros actuales. Amplía la búsqueda.",
   "grid.loadingMore": {
     one: "Cargando {count} señal más…",
@@ -118,10 +118,10 @@ export const dict: Dict = {
   "history.title": "Historial de reproducción",
   "history.countRecords": { one: "{count} registro", other: "{count} registros" },
   "history.clear": "Borrar historial",
-  "history.emptyTitle": "Aún no hay historial.",
+  "history.emptyTitle": "Aún no hay historial",
   "history.emptyDesc":
     "Reproduce cualquier canal y cada visualización quedará registrada aquí como una línea de tiempo.",
-  "history.noMatchTitle": "Sin registros coincidentes.",
+  "history.noMatchTitle": "Sin registros coincidentes",
   "history.noMatchDesc":
     "Ningún registro coincide con los filtros actuales. Prueba otra categoría u otro país.",
   "history.replay": "Volver a ver {name}",
@@ -272,6 +272,7 @@ export const dict: Dict = {
   "picker.searchCountries": "Buscar países o códigos de región…",
   "picker.searchCountriesAria": "Buscar países",
   "picker.noCountries": "Sin países coincidentes",
+  "picker.noMatchDesc": "Prueba con otra palabra clave.",
 
   // ── Errores de API ──
   "api.requestFailed": "Solicitud fallida {url}: {status}",

@@ -38,7 +38,8 @@ export function CountryPickerModal({ open, onClose }: CountryPickerModalProps) {
       titleIcon={<Globe2 size={14} />}
       searchPlaceholder={t("picker.searchCountries")}
       searchAriaLabel={t("picker.searchCountriesAria")}
-      emptyText={t("picker.noCountries")}
+      emptyTitle={t("picker.noCountries")}
+      emptyDesc={t("picker.noMatchDesc")}
       sectionLabel={t("filter.allCountries")}
       items={items}
       recentKeys={recentCountries}

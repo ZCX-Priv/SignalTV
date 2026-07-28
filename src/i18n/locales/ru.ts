@@ -113,7 +113,7 @@ export const dict: Dict = {
   "sort.nsfwFirst": "Сначала контент 18+",
 
   // ── Сетка каналов ──
-  "grid.emptyTitle": "Нет сигнала.",
+  "grid.emptyTitle": "Нет сигнала",
   "grid.emptyDesc": "Ни один канал не подходит под фильтры. Попробуйте расширить поиск.",
   "grid.loadingMore": {
     one: "Загружается ещё {count} сигнал…",
@@ -136,10 +136,10 @@ export const dict: Dict = {
     other: "{count} записей",
   },
   "history.clear": "Очистить историю",
-  "history.emptyTitle": "Истории просмотров пока нет.",
+  "history.emptyTitle": "Истории просмотров пока нет",
   "history.emptyDesc":
     "Включите любой канал — каждый просмотр появится здесь в виде хронологии.",
-  "history.noMatchTitle": "Нет подходящих записей.",
+  "history.noMatchTitle": "Нет подходящих записей",
   "history.noMatchDesc":
     "Под текущие фильтры не подходит ни одна запись. Попробуйте другую категорию или страну.",
   "history.replay": "Смотреть {name} снова",
@@ -305,6 +305,7 @@ export const dict: Dict = {
   "picker.searchCountries": "Поиск стран или кодов регионов…",
   "picker.searchCountriesAria": "Поиск стран",
   "picker.noCountries": "Подходящих стран не найдено",
+  "picker.noMatchDesc": "Попробуйте другое ключевое слово.",
 
   // ── Ошибки API ──
   "api.requestFailed": "Сбой запроса {url}: {status}",

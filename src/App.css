@@ -221,7 +221,8 @@
   padding: 18px 8px 0;
   align-items: center;
 }
-.sidebar.is-collapsed .nav__item span,
+/* 豁免 .nav__flag：国家条目全是 span，若不豁免则折叠后只剩空白按钮 */
+.sidebar.is-collapsed .nav__item span:not(.nav__flag),
 .sidebar.is-collapsed .sidebar__label span,
 .sidebar.is-collapsed .sidebar__label-action,
 .sidebar.is-collapsed .nav__count,
@@ -451,12 +452,21 @@
   padding: 0 28px 60px;
   max-width: 1500px;
   margin: 0 auto;
+  /* 内容短于视口时撑满 .app__main 剩余高度，为空状态垂直居中提供空间 */
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 统一视图入场层：App.tsx 按视图 key 重挂载，所有页面（频道页/设置/状态/历史）
-   含标题区与空态一律随此层上浮淡入，取代原先分散在各面板容器上的动画 */
+   含标题区与空态一律随此层上浮淡入，取代原先分散在各面板容器上的动画；
+   同时延续 .content 的纵向 flex 链，让内部空态能垂直居中 */
 .view-anim {
   animation: fade-up var(--dur-page) var(--ease) both;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ============ 首屏 ============ */
@@ -1323,13 +1333,16 @@
 }
 
 /* ============ 空状态 ============ */
+/* flex: 1 接住 .view-anim / .history 的纵向 flex 链，
+   撑满筛选栏下方剩余区域，图标+文案整体处于正中心 */
 .empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 80px 20px;
+  flex: 1;
+  padding: 40px 20px;
   color: var(--ink-mute);
   gap: 12px;
 }
@@ -1341,6 +1354,21 @@
 .empty p {
   margin: 0;
   max-width: 380px;
+}
+/* 紧凑变体：选择弹窗（.picker__list 为定高滚动区）内使用，
+   min-height: 100% 撑满列表区以垂直居中，字号与间距收紧 */
+.empty--compact {
+  min-height: 100%;
+  padding: 24px 16px;
+  gap: 8px;
+}
+.empty--compact h3 {
+  font-size: 17px;
+  margin: 2px 0 0;
+}
+.empty--compact p {
+  font-size: 12.5px;
+  max-width: 300px;
 }
 
 /* ============ 播放器弹窗 ============ */
@@ -1380,6 +1408,16 @@
   flex-direction: column;
   box-shadow: 0 40px 120px -30px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 59, 48, 0.08);
   animation: scale-in var(--dur-modal) var(--ease);
+}
+/* 桌面端：面板固定满高（影院式），高度只随视口自适应，不随信息栏内容多少跳动；
+   视频区由 object-fit:contain 自然 letterbox，信息栏内部滚动（已有 overflow-y:auto）。
+   断点 1081px 与下方移动端播放器布局断点 (max-width: 1080px) 严格互补，
+   移动端仍由 max-height 约束、按内容堆叠，不受此规则影响 */
+@media (min-width: 1081px) {
+  .player__panel {
+    height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);   /* 同步使用动态视口高度 */
+  }
 }
 .player__head {
   display: flex;
@@ -1652,12 +1690,6 @@
   color: var(--ink-mute);
   letter-spacing: 0.05em;
 }
-.picker__empty {
-  padding: 40px 16px;
-  text-align: center;
-  color: var(--ink-mute);
-  font-size: 13px;
-}
 
 .player__stage {
   display: grid;
@@ -1838,6 +1870,11 @@
   gap: 18px;
   min-width: 0;
 }
+/* 子项禁止收缩：空间不足时由 .player__info 整体滚动，
+   而非压缩子项（.player__facts 因 overflow:hidden 最小高度为 0，会被挤没） */
+.player__info > * {
+  flex-shrink: 0;
+}
 .player__channel-head {
   display: flex;
   gap: 12px;
@@ -1932,7 +1969,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: auto;
+  /* 紧跟事实表正常排布（不用 margin-top:auto 吸底，满高面板下会拉出大片空隙） */
   padding-top: 16px;
   border-top: 1px solid var(--line);
 }
@@ -2299,6 +2336,9 @@
   padding: 36px 28px 60px;
   max-width: 880px;
   margin: 0 auto;
+  /* .view-anim 为 flex 列容器：横向 auto margin 会让子项收缩到内容宽，
+     需显式撑满再由 max-width 约束（与 .content 同理） */
+  width: 100%;
 }
 .settings__head {
   margin-bottom: 32px;
@@ -2498,6 +2538,8 @@
   padding: 36px 28px 60px;
   max-width: 880px;
   margin: 0 auto;
+  /* 同 .settings：flex 子项需显式 width: 100% 才能撑到 max-width */
+  width: 100%;
 }
 .status__head {
   margin-bottom: 32px;
@@ -2535,6 +2577,13 @@
 /* ============ 播放历史（垂直时间线） ============
    头部复用 .filterbar 结构与收藏夹页对齐，容器布局交给 .content，
    入场动画由统一的 .view-anim 视图层提供，此处仅保留时间线自身样式 */
+/* 延续纵向 flex 链：空态时 .empty 能在筛选栏下方剩余区域居中，
+   有记录时分组区块按正常文档流堆叠不受影响 */
+.history {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 .history__group {
   margin-bottom: 26px;
 }

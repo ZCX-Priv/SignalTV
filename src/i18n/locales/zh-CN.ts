@@ -118,7 +118,7 @@ export const dict = {
   "sort.nsfwFirst": "成人内容优先",
 
   // ── 频道网格 ──
-  "grid.emptyTitle": "无信号。",
+  "grid.emptyTitle": "无信号",
   "grid.emptyDesc": "没有频道匹配当前筛选条件，请尝试扩大搜索范围。",
   "grid.loadingMore": "正在加载 {count} 路信号…",
   "grid.footer": "显示 {total} 路信号中的 {shown} 路",
@@ -131,9 +131,9 @@ export const dict = {
   "history.title": "播放历史",
   "history.countRecords": "{count} 条记录",
   "history.clear": "清空历史",
-  "history.emptyTitle": "暂无播放记录。",
+  "history.emptyTitle": "暂无播放记录",
   "history.emptyDesc": "播放任意频道后，这里会以时间线形式实时记录每一次收看。",
-  "history.noMatchTitle": "无匹配记录。",
+  "history.noMatchTitle": "无匹配记录",
   "history.noMatchDesc": "没有播放记录匹配当前筛选条件，请尝试更换分类或国家。",
   "history.replay": "重新播放 {name}",
   "history.gone": "频道已下线",
@@ -279,6 +279,7 @@ export const dict = {
   "picker.searchCountries": "搜索国家或地区代码…",
   "picker.searchCountriesAria": "搜索国家",
   "picker.noCountries": "未找到匹配的国家",
+  "picker.noMatchDesc": "换个关键词再试试。",
 
   // ── API 错误 ──
   "api.requestFailed": "请求失败 {url}: {status}",

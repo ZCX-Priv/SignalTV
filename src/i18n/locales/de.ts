@@ -102,7 +102,7 @@ export const dict: Dict = {
   "sort.nsfwFirst": "Erwachseneninhalte zuerst",
 
   // ── Kanalraster ──
-  "grid.emptyTitle": "Kein Signal.",
+  "grid.emptyTitle": "Kein Signal",
   "grid.emptyDesc": "Keine Kanäle entsprechen den aktuellen Filtern. Suche erweitern.",
   "grid.loadingMore": {
     one: "{count} weiteres Signal wird geladen…",
@@ -118,10 +118,10 @@ export const dict: Dict = {
   "history.title": "Wiedergabeverlauf",
   "history.countRecords": { one: "{count} Eintrag", other: "{count} Einträge" },
   "history.clear": "Verlauf löschen",
-  "history.emptyTitle": "Noch kein Wiedergabeverlauf.",
+  "history.emptyTitle": "Noch kein Wiedergabeverlauf",
   "history.emptyDesc":
     "Sobald ein Kanal abgespielt wird, erscheint hier jede Wiedergabe als Zeitleiste.",
-  "history.noMatchTitle": "Keine passenden Einträge.",
+  "history.noMatchTitle": "Keine passenden Einträge",
   "history.noMatchDesc":
     "Keine Verlaufseinträge entsprechen den aktuellen Filtern. Andere Kategorie oder anderes Land wählen.",
   "history.replay": "{name} erneut abspielen",
@@ -272,6 +272,7 @@ export const dict: Dict = {
   "picker.searchCountries": "Länder oder Ländercodes suchen…",
   "picker.searchCountriesAria": "Länder suchen",
   "picker.noCountries": "Keine passenden Länder",
+  "picker.noMatchDesc": "Anderes Stichwort ausprobieren.",
 
   // ── API-Fehler ──
   "api.requestFailed": "Anfrage fehlgeschlagen {url}: {status}",

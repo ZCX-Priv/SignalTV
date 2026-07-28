@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Search, X } from "lucide-react";
+import { Search, SearchX, X } from "lucide-react";
 import { pushModal, trapFocus } from "../lib/modalStack";
 import { fmt } from "../lib/format";
 import { useI18n } from "../i18n";
+import { EmptyState } from "./EmptyState";
 
 export interface PickerItem {
   key: string;
@@ -20,7 +21,9 @@ interface PickerModalProps {
   titleIcon: ReactNode;
   searchPlaceholder: string;
   searchAriaLabel: string;
-  emptyText: string;
+  /** 搜索无结果时的空态标题与描述（统一走 EmptyState） */
+  emptyTitle: string;
+  emptyDesc: string;
   /** 无搜索词时"全部"分组的标签（通常与 title 相同） */
   sectionLabel: string;
   /** 已按期望顺序排好的全量候选 */
@@ -47,7 +50,8 @@ export function PickerModal({
   titleIcon,
   searchPlaceholder,
   searchAriaLabel,
-  emptyText,
+  emptyTitle,
+  emptyDesc,
   sectionLabel,
   items,
   recentKeys,
@@ -179,7 +183,12 @@ export function PickerModal({
 
         <div className="picker__list">
           {filtered.length === 0 ? (
-            <div className="picker__empty">{emptyText}</div>
+            <EmptyState
+              compact
+              icon={<SearchX size={24} />}
+              title={emptyTitle}
+              desc={emptyDesc}
+            />
           ) : (
             <>
               {recentSection.length > 0 && (

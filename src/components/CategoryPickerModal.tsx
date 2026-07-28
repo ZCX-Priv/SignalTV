@@ -54,7 +54,8 @@ export function CategoryPickerModal({ open, onClose }: CategoryPickerModalProps)
       titleIcon={<LayoutGrid size={14} />}
       searchPlaceholder={t("picker.searchCategories")}
       searchAriaLabel={t("picker.searchCategoriesAria")}
-      emptyText={t("picker.noCategories")}
+      emptyTitle={t("picker.noCategories")}
+      emptyDesc={t("picker.noMatchDesc")}
       sectionLabel={t("filter.allCategories")}
       items={items}
       recentKeys={recentCategories}

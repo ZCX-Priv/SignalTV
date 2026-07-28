@@ -218,6 +218,10 @@ textarea {
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
+  /* 纵向 flex 链起点：配合 .content / .view-anim 的 flex: 1，
+     让空状态（.empty）能撑满剩余高度并垂直居中 */
+  display: flex;
+  flex-direction: column;
 }
 
 /* ============ 通用：信号点 / 直播指示 ============ */

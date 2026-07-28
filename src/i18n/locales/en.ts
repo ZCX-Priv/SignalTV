@@ -102,7 +102,7 @@ export const dict: Dict = {
   "sort.nsfwFirst": "Adult content first",
 
   // ── Channel grid ──
-  "grid.emptyTitle": "No signal.",
+  "grid.emptyTitle": "No signal",
   "grid.emptyDesc": "No channels match the current filters. Try widening your search.",
   "grid.loadingMore": {
     one: "Loading {count} more signal…",
@@ -118,9 +118,9 @@ export const dict: Dict = {
   "history.title": "Watch history",
   "history.countRecords": { one: "{count} record", other: "{count} records" },
   "history.clear": "Clear history",
-  "history.emptyTitle": "No watch history yet.",
+  "history.emptyTitle": "No watch history yet",
   "history.emptyDesc": "Play any channel and every viewing will be logged here as a timeline.",
-  "history.noMatchTitle": "No matching records.",
+  "history.noMatchTitle": "No matching records",
   "history.noMatchDesc":
     "No history entries match the current filters. Try a different category or country.",
   "history.replay": "Replay {name}",
@@ -270,6 +270,7 @@ export const dict: Dict = {
   "picker.searchCountries": "Search countries or region codes…",
   "picker.searchCountriesAria": "Search countries",
   "picker.noCountries": "No matching countries",
+  "picker.noMatchDesc": "Try a different keyword.",
 
   // ── API errors ──
   "api.requestFailed": "Request failed {url}: {status}",
