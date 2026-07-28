@@ -1,7 +1,6 @@
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   History,
-  Play,
   Tv2,
   Globe,
   Hash,
@@ -15,98 +14,98 @@ import {
 import { useStore } from "../store/useStore";
 import type { HistoryEntry } from "../store/useStore";
 import type { ChannelWithStream } from "../types";
-import { clock, historyDayLabel } from "../lib/format";
+import { clockMinute, historyDayLabel } from "../lib/format";
 import { toast } from "../lib/toast";
 import { useI18n } from "../i18n";
 import { Select } from "./Select";
 import { EmptyState } from "./EmptyState";
 import { ConfirmModal } from "./ConfirmModal";
+import { ChannelCard } from "./ChannelCard";
+import { ViewToggle } from "./ViewToggle";
 
 /** Radix Select 中 value="" 等同未选；用哨兵值表示"全部"（与 FilterBar 一致） */
 const ALL = "_all";
 
 interface HistoryGroup {
   label: string;
-  entries: HistoryEntry[];
+  /** 天内按分钟合并的时间桶：同一 HH:mm 只挂一个小节点，不重复标注 */
+  times: { time: string; entries: HistoryEntry[] }[];
 }
 
-interface HistoryItemProps {
+interface HistoryCardProps {
   entry: HistoryEntry;
   ch: ChannelWithStream | undefined;
+  /** 跨日期分组连续递增的卡片序号（入场动画错峰延迟用） */
+  index: number;
   managing: boolean;
   selected: boolean;
-  /** 播放模式=播放该频道；管理模式=切换选中态 */
-  onActivate: (id: string) => void;
+  onToggleSelect: (id: string) => void;
 }
 
 /**
- * 单条历史条目：memo 化隔离重渲染——勾选某条时仅该条目
- * （selected 变化）重渲染，其余条目 props 全部引用相等直接跳过。
+ * 单条历史卡片：在线频道直接复用首页 ChannelCard（样式完全一致）；
+ * 已下线频道降级为占位卡。播放时间由父层时间轴小节点标签展示，
+ * 卡片自身不再重复显示。
+ * 管理模式叠加透明覆盖按钮拦截点击切换选中，不侵入 ChannelCard 内部。
+ * memo 化隔离重渲染：勾选某条时仅该卡片（selected 变化）重渲染。
  */
-const HistoryItem = memo(function HistoryItem({
+const HistoryCard = memo(function HistoryCard({
   entry,
   ch,
+  index,
   managing,
   selected,
-  onActivate,
-}: HistoryItemProps) {
+  onToggleSelect,
+}: HistoryCardProps) {
   const { t } = useI18n();
-  // 管理模式下已下线条目也可选中（用于删除）；播放模式下保持禁用
-  const disabled = !managing && !ch;
   return (
-    <button
-      type="button"
-      className={`history__item${ch ? "" : " is-gone"}${selected ? " is-selected" : ""}`}
-      onClick={() => onActivate(entry.id)}
-      disabled={disabled}
-      title={
-        managing
-          ? undefined
-          : ch
-            ? t("history.replay", { name: ch.name })
-            : t("history.gone")
-      }
-      aria-pressed={managing ? selected : undefined}
+    <div
+      className={`history-card${ch ? "" : " history-card--gone"}${selected ? " is-selected" : ""}`}
     >
-      <span className="history__dot" aria-hidden />
+      {ch ? (
+        <ChannelCard channel={ch} index={index} />
+      ) : (
+        // 降级占位卡：复用 .card 骨架与入场动画，无流可播 → 不可点击
+        <article className="card" style={{ animationDelay: `${Math.min(index, 24) * 28}ms` }}>
+          <div className="card__media card__media--empty">
+            <div className="card__noise" />
+            <div className="card__placeholder">
+              <Tv2 size={22} />
+              <span className="card__placeholder-country">{t("history.gone")}</span>
+            </div>
+          </div>
+          <div className="card__body">
+            <div className="card__top">
+              <h3 className="card__name">{t("history.gone")}</h3>
+            </div>
+          </div>
+        </article>
+      )}
       {managing && (
-        <span className={`history__check${selected ? " is-on" : ""}`} aria-hidden>
-          {selected && <Check size={12} strokeWidth={3} />}
-        </span>
+        <button
+          type="button"
+          className="history-card__select"
+          onClick={() => onToggleSelect(entry.id)}
+          aria-pressed={selected}
+          aria-label={ch ? ch.name : t("history.gone")}
+        >
+          <span className={`history-card__check${selected ? " is-on" : ""}`} aria-hidden>
+            {selected && <Check size={12} strokeWidth={3} />}
+          </span>
+        </button>
       )}
-      <span className="history__time mono">{clock(new Date(entry.at))}</span>
-      <span className="history__logo">
-        {ch?.logo ? (
-          <img
-            src={ch.logo}
-            alt=""
-            loading="lazy"
-            onError={(ev) => {
-              (ev.currentTarget as HTMLImageElement).style.display = "none";
-            }}
-          />
-        ) : (
-          <Tv2 size={14} />
-        )}
-      </span>
-      <span className="history__name">{ch?.name ?? t("history.gone")}</span>
-      {ch && <span className="history__country mono">{ch.country}</span>}
-      {ch && !managing && (
-        <span className="history__play" aria-hidden>
-          <Play size={12} fill="currentColor" />
-        </span>
-      )}
-    </button>
+    </div>
   );
 });
 
 /**
- * 播放历史面板：以垂直时间线展示每次播放记录（最新在前），
- * 按天分组（今天 / 昨天 / MM月DD日），点击条目可重新播放。
+ * 播放历史面板：一条贯穿全部记录的竖向长时间轴——日期为大节点
+ * （今天 / 昨天 / 完整年月日），每条记录为小节点（HH:mm 标签），
+ * 卡片挂在小节点右侧逐条排列；卡片/列表切换仅改变卡片自身形态
+ * （全局 gridLayout，grid--list 挂在时间轴容器上复用列表态卡片样式）。
  * 头部复用 .filterbar 结构与收藏夹页对齐；分类/国家筛选为
- * 页面本地状态（不写入 store.filter，离开页面自动重置），
- * 筛选结果实时作用于时间线。
- * "管理"模式：条目变复选，支持全选/全不选与批量删除（二次确认）。
+ * 页面本地状态（不写入 store.filter，离开页面自动重置）。
+ * "管理"模式：卡片叠加勾选覆盖层，支持全选/全不选与批量删除（二次确认）。
  */
 export function HistoryPanel() {
   const { t } = useI18n();
@@ -114,8 +113,10 @@ export function HistoryPanel() {
   const channels = useStore((s) => s.channels);
   const categories = useStore((s) => s.categories);
   const countries = useStore((s) => s.countries);
-  const openChannel = useStore((s) => s.openChannel);
   const removeHistoryEntries = useStore((s) => s.removeHistoryEntries);
+  const gridLayout = useStore((s) => s.gridLayouts.history);
+  const probeLatencyForIds = useStore((s) => s.probeLatencyForIds);
+  const activeChannelId = useStore((s) => s.activeChannelId);
 
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [countryCode, setCountryCode] = useState<string | null>(null);
@@ -139,14 +140,21 @@ export function HistoryPanel() {
     });
   }, [history, channels, categoryId, countryCode, hasFilter]);
 
-  // filtered 已按时间倒序，顺序扫描聚成连续的日期分组
+  // filtered 已按时间倒序，顺序扫描聚成两级分组：天（大节点）→ 分钟（小节点）；
+  // 同分钟记录在倒序序列中必相邻，连续相同 HH:mm 合并进同一时间桶
   const groups = useMemo<HistoryGroup[]>(() => {
     const out: HistoryGroup[] = [];
     for (const e of filtered) {
       const label = historyDayLabel(e.at);
-      const last = out[out.length - 1];
-      if (last && last.label === label) last.entries.push(e);
-      else out.push({ label, entries: [e] });
+      const time = clockMinute(e.at);
+      let g = out[out.length - 1];
+      if (!g || g.label !== label) {
+        g = { label, times: [] };
+        out.push(g);
+      }
+      const bucket = g.times[g.times.length - 1];
+      if (bucket && bucket.time === time) bucket.entries.push(e);
+      else g.times.push({ time, entries: [e] });
     }
     return out;
   }, [filtered]);
@@ -154,23 +162,36 @@ export function HistoryPanel() {
   // 全选状态相对当前筛选结果判断（筛选后全选只作用于可见条目）
   const allSelected = filtered.length > 0 && filtered.every((e) => selected.has(e.id));
 
-  // 条目点击：引用稳定（useCallback），保证 HistoryItem 的 memo 生效。
-  // 管理模式判断走函数式 setState 外的最新闭包依赖，依赖变化频率极低
-  const handleActivate = useCallback(
-    (id: string) => {
-      if (managing) {
-        setSelected((prev) => {
-          const next = new Set(prev);
-          if (next.has(id)) next.delete(id);
-          else next.add(id);
-          return next;
-        });
-      } else if (channels.has(id)) {
-        openChannel(id);
-      }
-    },
-    [managing, channels, openChannel],
-  );
+  // 入场动画错峰延迟需跨分组/时间桶连续递增：按 filtered 顺序生成 id → 序号
+  const indexById = useMemo(() => {
+    const m = new Map<string, number>();
+    filtered.forEach((e, i) => m.set(e.id, i));
+    return m;
+  }, [filtered]);
+
+  // 与 ChannelGrid 同策略的延迟探测：筛选结果变化后 debounce 150ms
+  // 探测在线频道，让卡片延迟标签与首页表现一致；播放器打开期间暂停
+  // （不与视频流抢带宽），历史上限 200 条不会引发全量探测量级问题
+  useEffect(() => {
+    if (activeChannelId) return;
+    const ids = filtered.filter((e) => channels.has(e.id)).map((e) => e.id);
+    if (ids.length === 0) return;
+    const timer = setTimeout(() => {
+      void probeLatencyForIds(ids);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [filtered, channels, probeLatencyForIds, activeChannelId]);
+
+  // 勾选切换：引用稳定（useCallback 无依赖），保证 HistoryCard 的 memo 生效；
+  // 播放点击由 ChannelCard 自身的 openChannel 处理，这里只管管理模式选中态
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const exitManage = () => {
     setManaging(false);
@@ -208,6 +229,9 @@ export function HistoryPanel() {
           </div>
 
           <div className="filterbar__controls">
+            {/* 卡片/列表视图切换：历史页独立偏好（默认列表） */}
+            <ViewToggle scope="history" />
+
             <Select
               aria-label={t("filter.categoryAria")}
               icon={<Hash size={13} />}
@@ -305,23 +329,33 @@ export function HistoryPanel() {
           }
         />
       ) : (
-        groups.map((g) => (
-          <section className="history__group" key={g.label}>
-            <div className="history__group-label mono">{g.label}</div>
-            <div className="history__timeline">
-              {g.entries.map((e) => (
-                <HistoryItem
-                  key={e.id}
-                  entry={e}
-                  ch={channels.get(e.id)}
-                  managing={managing}
-                  selected={selected.has(e.id)}
-                  onActivate={handleActivate}
-                />
+        <div className={`history__timeline ${gridLayout === "list" ? "grid--list" : ""}`}>
+          {groups.map((g) => (
+            <section className="history__tl-group" key={g.label}>
+              {/* 日期大节点：大圆点由 ::before 绘制，对齐贯穿竖线 */}
+              <div className="history__tl-day mono">{g.label}</div>
+              {g.times.map((tb) => (
+                <div className="history__tl-item" key={`${g.label}-${tb.time}`}>
+                  {/* 时间小分类：同一分钟只标注一次，小圆点由 ::before 绘制 */}
+                  <span className="history__tl-time mono">{tb.time}</span>
+                  <div className="history__tl-cards">
+                    {tb.entries.map((e) => (
+                      <HistoryCard
+                        key={e.id}
+                        entry={e}
+                        ch={channels.get(e.id)}
+                        index={indexById.get(e.id) ?? 0}
+                        managing={managing}
+                        selected={selected.has(e.id)}
+                        onToggleSelect={toggleSelect}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
-            </div>
-          </section>
-        ))
+            </section>
+          ))}
+        </div>
       )}
 
       <ConfirmModal

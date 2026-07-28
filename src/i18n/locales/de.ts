@@ -57,6 +57,8 @@ export const dict: Dict = {
   "toast.sortSet": "Sortierung: {name}",
   "toast.nsfwOn": "Inhalte für Erwachsene werden angezeigt",
   "toast.nsfwOff": "Inhalte für Erwachsene ausgeblendet",
+  "toast.viewGrid": "Zur Kartenansicht gewechselt",
+  "toast.viewList": "Zur Listenansicht gewechselt",
   "toast.historyDeleted": {
     one: "{count} Verlaufseintrag gelöscht",
     other: "{count} Verlaufseinträge gelöscht",
@@ -97,6 +99,9 @@ export const dict: Dict = {
   "filter.nsfwTitle": "Inhalte für Erwachsene einbeziehen",
   "filter.nsfwShown": "Erwachseneninhalte sichtbar",
   "filter.nsfwHidden": "Erwachseneninhalte ausgeblendet",
+  "filter.viewAria": "Ansichtsmodus",
+  "filter.viewGrid": "Kartenansicht",
+  "filter.viewList": "Listenansicht",
 
   // ── Sortieroptionen ──
   "sort.default": "Standard",

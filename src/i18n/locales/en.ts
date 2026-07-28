@@ -57,6 +57,8 @@ export const dict: Dict = {
   "toast.sortSet": "Sort: {name}",
   "toast.nsfwOn": "Adult content is now shown",
   "toast.nsfwOff": "Adult content hidden",
+  "toast.viewGrid": "Switched to card view",
+  "toast.viewList": "Switched to list view",
   "toast.historyDeleted": {
     one: "Deleted {count} history record",
     other: "Deleted {count} history records",
@@ -97,6 +99,9 @@ export const dict: Dict = {
   "filter.nsfwTitle": "Include adult content",
   "filter.nsfwShown": "Adult content shown",
   "filter.nsfwHidden": "Adult content hidden",
+  "filter.viewAria": "View mode",
+  "filter.viewGrid": "Card view",
+  "filter.viewList": "List view",
 
   // ── Sort options ──
   "sort.default": "Default",

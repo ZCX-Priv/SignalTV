@@ -224,6 +224,19 @@ export type Filter = {
   nsfw: boolean; // 是否包含成人内容
 };
 
+/** 频道列表展示形态：卡片网格 | 横向列表（持久化） */
+export type GridLayout = "grid" | "list";
+
+/** 视图形态作用域：浏览页（首页/分类/国家/搜索共享）、收藏页、历史页各自独立 */
+export type LayoutScope = "browse" | "favorites" | "history";
+
+/** 各作用域默认形态：历史页挂长时间轴，默认列表更紧凑 */
+const DEFAULT_GRID_LAYOUTS: Record<LayoutScope, GridLayout> = {
+  browse: "grid",
+  favorites: "grid",
+  history: "list",
+};
+
 export type View =
   | { kind: "home" }
   | { kind: "category"; id: string }
@@ -313,6 +326,7 @@ interface State {
   locale: Locale; // 实际界面语言，由 language 派生（system 时自动检测）
   updateMode: UpdateMode; // PWA 更新方式（auto|manual|off），持久化
   timezonePref: TimezonePref; // 时区偏好（auto|UTC 整数偏移），持久化
+  gridLayouts: Record<LayoutScope, GridLayout>; // 各作用域的频道列表展示形态，持久化
 
   // 动作
   init: () => Promise<void>;
@@ -335,6 +349,7 @@ interface State {
   setLanguage: (pref: LanguagePref) => Promise<void>;
   setUpdateMode: (m: UpdateMode) => void;
   setTimezonePref: (p: TimezonePref) => void;
+  setGridLayout: (scope: LayoutScope, l: GridLayout) => void;
 }
 
 export const useStore = create<State>()(
@@ -367,6 +382,7 @@ export const useStore = create<State>()(
       locale: "zh-CN",
       updateMode: "auto",
       timezonePref: "auto",
+      gridLayouts: DEFAULT_GRID_LAYOUTS,
 
       init: async () => {
         if (get().loaded || get().loading) return;
@@ -620,6 +636,8 @@ export const useStore = create<State>()(
         syncActiveTimeZone(p);
         set({ timezonePref: p });
       },
+      setGridLayout: (scope, l) =>
+        set({ gridLayouts: { ...get().gridLayouts, [scope]: l } }),
     }),
     {
       name: "signaltv-iptv",
@@ -636,6 +654,7 @@ export const useStore = create<State>()(
         language: s.language,
         updateMode: s.updateMode,
         timezonePref: s.timezonePref,
+        gridLayouts: s.gridLayouts,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -664,6 +683,14 @@ export const useStore = create<State>()(
         // （main.tsx 预读一致时为幂等操作）
         if (state.timezonePref === undefined) state.timezonePref = "auto";
         syncActiveTimeZone(state.timezonePref);
+        // 旧版数据没有 gridLayouts → 用遗留的单一 gridLayout（若有）作为
+        // 浏览页初值，其余作用域回落默认；已有时也兜底补齐缺失键
+        const legacyLayout = (state as { gridLayout?: GridLayout }).gridLayout;
+        state.gridLayouts = {
+          ...DEFAULT_GRID_LAYOUTS,
+          ...(legacyLayout ? { browse: legacyLayout } : undefined),
+          ...state.gridLayouts,
+        };
       },
     },
   ),

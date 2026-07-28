@@ -98,13 +98,22 @@ export function clock(d = new Date()): string {
   }).format(d);
 }
 
+/** 格式化为 HH:MM（24 小时制，无秒）：播放历史卡片的时间角标用。 */
+export function clockMinute(ts: number): string {
+  return dtf({
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(ts);
+}
+
 /** 格式化为广播日期（星期+月日按 locale 本地化），如 zh 下 "7月8日周一 · 14:32:05"。 */
 export function broadcastDate(d = new Date()): string {
   const datePart = dtf({ weekday: "short", month: "short", day: "numeric" }).format(d);
   return `${datePart} · ${clock(d)}`;
 }
 
-/** 播放历史的日期分组标签：今天 / 昨天 / 本地化月日。 */
+/** 播放历史的日期分组标签：今天 / 昨天 / 本地化完整年月日。 */
 export function historyDayLabel(ts: number): string {
   // 日界判定时区感知：用激活时区格式化年月日字符串比对，
   // 而非本地 Date 方法（切时区后本地日界与展示时区日界会错位）
@@ -114,7 +123,8 @@ export function historyDayLabel(ts: number): string {
   const key = dayKey(ts);
   if (key === dayKey(now)) return t("format.today");
   if (key === dayKey(now - 86_400_000)) return t("format.yesterday");
-  return dtf({ month: "long", day: "numeric" }).format(ts);
+  // 更早的记录显示含年份的完整日期（年月日为历史页大分类）
+  return dtf({ year: "numeric", month: "long", day: "numeric" }).format(ts);
 }
 
 /** 由频道 id 生成稳定的"频道号"（用于频道号美学展示）。 */

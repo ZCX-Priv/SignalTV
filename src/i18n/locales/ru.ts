@@ -58,6 +58,8 @@ export const dict: Dict = {
   "toast.sortSet": "Сортировка: {name}",
   "toast.nsfwOn": "Контент для взрослых показан",
   "toast.nsfwOff": "Контент для взрослых скрыт",
+  "toast.viewGrid": "Включён вид карточек",
+  "toast.viewList": "Включён вид списка",
   "toast.historyDeleted": {
     one: "Удалена {count} запись истории",
     few: "Удалено {count} записи истории",
@@ -110,6 +112,9 @@ export const dict: Dict = {
   "filter.nsfwTitle": "Включая контент для взрослых",
   "filter.nsfwShown": "Контент 18+ показан",
   "filter.nsfwHidden": "Контент 18+ скрыт",
+  "filter.viewAria": "Режим отображения",
+  "filter.viewGrid": "Вид карточек",
+  "filter.viewList": "Вид списка",
 
   // ── Сортировка ──
   "sort.default": "По умолчанию",

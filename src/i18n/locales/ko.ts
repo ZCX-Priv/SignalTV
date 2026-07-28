@@ -57,6 +57,8 @@ export const dict: Dict = {
   "toast.sortSet": "정렬: {name}",
   "toast.nsfwOn": "성인 콘텐츠를 표시합니다",
   "toast.nsfwOff": "성인 콘텐츠를 숨겼습니다",
+  "toast.viewGrid": "카드 보기로 전환했습니다",
+  "toast.viewList": "목록 보기로 전환했습니다",
   "toast.historyDeleted": "시청 기록 {count}건을 삭제했습니다",
   "toast.themeSwitched": "{name} 모드로 전환했습니다",
   "toast.langSwitched": "언어를 {name}(으)로 변경했습니다",
@@ -94,6 +96,9 @@ export const dict: Dict = {
   "filter.nsfwTitle": "성인 콘텐츠 포함",
   "filter.nsfwShown": "성인 콘텐츠 표시 중",
   "filter.nsfwHidden": "성인 콘텐츠 숨김",
+  "filter.viewAria": "보기 방식",
+  "filter.viewGrid": "카드 보기",
+  "filter.viewList": "목록 보기",
 
   // ── 정렬 옵션 ──
   "sort.default": "기본",

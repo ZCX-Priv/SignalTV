@@ -6,6 +6,7 @@ import type { SortKey } from "../store/useStore";
 import type { ChannelWithStream } from "../types";
 import { useI18n } from "../i18n";
 import { Select } from "./Select";
+import { ViewToggle } from "./ViewToggle";
 
 /** Radix Select 中 value="" 等同未选；用哨兵值表示"全部" */
 const ALL = "_all";
@@ -82,6 +83,9 @@ export function FilterBar({ list }: FilterBarProps) {
         </div>
 
         <div className="filterbar__controls">
+          {/* 卡片/列表视图切换：收藏页独立偏好，其余浏览页共享一份 */}
+          <ViewToggle scope={isFavorites ? "favorites" : "browse"} />
+
           <Select
             aria-label={t("filter.categoryAria")}
             icon={<Hash size={13} />}

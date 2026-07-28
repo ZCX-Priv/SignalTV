@@ -74,6 +74,8 @@ export const dict = {
   "toast.sortSet": "排序：{name}",
   "toast.nsfwOn": "已开启成人内容显示",
   "toast.nsfwOff": "已隐藏成人内容",
+  "toast.viewGrid": "已切换为卡片视图",
+  "toast.viewList": "已切换为列表视图",
   "toast.historyDeleted": "已删除 {count} 条播放记录",
   "toast.themeSwitched": "已切换至{name}模式",
   "toast.langSwitched": "已切换至{name}",
@@ -110,6 +112,9 @@ export const dict = {
   "filter.nsfwTitle": "包含成人内容",
   "filter.nsfwShown": "已显示成人内容",
   "filter.nsfwHidden": "已隐藏成人内容",
+  "filter.viewAria": "展示形态",
+  "filter.viewGrid": "卡片视图",
+  "filter.viewList": "列表视图",
 
   // ── 排序选项 ──
   "sort.default": "默认",

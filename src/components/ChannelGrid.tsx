@@ -49,6 +49,11 @@ export function ChannelGrid({ list }: ChannelGridProps) {
   const probeLatencyForIds = useStore((s) => s.probeLatencyForIds);
   const activeChannelId = useStore((s) => s.activeChannelId);
   const favoritesCount = useStore((s) => s.favorites.length);
+  // 卡片/列表展示形态：收藏页独立偏好，其余浏览页共享一份；
+  // 列表态仅加修饰类，卡片 JSX 不变（样式见 .grid--list）
+  const gridLayout = useStore((s) =>
+    s.gridLayouts[view.kind === "favorites" ? "favorites" : "browse"],
+  );
 
   // 可见性优先探测：shown 变化时 debounce 150ms 触发，
   // 让首屏可见频道的延迟标签 1-3 秒内出现，而非等全量探测。
@@ -86,7 +91,7 @@ export function ChannelGrid({ list }: ChannelGridProps) {
 
   return (
     <div className="grid-wrap">
-      <div className="grid">
+      <div className={`grid ${gridLayout === "list" ? "grid--list" : ""}`}>
         {shown.map((c, i) => (
           <ChannelCard key={c.id} channel={c} index={i} />
         ))}

@@ -57,6 +57,8 @@ export const dict: Dict = {
   "toast.sortSet": "並び替え：{name}",
   "toast.nsfwOn": "アダルトコンテンツを表示しました",
   "toast.nsfwOff": "アダルトコンテンツを非表示にしました",
+  "toast.viewGrid": "カード表示に切り替えました",
+  "toast.viewList": "リスト表示に切り替えました",
   "toast.historyDeleted": "視聴履歴を {count} 件削除しました",
   "toast.themeSwitched": "{name}モードに切り替えました",
   "toast.langSwitched": "言語を{name}に切り替えました",
@@ -94,6 +96,9 @@ export const dict: Dict = {
   "filter.nsfwTitle": "アダルトコンテンツを含める",
   "filter.nsfwShown": "アダルトコンテンツ表示中",
   "filter.nsfwHidden": "アダルトコンテンツ非表示",
+  "filter.viewAria": "表示形式",
+  "filter.viewGrid": "カード表示",
+  "filter.viewList": "リスト表示",
 
   // ── 並び替え ──
   "sort.default": "デフォルト",

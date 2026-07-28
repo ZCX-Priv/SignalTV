@@ -1010,6 +1010,36 @@
   border-color: var(--line-strong);
 }
 
+/* 卡片/列表视图切换分段控件：高度与相邻 .toggle、Select 触发器对齐（均 36px），
+   背景/描边沿用 .toggle 的 token，激活态用品牌红区分于 nsfw 的琥珀色 */
+.seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  padding: 0 3px;
+  background: var(--bg-1);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+}
+.seg__btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--ink-mute);
+  transition: all var(--dur-micro) var(--ease);
+}
+.seg__btn:hover {
+  color: var(--ink-dim);
+  background: var(--bg-3);
+}
+.seg__btn.is-on {
+  color: var(--signaltv);
+  background: rgba(255, 59, 48, 0.1);
+}
+
 /* ============ 频道网格 ============ */
 .grid-wrap {
   padding-bottom: 40px;
@@ -1304,6 +1334,45 @@
 .tag--muted {
   color: var(--ink-mute);
   background: transparent;
+}
+
+/* ============ 列表视图（.grid--list 修饰类） ============
+   卡片 JSX 不变，仅由 CSS 把网格卡片重排为横向紧凑行：
+   缩略图固定宽、高随行拉伸（国旗背景 cover 自适应），正文占满余宽 */
+.grid--list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.grid--list .card {
+  flex-direction: row;
+}
+.grid--list .card__media {
+  width: 132px;
+  aspect-ratio: auto;
+  flex-shrink: 0;
+}
+/* 小缩略图内频道序号文字拥挤 → 隐藏 */
+.grid--list .card__pos {
+  display: none;
+}
+.grid--list .card__body {
+  flex: 1;
+  min-width: 0;
+}
+/* 横向空间充裕，名称收敛为单行省略，保持行高紧凑一致 */
+.grid--list .card__name {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+.grid--list .card__net {
+  max-width: 220px;
+}
+/* 窄屏下缩略图再收窄，给文字区留出可读宽度 */
+@media (max-width: 510px) {
+  .grid--list .card__media {
+    width: 96px;
+  }
 }
 
 .grid-loadmore {
@@ -2596,151 +2665,179 @@
   line-height: 1.5;
 }
 
-/* ============ 播放历史（垂直时间线） ============
+/* ============ 播放历史（长时间轴） ============
    头部复用 .filterbar 结构与收藏夹页对齐，容器布局交给 .content，
-   入场动画由统一的 .view-anim 视图层提供，此处仅保留时间线自身样式 */
-/* 延续纵向 flex 链：空态时 .empty 能在筛选栏下方剩余区域居中，
-   有记录时分组区块按正常文档流堆叠不受影响 */
+   入场动画由统一的 .view-anim 视图层提供；一条竖线贯穿全部记录，
+   日期为大节点、每条记录为小节点（HH:mm），卡片挂在节点右侧；
+   卡片自身样式直接复用首页 .card（列表态由 .grid--list 后代选择器提供） */
+/* 延续纵向 flex 链：空态时 .empty 能在筛选栏下方剩余区域居中 */
 .history {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
-.history__group {
-  margin-bottom: 26px;
-}
-.history__group-label {
-  font-size: 11px;
-  color: var(--ink-mute);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  margin-bottom: 10px;
-  padding-left: 2px;
-}
-/* 时间线容器：左侧 2px 竖线由 ::before 绘制，条目在右侧内边距区域内 */
+/* 长时间轴容器：挂 .grid--list 时仅借用其后代卡片的横向行样式，
+   容器自身布局由本处规则覆盖（同特异度、本区块在文件更靠后） */
 .history__timeline {
   position: relative;
-  padding-left: 20px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
+  padding-bottom: 40px;
 }
+/* 贯穿竖线：中心 x=8，大/小节点均对齐此轴；一条线到底
+   （延伸至容器最底部，含 padding-bottom 留白区） */
 .history__timeline::before {
   content: "";
   position: absolute;
-  left: 5px;
-  top: 10px;
-  bottom: 10px;
+  left: 7px;
+  top: 6px;
+  bottom: 0;
   width: 2px;
   background: var(--line-2);
   border-radius: 1px;
 }
-.history__item {
+/* 日期大节点：品牌红大圆点 + 日期标签（今天 / 昨天 / 完整年月日） */
+.history__tl-day {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 12px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  padding-left: 30px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
   color: var(--ink-dim);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background 0.15s var(--ease-soft),
-    border-color 0.15s var(--ease-soft),
-    color 0.15s var(--ease-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
 }
-.history__item:hover:not(:disabled) {
-  background: var(--bg-1);
-  border-color: var(--line);
-  color: var(--ink);
-}
-.history__item.is-gone {
-  opacity: 0.45;
-  cursor: default;
-}
-/* 管理模式下已下线条目可选中删除（未 disabled），光标恢复可点态 */
-.history__item.is-gone:not(:disabled) {
-  cursor: pointer;
-}
-/* 节点圆点：居中对齐到时间线竖线（竖线中心 x=6，相对条目左缘 -20+6-4=-18px） */
-.history__dot {
+.history__tl-day::before {
+  content: "";
   position: absolute;
-  left: -18px;
+  left: 2px;
   top: 50%;
   transform: translateY(-50%);
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--signaltv);
-  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.14);
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.15);
 }
-.history__item.is-gone .history__dot {
-  background: var(--ink-faint);
-  box-shadow: none;
+/* 后续日期组与上一组末卡片拉开层级间距 */
+.history__tl-group + .history__tl-group .history__tl-day {
+  margin-top: 24px;
 }
-.history__time {
-  font-size: 11px;
-  color: var(--ink-mute);
-  width: 58px;
-  flex-shrink: 0;
-  letter-spacing: 0.04em;
-}
-.history__logo {
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  background: var(--bg-2);
-  border: 1px solid var(--line);
+/* 记录行：小节点 + 时间小分类（HH:mm，同分钟只标注一次）+ 卡片组 */
+.history__tl-item {
+  position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  align-items: flex-start;
+  gap: 12px;
+  padding-left: 30px;
+  margin-bottom: 14px;
+}
+/* 小圆点垂直对齐时间标签文本中线（标签行高约 14px → top 4px） */
+.history__tl-item::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+.history__tl-time {
   flex-shrink: 0;
+  width: 44px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
   color: var(--ink-mute);
 }
-.history__logo img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  padding: 3px;
-}
-.history__name {
+/* 同一分钟的卡片组：卡片模式下竖向卡并排、放不下则换行 */
+.history__tl-cards {
   flex: 1;
   min-width: 0;
-  font-size: 13.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.history__country {
-  font-size: 11px;
-  color: var(--ink-mute);
-  flex-shrink: 0;
-}
-.history__play {
-  flex-shrink: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  color: var(--signaltv);
-  opacity: 0;
-  transition: opacity 0.15s var(--ease-soft);
+  flex-wrap: wrap;
+  gap: 12px;
 }
-.history__item:hover:not(:disabled) .history__play {
-  opacity: 1;
+/* 列表模式：横向行卡片纵向逐条堆叠 */
+.history__timeline.grid--list .history__tl-cards {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 10px;
 }
+/* 卡片模式：竖向卡固定宽挂轴侧（长时间轴形态） */
+.history__tl-cards .history-card {
+  width: min(250px, 100%);
+}
+/* 列表模式：横向行卡片占满余宽 */
+.history__timeline.grid--list .history__tl-cards .history-card {
+  width: 100%;
+}
+/* 窄屏：收窄轴侧缩进与时间标签，给卡片留出可读宽度 */
 @media (max-width: 510px) {
-  .history__country {
-    display: none;
+  .history__tl-day,
+  .history__tl-item {
+    padding-left: 24px;
   }
+  .history__tl-item {
+    gap: 8px;
+  }
+  .history__tl-time {
+    width: 36px;
+  }
+}
+/* 卡片包裹层：为管理模式勾选覆盖层提供定位基准 */
+.history-card {
+  position: relative;
+  min-width: 0;
+  display: flex;
+}
+.history-card > .card {
+  flex: 1;
+  min-width: 0;
+}
+/* 已下线降级卡：无流可播，整体压暗并取消可点手势 */
+.history-card--gone > .card {
+  opacity: 0.5;
+  cursor: default;
+}
+/* 管理模式覆盖按钮：盖住整卡拦截点击（含收藏星标），
+   圆角与 .card 一致避免选中描边溢出卡片轮廓 */
+.history-card__select {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: 12px;
+  cursor: pointer;
+}
+/* 选中态：品牌红内描边 + 淡红罩层，与卡片 hover 态区分层级 */
+.history-card.is-selected .history-card__select {
+  background: rgba(255, 59, 48, 0.08);
+  box-shadow: inset 0 0 0 2px rgba(255, 59, 48, 0.55);
+}
+/* 勾选指示：卡片右下角，选中态品牌红实底 + 白色对勾
+   （右上角会与缩略图 LIVE 徽标重叠，故置于右下） */
+.history-card__check {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1.5px solid var(--line-2);
+  background: var(--bg-2);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition:
+    background 0.15s var(--ease-soft),
+    border-color 0.15s var(--ease-soft);
+}
+.history-card__check.is-on {
+  background: var(--signaltv);
+  border-color: var(--signaltv);
 }
 /* 移动端（项目统一断点 1080px）：管理按钮只留图标，文字隐藏省空间，
    可访问名称由按钮的 aria-label/title 兼顾 */
@@ -2750,7 +2847,7 @@
   }
 }
 /* 管理工具条：全选/全不选 + 选中计数 + 删除所选，
-   仅管理模式渲染，位于筛选栏与时间线之间 */
+   仅管理模式渲染，位于筛选栏与卡片分组区之间 */
 .history__manage-bar {
   display: flex;
   align-items: center;
@@ -2770,31 +2867,6 @@
   color: var(--ink-mute);
   letter-spacing: 0.04em;
   text-align: right;
-}
-/* 复选框：管理模式下插在时间戳前；选中态品牌红实底 + 白色对勾 */
-.history__check {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1.5px solid var(--line-2);
-  background: var(--bg-2);
-  color: #fff;
-  transition:
-    background 0.15s var(--ease-soft),
-    border-color 0.15s var(--ease-soft);
-}
-.history__check.is-on {
-  background: var(--signaltv);
-  border-color: var(--signaltv);
-}
-/* 选中条目：品牌色描边 + 淡红底，与 hover 态区分层级 */
-.history__item.is-selected {
-  background: rgba(255, 59, 48, 0.06);
-  border-color: rgba(255, 59, 48, 0.35);
-  color: var(--ink);
 }
 
 /* ============ 通用确认模态窗（ConfirmModal） ============
