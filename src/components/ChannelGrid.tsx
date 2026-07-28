@@ -27,7 +27,10 @@ export function ChannelGrid({ list }: ChannelGridProps) {
     setLimit(PAGE);
   }, [view, filter, list.length]);
 
-  // 通过 IntersectionObserver 实现无限滚动
+  // 通过 IntersectionObserver 实现无限滚动。
+  // 依赖含 limit：IO 回调只在交叉状态翻转时触发，快滚时加载一页后
+  // 哨兵若仍在视口内不会再触发（断流→底部空白）；每页重建 observer，
+  // observe() 对仍处交叉态的哨兵立即触发回调，链式补页直到哨兵离开视口
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
@@ -39,11 +42,11 @@ export function ChannelGrid({ list }: ChannelGridProps) {
           }
         }
       },
-      { rootMargin: "600px 0px" },
+      { rootMargin: "900px 0px" },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [list.length]);
+  }, [list.length, limit]);
 
   const shown = useMemo(() => list.slice(0, limit), [list, limit]);
   const probeLatencyForIds = useStore((s) => s.probeLatencyForIds);

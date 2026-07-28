@@ -225,10 +225,7 @@
 .sidebar.is-collapsed .nav__item span:not(.nav__flag),
 .sidebar.is-collapsed .sidebar__label span,
 .sidebar.is-collapsed .sidebar__label-action,
-.sidebar.is-collapsed .nav__count,
-.sidebar.is-collapsed .sidebar__footer-row span,
-.sidebar.is-collapsed .sidebar__footer-row--dim,
-.sidebar.is-collapsed .sidebar__settings-btn span {
+.sidebar.is-collapsed .nav__count {
   display: none;
 }
 .sidebar.is-collapsed .nav__item {
@@ -371,78 +368,19 @@
   text-overflow: ellipsis;
 }
 
+/* 侧栏底部：纯布局容器（分隔线 + 内边距），按钮复用上方 .nav__item
+   同一套样式；左右内边距 14px 与 .sidebar__scroll 一致，使按钮左缘
+   与首页/收藏夹/历史那组对齐 */
 .sidebar__footer {
   margin: 0 -14px 0;
-  padding: 14px 22px;
+  padding: 14px 14px 0;
   border-top: 1px solid var(--line);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  color: var(--ink-mute);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
-.sidebar__footer-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.sidebar__footer-row--dim {
-  color: var(--ink-faint);
-  justify-content: space-between;
-}
-.sidebar__footer-row .dot {
-  width: 5px;
-  height: 5px;
-}
-.sidebar__settings-btn {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 4px;
-  padding: 4px 0;
-  width: 100%;
-  border-radius: 6px;
-  color: var(--ink-mute);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  transition: color 0.13s var(--ease), background 0.13s var(--ease);
-}
-.sidebar__settings-btn:hover {
-  color: var(--ink);
-  background: var(--bg-2);
-}
-.sidebar__settings-btn.is-active {
-  color: var(--ink);
-}
-.sidebar__settings-btn.is-active::before {
-  content: "";
-  position: absolute;
-  left: -14px;
-  top: 4px;
-  bottom: 4px;
-  width: 2px;
-  background: var(--signaltv);
-  border-radius: 2px;
-}
-.sidebar__settings-btn svg {
-  flex-shrink: 0;
-  opacity: 0.85;
-}
-
-/* 状态按钮：dot 推到右侧，文字与图标紧贴（与 settings-btn 一致） */
-.sidebar__status-btn .dot {
+/* 状态按钮的信号点：推到右侧，尺寸比默认 .dot 小一号 */
+.sidebar__footer .nav__item .dot {
   margin-left: auto;
-  margin-right: 9px;
   width: 5px;
   height: 5px;
-}
-
-/* 折叠态：隐藏文字与 dot，只留图标（与 settings-btn 一致） */
-.sidebar.is-collapsed .sidebar__status-btn span {
-  display: none;
 }
 
 /* 注：reduced-motion 下的侧栏/抽屉过渡禁用已由 index.css 的全局兜底规则统一覆盖 */
@@ -2287,10 +2225,7 @@
   .sidebar.is-collapsed .nav__item span,
   .sidebar.is-collapsed .sidebar__label span,
   .sidebar.is-collapsed .sidebar__label-action,
-  .sidebar.is-collapsed .nav__count,
-  .sidebar.is-collapsed .sidebar__footer-row span,
-  .sidebar.is-collapsed .sidebar__footer-row--dim,
-  .sidebar.is-collapsed .sidebar__settings-btn span {
+  .sidebar.is-collapsed .nav__count {
     display: inline;
   }
   .sidebar.is-collapsed .nav__item {

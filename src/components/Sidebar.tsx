@@ -218,32 +218,34 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div className="sidebar__footer mono">
-          <button
-            className={`sidebar__settings-btn sidebar__status-btn ${view.kind === "status" ? "is-active" : ""}`}
-            onClick={() => {
-              setView({ kind: "status" });
-              toast.info(t("toast.gotoStatus"));
-            }}
-            aria-label={t("sidebar.status")}
-            title={t("sidebar.status")}
-          >
-            <Radio size={13} />
-            <span>{t("sidebar.status")}</span>
-            <span className="dot" aria-hidden />
-          </button>
-          <button
-            className={`sidebar__settings-btn ${view.kind === "settings" ? "is-active" : ""}`}
-            onClick={() => {
-              setView({ kind: "settings" });
-              toast.info(t("toast.gotoSettings"));
-            }}
-            aria-label={t("sidebar.settings")}
-            title={t("sidebar.settings")}
-          >
-            <Settings size={13} />
-            <span>{t("sidebar.settings")}</span>
-          </button>
+        <div className="sidebar__footer">
+          <nav className="nav">
+            <button
+              className={`nav__item ${view.kind === "status" ? "is-active" : ""}`}
+              onClick={() => {
+                setView({ kind: "status" });
+                toast.info(t("toast.gotoStatus"));
+              }}
+              aria-label={t("sidebar.status")}
+              title={t("sidebar.status")}
+            >
+              <Radio size={15} />
+              <span>{t("sidebar.status")}</span>
+              <span className="dot" aria-hidden />
+            </button>
+            <button
+              className={`nav__item ${view.kind === "settings" ? "is-active" : ""}`}
+              onClick={() => {
+                setView({ kind: "settings" });
+                toast.info(t("toast.gotoSettings"));
+              }}
+              aria-label={t("sidebar.settings")}
+              title={t("sidebar.settings")}
+            >
+              <Settings size={15} />
+              <span>{t("sidebar.settings")}</span>
+            </button>
+          </nav>
         </div>
       </div>
     </aside>

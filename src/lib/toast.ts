@@ -133,7 +133,9 @@ export const toastStore = createStore<ToastState>((set, get) => ({
       createdAt: Date.now(),
     };
     set((s) => {
-      const next = [...s.toasts, toast];
+      // sticky 条目（更新 toast）插入队头：顶部居中列自上而下渲染，
+      // 队头 = 视觉最顶部，后续普通 toast 全部排在其下方，永久置顶
+      const next = item.sticky ? [toast, ...s.toasts] : [...s.toasts, toast];
       // 滚动上限：未在关闭中的条目超过 5 条时，从头部（最旧）直接淘汰多余的，
       // 不走 180ms 关闭动画，避免快速连发时动画堆积；
       // sticky 条目（更新 toast）跳过淘汰，不被普通 toast 连发挤掉
