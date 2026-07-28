@@ -14,6 +14,8 @@ export const dict: Dict = {
   "common.retry": "Erneut versuchen",
   "common.close": "Schließen",
   "common.clear": "Löschen",
+  "common.confirm": "Bestätigen",
+  "common.cancel": "Abbrechen",
   "common.channel": "Kanal",
 
   // ── Kopfzeile ──
@@ -55,7 +57,10 @@ export const dict: Dict = {
   "toast.sortSet": "Sortierung: {name}",
   "toast.nsfwOn": "Inhalte für Erwachsene werden angezeigt",
   "toast.nsfwOff": "Inhalte für Erwachsene ausgeblendet",
-  "toast.historyCleared": "Wiedergabeverlauf gelöscht",
+  "toast.historyDeleted": {
+    one: "{count} Verlaufseintrag gelöscht",
+    other: "{count} Verlaufseinträge gelöscht",
+  },
   "toast.themeSwitched": "Zum Modus „{name}“ gewechselt",
   "toast.langSwitched": "Sprache auf {name} umgestellt",
   "toast.updateModeSwitched": "Update-Modus: {name}",
@@ -119,7 +124,17 @@ export const dict: Dict = {
   "history.eyebrow": "Wiedergabeprotokoll",
   "history.title": "Wiedergabeverlauf",
   "history.countRecords": { one: "{count} Eintrag", other: "{count} Einträge" },
-  "history.clear": "Verlauf löschen",
+  "history.manage": "Verwalten",
+  "history.exitManage": "Fertig",
+  "history.selectAll": "Alle auswählen",
+  "history.selectNone": "Auswahl aufheben",
+  "history.selectedCount": { one: "{count} ausgewählt", other: "{count} ausgewählt" },
+  "history.deleteSelected": "Auswahl löschen",
+  "history.deleteConfirmTitle": "Verlaufseinträge löschen",
+  "history.deleteConfirmDesc": {
+    one: "Der ausgewählte {count} Eintrag wird gelöscht. Dies kann nicht rückgängig gemacht werden.",
+    other: "Die ausgewählten {count} Einträge werden gelöscht. Dies kann nicht rückgängig gemacht werden.",
+  },
   "history.emptyTitle": "Noch kein Wiedergabeverlauf",
   "history.emptyDesc":
     "Sobald ein Kanal abgespielt wird, erscheint hier jede Wiedergabe als Zeitleiste.",

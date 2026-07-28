@@ -15,6 +15,8 @@ export const dict: Dict = {
   "common.retry": "Повторить",
   "common.close": "Закрыть",
   "common.clear": "Очистить",
+  "common.confirm": "Подтвердить",
+  "common.cancel": "Отмена",
   "common.channel": "Канал",
 
   // ── Шапка ──
@@ -56,7 +58,12 @@ export const dict: Dict = {
   "toast.sortSet": "Сортировка: {name}",
   "toast.nsfwOn": "Контент для взрослых показан",
   "toast.nsfwOff": "Контент для взрослых скрыт",
-  "toast.historyCleared": "История просмотров очищена",
+  "toast.historyDeleted": {
+    one: "Удалена {count} запись истории",
+    few: "Удалено {count} записи истории",
+    many: "Удалено {count} записей истории",
+    other: "Удалено {count} записей истории",
+  },
   "toast.themeSwitched": "Включён режим «{name}»",
   "toast.langSwitched": "Язык переключён: {name}",
   "toast.updateModeSwitched": "Режим обновления: {name}",
@@ -137,7 +144,24 @@ export const dict: Dict = {
     many: "{count} записей",
     other: "{count} записей",
   },
-  "history.clear": "Очистить историю",
+  "history.manage": "Управление",
+  "history.exitManage": "Готово",
+  "history.selectAll": "Выбрать всё",
+  "history.selectNone": "Снять выделение",
+  "history.selectedCount": {
+    one: "Выбрана {count} запись",
+    few: "Выбрано {count} записи",
+    many: "Выбрано {count} записей",
+    other: "Выбрано {count} записей",
+  },
+  "history.deleteSelected": "Удалить выбранное",
+  "history.deleteConfirmTitle": "Удаление записей",
+  "history.deleteConfirmDesc": {
+    one: "Будет удалена выбранная {count} запись истории. Это действие нельзя отменить.",
+    few: "Будут удалены выбранные {count} записи истории. Это действие нельзя отменить.",
+    many: "Будет удалено {count} выбранных записей истории. Это действие нельзя отменить.",
+    other: "Будет удалено {count} выбранных записей истории. Это действие нельзя отменить.",
+  },
   "history.emptyTitle": "Истории просмотров пока нет",
   "history.emptyDesc":
     "Включите любой канал — каждый просмотр появится здесь в виде хронологии.",

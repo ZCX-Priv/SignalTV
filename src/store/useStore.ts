@@ -322,6 +322,7 @@ interface State {
   toggleFavorite: (id: string) => void;
   pushRecent: (id: string) => void;
   pushHistory: (id: string) => void;
+  removeHistoryEntries: (ids: string[]) => void;
   clearHistory: () => void;
   pushRecentCategory: (id: string) => void;
   pushRecentCountry: (code: string) => void;
@@ -535,6 +536,12 @@ export const useStore = create<State>()(
             HISTORY_LIMIT
           ),
         })),
+      removeHistoryEntries: (ids) =>
+        set((s) => {
+          // history 按频道去重，id 即条目唯一键；转 Set 后单次 filter 完成批量删除
+          const gone = new Set(ids);
+          return { history: s.history.filter((h) => !gone.has(h.id)) };
+        }),
       clearHistory: () => set({ history: [] }),
       pushRecentCategory: (id) =>
         set((s) => ({

@@ -14,6 +14,8 @@ export const dict: Dict = {
   "common.retry": "Reintentar",
   "common.close": "Cerrar",
   "common.clear": "Borrar",
+  "common.confirm": "Confirmar",
+  "common.cancel": "Cancelar",
   "common.channel": "Canal",
 
   // ── Cabecera ──
@@ -55,7 +57,10 @@ export const dict: Dict = {
   "toast.sortSet": "Orden: {name}",
   "toast.nsfwOn": "Contenido adulto visible",
   "toast.nsfwOff": "Contenido adulto oculto",
-  "toast.historyCleared": "Historial de reproducción borrado",
+  "toast.historyDeleted": {
+    one: "{count} registro del historial eliminado",
+    other: "{count} registros del historial eliminados",
+  },
   "toast.themeSwitched": "Modo «{name}» activado",
   "toast.langSwitched": "Idioma cambiado a {name}",
   "toast.updateModeSwitched": "Modo de actualización: {name}",
@@ -119,7 +124,17 @@ export const dict: Dict = {
   "history.eyebrow": "Registro de reproducción",
   "history.title": "Historial de reproducción",
   "history.countRecords": { one: "{count} registro", other: "{count} registros" },
-  "history.clear": "Borrar historial",
+  "history.manage": "Gestionar",
+  "history.exitManage": "Hecho",
+  "history.selectAll": "Seleccionar todo",
+  "history.selectNone": "Deseleccionar todo",
+  "history.selectedCount": { one: "{count} seleccionado", other: "{count} seleccionados" },
+  "history.deleteSelected": "Eliminar selección",
+  "history.deleteConfirmTitle": "Eliminar registros",
+  "history.deleteConfirmDesc": {
+    one: "Se eliminará el registro seleccionado ({count}). Esta acción no se puede deshacer.",
+    other: "Se eliminarán los {count} registros seleccionados. Esta acción no se puede deshacer.",
+  },
   "history.emptyTitle": "Aún no hay historial",
   "history.emptyDesc":
     "Reproduce cualquier canal y cada visualización quedará registrada aquí como una línea de tiempo.",

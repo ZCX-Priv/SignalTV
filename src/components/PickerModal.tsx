@@ -167,6 +167,7 @@ export function PickerModal({
               value={q}
               onChange={(e) => setQ(e.target.value)}
               aria-label={searchAriaLabel}
+              spellCheck={false}
             />
             {q && (
               <button

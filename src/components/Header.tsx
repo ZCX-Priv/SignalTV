@@ -155,6 +155,7 @@ export function Header() {
           onChange={(e) => setFilter({ q: e.target.value })}
           onBlur={onSearchBlur}
           aria-label={t("header.searchAria")}
+          spellCheck={false}
           ref={searchInputRef}
         />
         {filter.q ? (

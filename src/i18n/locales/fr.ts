@@ -14,6 +14,8 @@ export const dict: Dict = {
   "common.retry": "Réessayer",
   "common.close": "Fermer",
   "common.clear": "Effacer",
+  "common.confirm": "Confirmer",
+  "common.cancel": "Annuler",
   "common.channel": "Chaîne",
 
   // ── En-tête ──
@@ -55,7 +57,10 @@ export const dict: Dict = {
   "toast.sortSet": "Tri : {name}",
   "toast.nsfwOn": "Contenu adulte affiché",
   "toast.nsfwOff": "Contenu adulte masqué",
-  "toast.historyCleared": "Historique de lecture effacé",
+  "toast.historyDeleted": {
+    one: "{count} entrée d'historique supprimée",
+    other: "{count} entrées d'historique supprimées",
+  },
   "toast.themeSwitched": "Mode « {name} » activé",
   "toast.langSwitched": "Langue changée : {name}",
   "toast.updateModeSwitched": "Mode de mise à jour : {name}",
@@ -119,7 +124,17 @@ export const dict: Dict = {
   "history.eyebrow": "Journal de lecture",
   "history.title": "Historique de lecture",
   "history.countRecords": { one: "{count} entrée", other: "{count} entrées" },
-  "history.clear": "Effacer l'historique",
+  "history.manage": "Gérer",
+  "history.exitManage": "Terminé",
+  "history.selectAll": "Tout sélectionner",
+  "history.selectNone": "Tout désélectionner",
+  "history.selectedCount": { one: "{count} sélectionnée", other: "{count} sélectionnées" },
+  "history.deleteSelected": "Supprimer la sélection",
+  "history.deleteConfirmTitle": "Supprimer des entrées",
+  "history.deleteConfirmDesc": {
+    one: "L'entrée sélectionnée ({count}) sera supprimée. Cette action est irréversible.",
+    other: "Les {count} entrées sélectionnées seront supprimées. Cette action est irréversible.",
+  },
   "history.emptyTitle": "Aucun historique pour le moment",
   "history.emptyDesc":
     "Lancez une chaîne et chaque visionnage sera consigné ici sous forme de chronologie.",
