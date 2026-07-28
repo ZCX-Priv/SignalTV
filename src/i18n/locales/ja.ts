@@ -113,7 +113,6 @@ export const dict: Dict = {
   "grid.emptyDesc": "現在の条件に一致するチャンネルがありません。検索範囲を広げてみてください。",
   "grid.favEmptyTitle": "お気に入りはまだありません",
   "grid.favEmptyDesc": "チャンネルを見ながらお気に入りボタンを押すと、ここにまとめて表示されます。",
-  "grid.loadingMore": "さらに {count} の信号を読み込み中…",
   "grid.footer": "{total} の信号のうち {shown} を表示中",
 
   // ── チャンネルカード ──

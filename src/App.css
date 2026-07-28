@@ -972,12 +972,23 @@
 .grid-wrap {
   padding-bottom: 40px;
 }
+/* 窗口化定位层：高度由 JS 按「总行数 × 行高」内联撑满，滚动条首帧即为
+   全量高度；.grid 绝对定位在其内，只挂载窗口内卡片并用 translateY
+   位移到窗口起始行（位移值见 ChannelGrid 内联样式）。
+   居中宽度约束从 .grid 上移到定位层，保证绝对定位后视觉不变 */
+.grid-space {
+  position: relative;
+  max-width: 1200px;
+  margin: 0 auto;
+}
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 16px;
-  max-width: 1200px;
-  margin: 0 auto;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
 }
 .card {
   display: flex;
@@ -991,6 +1002,18 @@
   transition: transform 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
   animation: fade-up var(--dur-card) var(--ease) both;
   position: relative;
+  /* 离屏降载：窗口上下方 overscan 预挂的离屏卡片跳过 style/layout/paint。
+     占位高取卡片近似高（auto 关键字会在首次渲染后记住实高，
+     列表态矮卡不受估值偏差影响）；宽度由 grid 轨道决定，不受
+     contain-intrinsic-size 影响。fade-up 作用于卡片自身的
+     transform/opacity，与内容绘制跳过互不干扰 */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+}
+/* 窗口滑动期间挂载的卡片静默出现：若每张新挂卡都跑 fade-up，
+   快滚时整屏会持续闪烁；仅视图首帧批次保留入场动画 */
+.card--still {
+  animation: none;
 }
 .card:hover {
   transform: translateY(-3px);
@@ -1303,16 +1326,6 @@
   }
 }
 
-.grid-loadmore {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 30px 0 10px;
-  color: var(--ink-mute);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-}
 .grid-foot {
   text-align: center;
   font-size: 10.5px;

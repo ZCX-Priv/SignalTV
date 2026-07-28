@@ -116,10 +116,6 @@ export const dict: Dict = {
   "grid.emptyDesc": "No channels match the current filters. Try widening your search.",
   "grid.favEmptyTitle": "No favorites yet",
   "grid.favEmptyDesc": "Tap the favorite button while browsing channels and they'll show up here.",
-  "grid.loadingMore": {
-    one: "Loading {count} more signal…",
-    other: "Loading {count} more signals…",
-  },
   "grid.footer": "Showing {shown} of {total} signals",
 
   // ── Channel card ──

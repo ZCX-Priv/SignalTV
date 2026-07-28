@@ -129,7 +129,6 @@ export const dict = {
   "grid.emptyDesc": "没有频道匹配当前筛选条件，请尝试扩大搜索范围。",
   "grid.favEmptyTitle": "暂无收藏",
   "grid.favEmptyDesc": "浏览频道时点击收藏按钮，喜欢的频道会集中在这里。",
-  "grid.loadingMore": "正在加载 {count} 路信号…",
   "grid.footer": "显示 {total} 路信号中的 {shown} 路",
 
   // ── 频道卡片 ──

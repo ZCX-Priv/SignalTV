@@ -88,8 +88,8 @@ function App() {
 
   // 注：原 loaded 后自动触发 runLatencyProbe 的逻辑已移除。
   // 全量探测会挤占弱网首屏带宽（5000 频道 × 16 并发 × 5s 超时），
-  // 改由 ChannelGrid 的 IntersectionObserver 调用 probeLatencyForIds
-  // 按需探测可见 + 预加载范围内的频道（store 层已加弱网检测跳过）。
+  // 改由 ChannelGrid 在渲染窗口变化后 debounce 150ms 调用 probeLatencyForIds，
+  // 按需探测窗口内（可见 + overscan 预挂）频道（store 层已加弱网检测跳过）。
 
   // 注：原主题 useEffect 已移除。
   // syncThemeCache（store 内部函数）会在 setTheme/setThemeMode/onRehydrateStorage

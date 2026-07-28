@@ -1,4 +1,4 @@
-import { memo, type CSSProperties } from "react";
+import { memo, useRef, type CSSProperties } from "react";
 import { Play, Star, Tv2 } from "lucide-react";
 import type { ChannelWithStream } from "../types";
 import { useStore } from "../store/useStore";
@@ -10,9 +10,11 @@ import { LatencyTag } from "./LatencyTag";
 interface Props {
   channel: ChannelWithStream;
   index: number;
+  /** 仅视图首帧挂载的卡片跑 fade-up 入场；窗口滑动期间挂载的卡片静默出现 */
+  animate: boolean;
 }
 
-export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) {
+export const ChannelCard = memo(function ChannelCard({ channel, index, animate }: Props) {
   const { t } = useI18n();
   const openChannel = useStore((s) => s.openChannel);
   const toggleFavorite = useStore((s) => s.toggleFavorite);
@@ -55,12 +57,19 @@ export const ChannelCard = memo(function ChannelCard({ channel, index }: Props) 
     backgroundColor: theme === "light" ? "var(--bg-3)" : "#16161c",
   };
 
+  // 入场参数按挂载瞬间冻结：窗口滑动会改变卡片在窗口内的 index，
+  // 若 animation-delay 随之变化会重启已完成的 fade-up 造成闪烁；
+  // boot 期结束后父层翻转 animate 也不得打断已挂载卡片的动画。
+  // 首屏错峰仅限前 24 张，其余首帧卡片零延迟立即淡入
+  const entry = useRef({
+    animate,
+    delay: animate && index < 24 ? index * 28 : 0,
+  }).current;
+
   return (
     <article
-      className="card"
-      // 入场错峰仅限首屏前 24 张；流式追加的卡片零延迟立即淡入，
-      // 避免 fade-up both 的延迟隐形期在快滚时造成底部空白后成片浮现
-      style={{ animationDelay: `${index < 24 ? index * 28 : 0}ms` }}
+      className={`card ${entry.animate ? "" : "card--still"}`}
+      style={entry.animate ? { animationDelay: `${entry.delay}ms` } : undefined}
       onClick={() => openChannel(channel.id)}
     >
       <div className="card__media" style={mediaStyle}>

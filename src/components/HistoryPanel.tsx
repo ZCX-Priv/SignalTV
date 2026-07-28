@@ -63,7 +63,8 @@ const HistoryCard = memo(function HistoryCard({
       className={`history-card${ch ? "" : " history-card--gone"}${selected ? " is-selected" : ""}`}
     >
       {ch ? (
-        <ChannelCard channel={ch} index={index} />
+        // 历史页非窗口化渲染，卡片一律保留 fade-up 入场
+        <ChannelCard channel={ch} index={index} animate />
       ) : (
         // 降级占位卡：复用 .card 骨架与入场动画，无流可播 → 不可点击
         <article className="card" style={{ animationDelay: `${Math.min(index, 24) * 28}ms` }}>

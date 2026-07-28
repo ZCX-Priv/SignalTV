@@ -113,7 +113,6 @@ export const dict: Dict = {
   "grid.emptyDesc": "현재 필터에 맞는 채널이 없습니다. 검색 범위를 넓혀 보세요.",
   "grid.favEmptyTitle": "아직 즐겨찾기가 없습니다",
   "grid.favEmptyDesc": "채널을 둘러보며 즐겨찾기 버튼을 누르면 여기에 모입니다.",
-  "grid.loadingMore": "신호 {count}개 불러오는 중…",
   "grid.footer": "신호 {total}개 중 {shown}개 표시",
 
   // ── 채널 카드 ──

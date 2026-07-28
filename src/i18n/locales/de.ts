@@ -116,10 +116,6 @@ export const dict: Dict = {
   "grid.emptyDesc": "Keine Kanäle entsprechen den aktuellen Filtern. Suche erweitern.",
   "grid.favEmptyTitle": "Noch keine Favoriten",
   "grid.favEmptyDesc": "Tippen Sie beim Stöbern auf die Favoriten-Schaltfläche – Ihre Lieblingskanäle erscheinen dann hier.",
-  "grid.loadingMore": {
-    one: "{count} weiteres Signal wird geladen…",
-    other: "{count} weitere Signale werden geladen…",
-  },
   "grid.footer": "{shown} von {total} Signalen angezeigt",
 
   // ── Kanalkarte ──

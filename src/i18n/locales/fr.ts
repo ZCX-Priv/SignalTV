@@ -116,10 +116,6 @@ export const dict: Dict = {
   "grid.emptyDesc": "Aucune chaîne ne correspond aux filtres actuels. Élargissez la recherche.",
   "grid.favEmptyTitle": "Aucun favori pour l'instant",
   "grid.favEmptyDesc": "Appuyez sur le bouton favori en parcourant les chaînes : elles apparaîtront ici.",
-  "grid.loadingMore": {
-    one: "Chargement de {count} signal supplémentaire…",
-    other: "Chargement de {count} signaux supplémentaires…",
-  },
   "grid.footer": "{shown} signaux affichés sur {total}",
 
   // ── Carte de chaîne ──
