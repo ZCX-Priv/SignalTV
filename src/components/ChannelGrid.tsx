@@ -4,6 +4,7 @@ import { useStore } from "../store/useStore";
 import type { ChannelWithStream } from "../types";
 import { fmt } from "../lib/format";
 import { useI18n } from "../i18n";
+import { useLayoutSwitchAnim } from "../hooks/useLayoutSwitchAnim";
 import { ChannelCard } from "./ChannelCard";
 import { EmptyState } from "./EmptyState";
 
@@ -32,6 +33,9 @@ export function ChannelGrid({ list }: ChannelGridProps) {
   const gridLayout = useStore((s) =>
     s.gridLayouts[view.kind === "favorites" ? "favorites" : "browse"],
   );
+  // 切换缩放过渡：渲染类名用 shownLayout（滞后一个缩出阶段），动画类挂外层
+  // .grid-wrap——.grid 自身有虚拟化内联 translateY，keyframe transform 会覆盖它
+  const { shownLayout, animClass } = useLayoutSwitchAnim(gridLayout);
 
   const spaceRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -110,7 +114,11 @@ export function ChannelGrid({ list }: ChannelGridProps) {
     return () => ro.disconnect();
     // 依赖含 view：Hero 随视图显隐只改变 grid-space 上方偏移（geom.top）
     // 而不改其宽高，ResizeObserver 不会触发，须靠依赖重跑实测
-  }, [list.length, gridLayout, view]);
+    // 依赖 shownLayout（实际渲染形态）而非 store 偏好：几何须在类名切换后实测。
+    // 依赖 animClass：缩放动画期间 transform 会污染 getBoundingClientRect
+    // 实测的 geom.top（transform 变化不触发 RO，错值会永久残留），
+    // 回到 idle（animClass 变空、transform 已移除）后强制重测一次纠正
+  }, [list.length, shownLayout, view, animClass]);
 
   // 窗口计算：scroll 经 rAF 节流采样，每帧 O(1) 纯算术——
   // 1) scrollTop 差分算瞬时速度并 EMA 平滑（纯滚动不脏布局，读取无 reflow）；
@@ -219,11 +227,11 @@ export function ChannelGrid({ list }: ChannelGridProps) {
   const offsetY = Math.floor(range.start / geom.cols) * geom.rowH;
 
   return (
-    <div className="grid-wrap">
+    <div className={`grid-wrap ${animClass}`}>
       <div ref={spaceRef} className="grid-space" style={{ height: spaceH }}>
         <div
           ref={gridRef}
-          className={`grid ${gridLayout === "list" ? "grid--list" : ""}`}
+          className={`grid ${shownLayout === "list" ? "grid--list" : ""}`}
           style={{ transform: `translateY(${offsetY}px)` }}
         >
           {shown.map((c, i) => (

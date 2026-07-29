@@ -40,6 +40,27 @@ const LATENCY_FLUSH_MS = 200;
 // 会重复探测同一批 URL，用此集合拦截，避免浪费带宽（弱网致命）
 const probeInFlight = new Set<string>();
 
+// 手动全量探测（状态页）：模块级 controller 供取消；进度写回 200ms 节流，
+// 避免 5000+ 次回调逐条 setState 刷屏
+let fullProbeController: AbortController | null = null;
+let fullProbeProgressTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** 手动全量探测的运行态（非持久化，仅状态页进度展示用） */
+export interface ProbeRun {
+  running: boolean;
+  total: number;
+  done: number;
+}
+
+/** 全量探测结果汇总（调用方据此弹 toast；null = 未启动/重复调用） */
+export interface ProbeRunSummary {
+  /** 实际完成探测的频道数（取消时小于 total） */
+  done: number;
+  /** 可达（延迟 >= 0）的频道数 */
+  ok: number;
+  aborted: boolean;
+}
+
 function batchSetLatency(id: string, ms: number) {
   pendingLatency.set(id, ms);
   if (flushTimer) return;
@@ -195,29 +216,27 @@ export async function getInitialTimezone(): Promise<TimezonePref> {
   return "auto";
 }
 
-// 主题切换瞬间禁用所有过渡/动画：在 <html> 上加 .theme-transitioning 类，
-// CSS 规则把该类下所有元素的 transition-duration / animation-duration 强制为 0s，
-// 等效于"瞬时切换"，避免带 transition 的元素缓慢过渡到新主题色形成扎眼时差。
-// 双 RAF 后移除：第一帧 React 提交新 theme 到 DOM（data-theme 变化），
-// 第二帧浏览器完成重绘，此时再恢复过渡行为已无可见延迟。
-// 兜底：100ms 后强制清理，防止 set 抛错或 RAF 被打断导致类永久残留
-// （CSS html.theme-transitioning * 会禁用所有动画，永久残留会让应用视觉崩坏）
-function disableTransitionsBriefly(): void {
+// 主题切换全局颜色过渡：在 <html> 上加 .theme-anim 类，CSS 规则强制所有元素
+// 的颜色类属性（background/color/border/fill/stroke/box-shadow）以 0.3s 统一过渡，
+// 新旧主题间平滑渐变而非瞬切；各元素自带的零散 transition 时长也被统一，
+// 消除快慢不一的时差。先强制回流确保类生效后再切 data-theme；过渡结束
+// （400ms，略大于 CSS 的 0.3s）后移除类恢复各元素原有过渡行为。
+// 重复切换时先清旧定时器，避免上一轮的移除把本轮过渡截断。
+// 减弱动效偏好下 CSS 规则被 media 排除，保持瞬切。
+let themeAnimTimer: ReturnType<typeof setTimeout> | null = null;
+const THEME_ANIM_MS = 400;
+
+function enableThemeTransition(): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  root.classList.add("theme-transitioning");
-  // 强制回流，确保 .theme-transitioning 类先生效再切换 data-theme
+  if (themeAnimTimer) clearTimeout(themeAnimTimer);
+  root.classList.add("theme-anim");
+  // 强制回流，确保 .theme-anim 的过渡规则先生效再切换 data-theme
   void root.offsetHeight;
-  const fallback = setTimeout(
-    () => root.classList.remove("theme-transitioning"),
-    100,
-  );
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      clearTimeout(fallback);
-      root.classList.remove("theme-transitioning");
-    });
-  });
+  themeAnimTimer = setTimeout(() => {
+    root.classList.remove("theme-anim");
+    themeAnimTimer = null;
+  }, THEME_ANIM_MS);
 }
 
 export type SortKey =
@@ -267,6 +286,9 @@ export interface HistoryEntry {
 
 // 历史上限：超出截断尾部（最旧），避免持久化体积无限增长
 const HISTORY_LIMIT = 200;
+
+// 搜索历史上限：去重置顶后截断尾部（仿 YouTube 搜索框下拉）
+const SEARCH_HISTORY_LIMIT = 20;
 
 // 错峰入场总时长：末行延迟 1.4s + 淡入 0.4s，须与 App.css .loader__l5 延迟及
 // fade-in 时长同步（Loader 合并行门控与 init 停留时长计算共用）
@@ -319,6 +341,8 @@ interface State {
 
   // 延迟探测
   latency: Map<string, number>; // 频道id → 延迟ms，-1 表示失败
+  /** 手动全量探测运行态（状态页进度条；null = 未在运行） */
+  probeRun: ProbeRun | null;
 
   // 界面状态
   view: View;
@@ -327,6 +351,7 @@ interface State {
   favorites: string[];
   recents: string[]; // 最近观看，最新在前
   history: HistoryEntry[]; // 播放历史，最新在前，每次播放追加一条
+  searchHistory: string[]; // 搜索历史词，最新在前，回车/带词打开频道时记录，持久化
   recentCategories: string[]; // 最近使用的分类，最新在前
   recentCountries: string[]; // 最近使用的国家 code，最新在前
   sidebarCollapsed: boolean; // 桌面端侧边栏收起
@@ -350,9 +375,15 @@ interface State {
   pushHistory: (id: string) => void;
   removeHistoryEntries: (ids: string[]) => void;
   clearHistory: () => void;
+  pushSearchHistory: (term: string) => void;
+  removeSearchHistory: (terms: string[]) => void;
   pushRecentCategory: (id: string) => void;
   pushRecentCountry: (code: string) => void;
   probeLatencyForIds: (ids: string[]) => Promise<void>;
+  /** 状态页手动全量检测：探测所有有流频道（含已探测过的，真重测） */
+  runFullProbe: () => Promise<ProbeRunSummary | null>;
+  /** 取消进行中的全量检测 */
+  cancelFullProbe: () => void;
   toggleSidebar: () => void;
   setMobileSidebar: (open: boolean) => void;
   setSearchOpen: (open: boolean) => void;
@@ -382,9 +413,11 @@ export const useStore = create<State>()(
       favorites: [],
       recents: [],
       history: [],
+      searchHistory: [],
       recentCategories: [],
       recentCountries: [],
       latency: new Map(),
+      probeRun: null,
       sidebarCollapsed: false,
       mobileSidebarOpen: false,
       searchOpen: false,
@@ -560,6 +593,8 @@ export const useStore = create<State>()(
         if (id) {
           get().pushRecent(id);
           get().pushHistory(id);
+          // 带搜索词打开频道 = 该词搜到了结果，记入搜索历史（与回车提交同源）
+          get().pushSearchHistory(get().filter.q);
         }
         set({ activeChannelId: id });
       },
@@ -588,6 +623,22 @@ export const useStore = create<State>()(
           return { history: s.history.filter((h) => !gone.has(h.id)) };
         }),
       clearHistory: () => set({ history: [] }),
+      pushSearchHistory: (term) => {
+        const q = term.trim();
+        if (!q) return;
+        set((s) => ({
+          // 同词（大小写不敏感）去重置顶，保留最新一次的原始大小写
+          searchHistory: [
+            q,
+            ...s.searchHistory.filter((h) => h.toLowerCase() !== q.toLowerCase()),
+          ].slice(0, SEARCH_HISTORY_LIMIT),
+        }));
+      },
+      removeSearchHistory: (terms) =>
+        set((s) => {
+          const gone = new Set(terms);
+          return { searchHistory: s.searchHistory.filter((h) => !gone.has(h)) };
+        }),
       pushRecentCategory: (id) =>
         set((s) => ({
           recentCategories: [id, ...s.recentCategories.filter((r) => r !== id)].slice(0, 24),
@@ -633,6 +684,59 @@ export const useStore = create<State>()(
           for (const id of urls.keys()) probeInFlight.delete(id);
         }
       },
+      runFullProbe: async () => {
+        // 重复启动拦截：运行中再点直接返回 null（UI 按钮此时是“取消”态）
+        if (get().probeRun?.running) return null;
+        // 全量收集所有有流频道（不跳过已探测项：手动检测是真重测）
+        const urls = new Map<string, string>();
+        for (const c of get().channels.values()) {
+          if (c.streamUrl) urls.set(c.id, c.streamUrl);
+        }
+        if (urls.size === 0) return null;
+        const controller = new AbortController();
+        fullProbeController = controller;
+        // 登记 in-flight：全量探测期间拦截 ChannelGrid 窗口探测的重复请求
+        for (const id of urls.keys()) probeInFlight.add(id);
+        set({ probeRun: { running: true, total: urls.size, done: 0 } });
+        // 并发与按需探测同策略：弱网 4 / 常规 16
+        const concurrency = get().networkProfile === "slow" ? 4 : 16;
+        let done = 0;
+        let ok = 0;
+        try {
+          await probeBatch(
+            urls,
+            concurrency,
+            (id, ms) => {
+              probeInFlight.delete(id);
+              done++;
+              if (ms >= 0) ok++;
+              batchSetLatency(id, ms);
+              // 进度写回 200ms 节流：5000+ 次回调逐条 setState 会刷屏
+              if (!fullProbeProgressTimer) {
+                fullProbeProgressTimer = setTimeout(() => {
+                  fullProbeProgressTimer = null;
+                  set((s) =>
+                    s.probeRun ? { probeRun: { ...s.probeRun, done } } : {},
+                  );
+                }, 200);
+              }
+            },
+            controller.signal,
+          );
+        } finally {
+          if (fullProbeProgressTimer) {
+            clearTimeout(fullProbeProgressTimer);
+            fullProbeProgressTimer = null;
+          }
+          for (const id of urls.keys()) probeInFlight.delete(id);
+          if (fullProbeController === controller) fullProbeController = null;
+          set({ probeRun: null });
+        }
+        return { done, ok, aborted: controller.signal.aborted };
+      },
+      cancelFullProbe: () => {
+        fullProbeController?.abort();
+      },
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setMobileSidebar: (open) => set({ mobileSidebarOpen: open }),
       setSearchOpen: (open) => set({ searchOpen: open }),
@@ -644,7 +748,7 @@ export const useStore = create<State>()(
         // themeMode === "system" 时根据当前 prefers-color-scheme 推导实际渲染值，
         // 否则直接使用 light/dark 作为渲染值
         const actualTheme: Theme = m === "system" ? getSystemTheme() : m;
-        disableTransitionsBriefly();
+        enableThemeTransition();
         syncThemeCache(actualTheme);
         set({ themeMode: m, theme: actualTheme });
       },
@@ -682,6 +786,7 @@ export const useStore = create<State>()(
         favorites: s.favorites,
         recents: s.recents,
         history: s.history,
+        searchHistory: s.searchHistory,
         recentCategories: s.recentCategories,
         recentCountries: s.recentCountries,
         sidebarCollapsed: s.sidebarCollapsed,
@@ -700,6 +805,9 @@ export const useStore = create<State>()(
         if (!Array.isArray(state.recents)) state.recents = [];
         if (!Array.isArray(state.recentCategories)) state.recentCategories = [];
         if (!Array.isArray(state.recentCountries)) state.recentCountries = [];
+        state.searchHistory = Array.isArray(state.searchHistory)
+          ? state.searchHistory.filter((h): h is string => typeof h === "string")
+          : [];
         state.history = Array.isArray(state.history)
           ? state.history.filter(
               (h) => !!h && typeof h.id === "string" && typeof h.at === "number",
@@ -758,7 +866,7 @@ if (typeof window !== "undefined" && window.matchMedia) {
     const s = useStore.getState();
     if (s.themeMode !== "system") return;
     const next: Theme = e.matches ? "light" : "dark";
-    disableTransitionsBriefly();
+    enableThemeTransition();
     syncThemeCache(next);
     useStore.setState({ theme: next });
   });

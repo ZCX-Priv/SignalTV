@@ -29,6 +29,15 @@ export const dict: Dict = {
   "header.search": "Search",
   "header.liveCountSuffix": "signals on air",
 
+  // ── Search history dropdown ──
+  "searchHistory.aria": "Search history",
+  "searchHistory.title": "Search history",
+  "searchHistory.manage": "Manage",
+  "searchHistory.done": "Done",
+  "searchHistory.selectAll": "Select all",
+  "searchHistory.selectNone": "Deselect all",
+  "searchHistory.delete": "Delete",
+
   // ── Sidebar ──
   "sidebar.home": "Home",
   "sidebar.favorites": "Favorites",
@@ -68,6 +77,7 @@ export const dict: Dict = {
   "toast.updateModeSwitched": "Update mode: {name}",
   "toast.tzSwitched": "Time zone: {name}",
   "toast.streamFailover": "Stream unavailable, switched to backup signal",
+  "toast.streamRefreshed": "Signal source refreshed",
   "toast.welcome": "Welcome to SignalTV",
   "toast.loading": "Loading",
 
@@ -168,6 +178,12 @@ export const dict: Dict = {
   "status.probedCount": { one: "{count} channel", other: "{count} channels" },
   "status.reachable": "Reachable",
   "status.reachableValue": { one: "{count} channel ({pct}%)", other: "{count} channels ({pct}%)" },
+  "status.probeStart": "Start test",
+  "status.probeCancel": "Cancel test",
+  "status.probeRunning": "Testing",
+  "status.probeProgressAria": "Test progress",
+  "status.probeDone": "Test complete: {count} reachable ({pct}%)",
+  "status.probeCancelled": "Test cancelled",
 
   // ── Settings page ──
   "settings.eyebrow": "Console",

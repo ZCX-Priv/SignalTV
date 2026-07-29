@@ -96,9 +96,13 @@ export function Sidebar() {
 
   return (
     <>
-      {mobileSidebarOpen && (
-        <div className="sidebar__overlay" onClick={() => setMobileSidebar(false)} />
-      )}
+      {/* 移动端抽屉遮罩：常挂 + is-open 切换 opacity/pointer-events 过渡，
+          保证关闭时也有淡出动画（条件渲染会瞬间卸载，只有入无出） */}
+      <div
+        className={`sidebar__overlay${mobileSidebarOpen ? " is-open" : ""}`}
+        onClick={() => setMobileSidebar(false)}
+        aria-hidden={!mobileSidebarOpen}
+      />
       <aside
         className={`sidebar ${sidebarCollapsed ? "is-collapsed" : ""} ${mobileSidebarOpen ? "is-mobile-open" : ""}`}
         onClickCapture={(e) => {

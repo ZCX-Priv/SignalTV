@@ -154,6 +154,121 @@
   color: var(--ink-mute);
 }
 
+/* ── 搜索历史下拉（仿 YouTube，SearchHistoryDropdown 组件）──
+   绝对定位挂在 .search（position:relative）下方；进/出场复用
+   select-in/out 节奏（下拉类微交互统一 --dur-micro） */
+.search-history {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 59, 48, 0.04);
+  overflow: hidden;
+  padding: 6px;
+  animation: select-in var(--dur-micro) var(--ease);
+}
+.search-history.is-closing {
+  animation: select-out var(--dur-micro) var(--ease) forwards;
+  pointer-events: none;
+}
+/* 头部工具行：左侧区块标签 + 右侧管理/全选/删除/完成 */
+.search-history__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px 6px;
+}
+.search-history__label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.search-history__tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.search-history__tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  color: var(--ink-dim);
+  transition: background 0.13s var(--ease), color 0.13s var(--ease);
+}
+.search-history__tool:hover {
+  background: var(--bg-3);
+  color: var(--ink);
+}
+.search-history__tool:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.search-history__tool--danger:not(:disabled):hover {
+  background: rgba(255, 59, 48, 0.12);
+  color: var(--signaltv);
+}
+.search-history__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.search-history__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--ink);
+  text-align: left;
+  transition: background 0.13s var(--ease);
+}
+.search-history__item:hover {
+  background: var(--bg-3);
+}
+.search-history__item.is-selected {
+  background: rgba(255, 59, 48, 0.08);
+}
+.search-history__icon {
+  flex-shrink: 0;
+  color: var(--ink-mute);
+}
+.search-history__term {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 管理模式勾选框：与历史页 .history-card__check 同一视觉语言 */
+.search-history__check {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1.5px solid var(--line-strong);
+  color: #fff;
+  transition: background 0.13s var(--ease), border-color 0.13s var(--ease);
+}
+.search-history__check.is-on {
+  background: var(--signaltv);
+  border-color: var(--signaltv);
+}
+
 .header__meta {
   display: flex;
   align-items: center;
@@ -200,7 +315,15 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 1099;
-  animation: fade-in var(--dur-overlay) var(--ease);
+  /* 常挂元素：默认隐形不可点，is-open 切换 opacity 过渡——
+     开/关均有淡入淡出（旧方案条件渲染 + fade-in 只有入场无出场） */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-overlay) var(--ease);
+}
+.sidebar__overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
 }
 /* 桌面端：侧栏收起时，grid 第一列从 var(--sidebar-w) 变 56px，
    主区域 main 自动扩展占满剩余空间。
@@ -1326,6 +1449,33 @@
   }
 }
 
+/* 卡片/列表形态切换的两阶段缩放过渡（useLayoutSwitchAnim）：
+   先缩小淡出旧形态 → 切换类名 → 放大淡入新形态。
+   动画类挂在容器外层（.grid-wrap / .history__timeline）；
+   时长须与 hook 内 ZOOM_OUT_MS / ZOOM_IN_MS 同步；
+   减弱动效下由全局 0.01ms 规则 + hook 内 matchMedia 双重兜底瞬切。
+   transform-origin 必须锁顶边：.grid-wrap 内含数十万 px 高的虚拟化
+   定位层，若以默认 center 缩放，顶边会瞬移数千 px，污染 ChannelGrid
+   在动画窗口期内用 getBoundingClientRect 实测的 geom.top，导致滚动
+   窗口永久错位（列表断流） */
+@keyframes layout-zoom-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.96); }
+}
+@keyframes layout-zoom-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.is-zoom-out {
+  animation: layout-zoom-out 0.16s var(--ease) forwards;
+  transform-origin: top center;
+  pointer-events: none;
+}
+.is-zoom-in {
+  animation: layout-zoom-in 0.2s var(--ease) both;
+  transform-origin: top center;
+}
+
 .grid-foot {
   text-align: center;
   font-size: 10.5px;
@@ -1559,6 +1709,15 @@
   padding: 30px;
   animation: fade-in var(--dur-overlay) var(--ease);
   pointer-events: auto;
+}
+/* 关闭阶段：整体淡出 + 面板轻微缩小，动画结束后由 PickerModal 卸载
+   （与 .player.is-closing 同一套规范） */
+.picker.is-closing {
+  animation: fade-out var(--dur-overlay) var(--ease) both;
+  pointer-events: none;
+}
+.picker.is-closing .picker__panel {
+  animation: scale-out var(--dur-overlay) var(--ease) both;
 }
 .picker__backdrop {
   position: absolute;
@@ -2615,25 +2774,34 @@
   flex-direction: column;
 }
 /* 长时间轴容器：挂 .grid--list 时仅借用其后代卡片的横向行样式，
-   容器自身布局由本处规则覆盖（同特异度、本区块在文件更靠后） */
+   容器自身布局由本处规则覆盖（同特异度、本区块在文件更靠后）。
+   flex:1：记录较少时也撑满 .history 剩余高度，竖线不会悬停在半空 */
 .history__timeline {
   position: relative;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0;
   padding-bottom: 40px;
 }
-/* 贯穿竖线：中心 x=8，大/小节点均对齐此轴；一条线到底
-   （延伸至容器最底部，含 padding-bottom 留白区） */
+/* 贯穿竖线：中心 x=8，大/小节点均对齐此轴；一条线到底——
+   bottom 负值穿过 .content 的底部留白（桌面 60px），滚到底时
+   竖线直抵滚动内容最底端，不再在留白区上方戛然而止 */
 .history__timeline::before {
   content: "";
   position: absolute;
   left: 7px;
   top: 6px;
-  bottom: 0;
+  bottom: -60px;
   width: 2px;
   background: var(--line-2);
   border-radius: 1px;
+}
+/* 移动端 .content 底部留白收窄为 40px，竖线延伸量同步 */
+@media (max-width: 860px) {
+  .history__timeline::before {
+    bottom: -40px;
+  }
 }
 /* 日期大节点：品牌红大圆点 + 日期标签（今天 / 昨天 / 完整年月日） */
 .history__tl-day {
@@ -2672,7 +2840,9 @@
   padding-left: 30px;
   margin-bottom: 14px;
 }
-/* 小圆点垂直对齐时间标签文本中线（标签行高约 14px → top 4px） */
+/* 小圆点垂直对齐时间标签文本中线（标签行高约 14px → top 4px）；
+   实色 ink-mute（非半透明线色）确保节点深于轴线 --line-2，
+   外围 --bg 环断开穿过的竖线，节点在两套主题下都清晰凸显 */
 .history__tl-item::before {
   content: "";
   position: absolute;
@@ -2681,7 +2851,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--line-strong);
+  background: var(--ink-mute);
+  box-shadow: 0 0 0 2px var(--bg);
 }
 .history__tl-time {
   flex-shrink: 0;
@@ -2818,6 +2989,14 @@
   place-items: center;
   padding: 30px;
   animation: fade-in var(--dur-overlay) var(--ease);
+}
+/* 关闭阶段：整体淡出 + 面板轻微缩小，动画结束后由 ConfirmModal 卸载 */
+.confirm.is-closing {
+  animation: fade-out var(--dur-overlay) var(--ease) both;
+  pointer-events: none;
+}
+.confirm.is-closing .confirm__panel {
+  animation: scale-out var(--dur-overlay) var(--ease) both;
 }
 /* 遮罩不可点关（无 cursor:pointer）：危险操作必须显式选择按钮 */
 .confirm__backdrop {
@@ -2990,6 +3169,34 @@
 .status__probe-value {
   color: var(--ink);
   font-size: 13px;
+}
+/* 手动全量检测：按钮 + 实时计数（done/total · pct%） */
+.status__probe-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+.status__probe-count {
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  letter-spacing: 0.04em;
+}
+/* 检测进度条：细轨道 + 品牌红填充，宽度随 done 平滑过渡
+  （进度写回 200ms 节流，transition 抹平阶梯感） */
+.status__probe-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-3);
+  overflow: hidden;
+}
+.status__probe-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--signaltv);
+  transition: width 0.25s var(--ease-soft);
 }
 
 /* 移动端：状态面板适配 */

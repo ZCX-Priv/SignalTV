@@ -66,6 +66,29 @@ export function PickerModal({
   const [q, setQ] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  // 退出动画：open 翻 false 后保留渲染并加 is-closing，fade-out/scale-out
+  // 播完（onAnimationEnd）才真正卸载（与 PlayerModal 同一套规范）
+  const [visible, setVisible] = useState(open);
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+      setClosing(false);
+    } else if (visible) {
+      setClosing(true);
+    }
+  }, [open, visible]);
+
+  // 关闭动画兜底：animationend 丢失（如标签页后台）时 400ms 后强制卸载
+  useEffect(() => {
+    if (!closing) return;
+    const id = window.setTimeout(() => {
+      setVisible(false);
+      setClosing(false);
+    }, 400);
+    return () => clearTimeout(id);
+  }, [closing]);
 
   // 打开时重置关键字、聚焦输入框；模态栈统一处理 ESC（只关栈顶）与 body 滚动锁
   useEffect(() => {
@@ -112,7 +135,7 @@ export function PickerModal({
     return filtered.filter((item) => !recentIds.has(item.key));
   }, [filtered, recentSection, q]);
 
-  if (!open) return null;
+  if (!visible) return null;
 
   function renderItem(item: PickerItem) {
     const active = activeKey === item.key;
@@ -133,7 +156,19 @@ export function PickerModal({
   }
 
   return createPortal(
-    <div className="picker" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      className={`picker ${closing ? "is-closing" : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      onAnimationEnd={(e) => {
+        // 只认根节点自身的 fade-out（panel 的 scale-out 会冒泡上来，需过滤）
+        if (closing && e.target === e.currentTarget) {
+          setVisible(false);
+          setClosing(false);
+        }
+      }}
+    >
       <div className="picker__backdrop" />
       <div
         className="picker__panel"

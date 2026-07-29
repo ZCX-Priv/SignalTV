@@ -30,6 +30,15 @@ export const dict: Dict = {
   "header.search": "Поиск",
   "header.liveCountSuffix": "сигналов в эфире",
 
+  // ── История поиска ──
+  "searchHistory.aria": "История поиска",
+  "searchHistory.title": "История поиска",
+  "searchHistory.manage": "Управление",
+  "searchHistory.done": "Готово",
+  "searchHistory.selectAll": "Выбрать все",
+  "searchHistory.selectNone": "Снять выбор",
+  "searchHistory.delete": "Удалить",
+
   // ── Боковая панель ──
   "sidebar.home": "Главная",
   "sidebar.favorites": "Избранное",
@@ -71,6 +80,7 @@ export const dict: Dict = {
   "toast.updateModeSwitched": "Режим обновления: {name}",
   "toast.tzSwitched": "Часовой пояс: {name}",
   "toast.streamFailover": "Поток недоступен, включён резервный сигнал",
+  "toast.streamRefreshed": "Источник сигнала обновлён",
   "toast.welcome": "Добро пожаловать в SignalTV",
   "toast.loading": "Загрузка",
 
@@ -204,6 +214,12 @@ export const dict: Dict = {
     many: "{count} каналов ({pct}%)",
     other: "{count} каналов ({pct}%)",
   },
+  "status.probeStart": "Начать проверку",
+  "status.probeCancel": "Отменить проверку",
+  "status.probeRunning": "Проверка",
+  "status.probeProgressAria": "Ход проверки",
+  "status.probeDone": "Проверка завершена: доступно {count} ({pct}%)",
+  "status.probeCancelled": "Проверка отменена",
 
   // ── Настройки ──
   "settings.eyebrow": "Консоль",

@@ -29,6 +29,15 @@ export const dict: Dict = {
   "header.search": "検索",
   "header.liveCountSuffix": "の信号が放送中",
 
+  // ── 検索履歴ドロップダウン ──
+  "searchHistory.aria": "検索履歴",
+  "searchHistory.title": "検索履歴",
+  "searchHistory.manage": "管理",
+  "searchHistory.done": "完了",
+  "searchHistory.selectAll": "すべて選択",
+  "searchHistory.selectNone": "選択解除",
+  "searchHistory.delete": "削除",
+
   // ── サイドバー ──
   "sidebar.home": "ホーム",
   "sidebar.favorites": "お気に入り",
@@ -65,6 +74,7 @@ export const dict: Dict = {
   "toast.updateModeSwitched": "更新方式：{name}",
   "toast.tzSwitched": "タイムゾーン：{name}",
   "toast.streamFailover": "現在のストリームが利用できないため、予備信号に切り替えました",
+  "toast.streamRefreshed": "信号ソースを更新しました",
   "toast.welcome": "SignalTV へようこそ",
   "toast.loading": "読み込み中",
 
@@ -162,6 +172,12 @@ export const dict: Dict = {
   "status.probedCount": "{count} 件",
   "status.reachable": "到達可能",
   "status.reachableValue": "{count} 件（{pct}%）",
+  "status.probeStart": "テスト開始",
+  "status.probeCancel": "テスト中止",
+  "status.probeRunning": "テスト中",
+  "status.probeProgressAria": "テストの進行状況",
+  "status.probeDone": "テスト完了：{count} 件到達可能（{pct}%）",
+  "status.probeCancelled": "テストを中止しました",
 
   // ── 設定ページ ──
   "settings.eyebrow": "コンソール",

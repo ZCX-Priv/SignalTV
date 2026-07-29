@@ -29,6 +29,15 @@ export const dict: Dict = {
   "header.search": "Rechercher",
   "header.liveCountSuffix": "signaux à l'antenne",
 
+  // ── Historique de recherche ──
+  "searchHistory.aria": "Historique de recherche",
+  "searchHistory.title": "Historique de recherche",
+  "searchHistory.manage": "Gérer",
+  "searchHistory.done": "Terminé",
+  "searchHistory.selectAll": "Tout sélectionner",
+  "searchHistory.selectNone": "Tout désélectionner",
+  "searchHistory.delete": "Supprimer",
+
   // ── Barre latérale ──
   "sidebar.home": "Accueil",
   "sidebar.favorites": "Favoris",
@@ -68,6 +77,7 @@ export const dict: Dict = {
   "toast.updateModeSwitched": "Mode de mise à jour : {name}",
   "toast.tzSwitched": "Fuseau horaire : {name}",
   "toast.streamFailover": "Flux indisponible, signal de secours activé",
+  "toast.streamRefreshed": "Source du signal actualisée",
   "toast.welcome": "Bienvenue sur SignalTV",
   "toast.loading": "Chargement",
 
@@ -169,6 +179,12 @@ export const dict: Dict = {
   "status.probedCount": { one: "{count} chaîne", other: "{count} chaînes" },
   "status.reachable": "Joignables",
   "status.reachableValue": { one: "{count} chaîne ({pct}%)", other: "{count} chaînes ({pct}%)" },
+  "status.probeStart": "Lancer le test",
+  "status.probeCancel": "Annuler le test",
+  "status.probeRunning": "Test en cours",
+  "status.probeProgressAria": "Progression du test",
+  "status.probeDone": "Test terminé : {count} joignables ({pct}%)",
+  "status.probeCancelled": "Test annulé",
 
   // ── Réglages ──
   "settings.eyebrow": "Console",

@@ -5,9 +5,11 @@ import {
   CheckCircle2,
   Activity,
   Database,
+  X,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { fmt } from "../lib/format";
+import { toast } from "../lib/toast";
 import { useI18n } from "../i18n";
 
 export function StatusPanel() {
@@ -19,6 +21,9 @@ export function StatusPanel() {
   const categories = useStore((s) => s.categories);
   const countries = useStore((s) => s.countries);
   const latency = useStore((s) => s.latency);
+  const probeRun = useStore((s) => s.probeRun);
+  const runFullProbe = useStore((s) => s.runFullProbe);
+  const cancelFullProbe = useStore((s) => s.cancelFullProbe);
 
   // 派生连接状态
   const status = error
@@ -32,6 +37,31 @@ export function StatusPanel() {
   // 延迟探测统计
   const probedCount = latency.size;
   const successCount = Array.from(latency.values()).filter((v) => v >= 0).length;
+
+  // 手动全量检测：完成后按实际完成量汇总可达率；取消时提示已取消
+  const probing = probeRun?.running ?? false;
+  const probePct = probeRun && probeRun.total > 0
+    ? Math.round((probeRun.done / probeRun.total) * 100)
+    : 0;
+
+  async function handleProbeClick() {
+    if (probing) {
+      cancelFullProbe();
+      return;
+    }
+    const res = await runFullProbe();
+    if (!res) return;
+    if (res.aborted) {
+      toast.info(t("status.probeCancelled"));
+    } else {
+      toast.success(
+        t("status.probeDone", {
+          count: res.ok,
+          pct: res.done > 0 ? Math.round((res.ok / res.done) * 100) : 0,
+        }),
+      );
+    }
+  }
 
   return (
     <div className="status">
@@ -96,7 +126,11 @@ export function StatusPanel() {
           <div className="status__probe-row">
             <span className="status__probe-label">{t("status.probeStatus")}</span>
             <span className="status__probe-value mono">
-              {probedCount > 0 ? t("status.probeReady") : t("status.probeIdle")}
+              {probing
+                ? t("status.probeRunning")
+                : probedCount > 0
+                  ? t("status.probeReady")
+                  : t("status.probeIdle")}
             </span>
           </div>
           <div className="status__probe-row">
@@ -109,6 +143,46 @@ export function StatusPanel() {
               <span className="status__probe-value mono">
                 {t("status.reachableValue", { count: successCount, pct: Math.round((successCount / probedCount) * 100) })}
               </span>
+            </div>
+          )}
+
+          {/* 手动全量检测：运行中按钮变“取消”，下方展示实时进度条 */}
+          <div className="status__probe-actions">
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm status__probe-btn"
+              onClick={() => void handleProbeClick()}
+              disabled={!loaded}
+            >
+              {probing ? (
+                <>
+                  <X size={12} /> {t("status.probeCancel")}
+                </>
+              ) : (
+                <>
+                  <Activity size={13} /> {t("status.probeStart")}
+                </>
+              )}
+            </button>
+            {probeRun && (
+              <span className="status__probe-count mono">
+                {fmt(probeRun.done)} / {fmt(probeRun.total)} · {probePct}%
+              </span>
+            )}
+          </div>
+          {probeRun && (
+            <div
+              className="status__probe-progress"
+              role="progressbar"
+              aria-label={t("status.probeProgressAria")}
+              aria-valuemin={0}
+              aria-valuemax={probeRun.total}
+              aria-valuenow={probeRun.done}
+            >
+              <span
+                className="status__probe-progress-fill"
+                style={{ width: `${probePct}%` }}
+              />
             </div>
           )}
         </div>

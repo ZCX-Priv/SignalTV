@@ -29,6 +29,15 @@ export const dict: Dict = {
   "header.search": "검색",
   "header.liveCountSuffix": "개 신호 방송 중",
 
+  // ── 검색 기록 드롭다운 ──
+  "searchHistory.aria": "검색 기록",
+  "searchHistory.title": "검색 기록",
+  "searchHistory.manage": "관리",
+  "searchHistory.done": "완료",
+  "searchHistory.selectAll": "전체 선택",
+  "searchHistory.selectNone": "전체 해제",
+  "searchHistory.delete": "삭제",
+
   // ── 사이드바 ──
   "sidebar.home": "홈",
   "sidebar.favorites": "즐겨찾기",
@@ -65,6 +74,7 @@ export const dict: Dict = {
   "toast.updateModeSwitched": "업데이트 방식: {name}",
   "toast.tzSwitched": "시간대: {name}",
   "toast.streamFailover": "현재 스트림을 사용할 수 없어 예비 신호로 전환했습니다",
+  "toast.streamRefreshed": "신호 소스를 새로고침했습니다",
   "toast.welcome": "SignalTV에 오신 것을 환영합니다",
   "toast.loading": "불러오는 중",
 
@@ -162,6 +172,12 @@ export const dict: Dict = {
   "status.probedCount": "{count}개",
   "status.reachable": "접속 가능",
   "status.reachableValue": "{count}개 ({pct}%)",
+  "status.probeStart": "테스트 시작",
+  "status.probeCancel": "테스트 취소",
+  "status.probeRunning": "테스트 중",
+  "status.probeProgressAria": "테스트 진행률",
+  "status.probeDone": "테스트 완료: {count}개 도달 가능 ({pct}%)",
+  "status.probeCancelled": "테스트가 취소되었습니다",
 
   // ── 설정 페이지 ──
   "settings.eyebrow": "콘솔",

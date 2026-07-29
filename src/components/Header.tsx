@@ -5,6 +5,7 @@ import { broadcastDate, clock, fmt } from "../lib/format";
 import { applySeo, describeSearch, describeView } from "../lib/seo";
 import { useI18n } from "../i18n";
 import { Logo } from "./Logo";
+import { SearchHistoryDropdown } from "./SearchHistoryDropdown";
 
 // 时钟隔离成独立组件：每秒 setInterval 只重渲染此小组件，
 // 避免整个 Header（含搜索表单/logo/菜单）每秒重渲染
@@ -44,6 +45,9 @@ export function Header() {
   // searchOpen 上移到 store：App 的 Ctrl+K 快捷键需要在移动端先展开再聚焦
   const searchOpen = useStore((s) => s.searchOpen);
   const setSearchOpen = useStore((s) => s.setSearchOpen);
+  const pushSearchHistory = useStore((s) => s.pushSearchHistory);
+  // 搜索历史下拉：输入框聚焦打开，失焦/ESC/选词后关闭（出场动画在组件内部）
+  const [historyOpen, setHistoryOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -111,8 +115,13 @@ export function Header() {
       : t("header.sidebarCollapse");
 
   function onSubmit(e: React.FormEvent) {
-    // 回车不再触发二次搜索：实时过滤已由 onChange 完成，此处仅阻止表单默认提交
+    // 回车不再触发二次搜索：实时过滤已由 onChange 完成，此处仅阻止表单默认提交；
+    // 非空词记入搜索历史（仿 YouTube：确认搜索才留历史）并收起下拉
     e.preventDefault();
+    if (filter.q.trim()) {
+      pushSearchHistory(filter.q);
+      setHistoryOpen(false);
+    }
   }
 
   function clear() {
@@ -123,10 +132,19 @@ export function Header() {
   }
 
   function onSearchBlur() {
+    // 失焦关闭历史下拉（下拉内点击已被 mousedown preventDefault 拦截，不会走到这）
+    setHistoryOpen(false);
     // 失焦时若无搜索词则自动收起；有搜索词时保持展开（用户明确要求）
     if (isMobile && !filter.q.trim()) {
       setSearchOpen(false);
     }
+  }
+
+  // 点选历史词：写入搜索词并置顶该词，关闭下拉（焦点仍在输入框，可继续编辑）
+  function onPickHistory(term: string) {
+    setFilter({ q: term });
+    pushSearchHistory(term);
+    setHistoryOpen(false);
   }
 
   function openSearch() {
@@ -152,7 +170,15 @@ export function Header() {
           placeholder={t("header.searchPlaceholder")}
           value={filter.q}
           onChange={(e) => setFilter({ q: e.target.value })}
+          onFocus={() => setHistoryOpen(true)}
           onBlur={onSearchBlur}
+          onKeyDown={(e) => {
+            // ESC 只收历史下拉，不干扰模态栈（下拉非模态，不入栈）
+            if (e.key === "Escape" && historyOpen) {
+              e.stopPropagation();
+              setHistoryOpen(false);
+            }
+          }}
           aria-label={t("header.searchAria")}
           spellCheck={false}
           ref={searchInputRef}
@@ -170,6 +196,7 @@ export function Header() {
             <Command size={11} /> K
           </span>
         )}
+        <SearchHistoryDropdown open={historyOpen} onPick={onPickHistory} />
       </form>
 
       <div className="header__meta">

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
@@ -44,6 +44,29 @@ export function ConfirmModal({
   const { t } = useI18n();
   const panelRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  // 退出动画：open 翻 false 后保留渲染并加 is-closing，fade-out/scale-out
+  // 播完（onAnimationEnd）才真正卸载（与 PlayerModal / PickerModal 同规范）
+  const [visible, setVisible] = useState(open);
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+      setClosing(false);
+    } else if (visible) {
+      setClosing(true);
+    }
+  }, [open, visible]);
+
+  // 关闭动画兜底：animationend 丢失（如标签页后台）时 400ms 后强制卸载
+  useEffect(() => {
+    if (!closing) return;
+    const id = window.setTimeout(() => {
+      setVisible(false);
+      setClosing(false);
+    }, 400);
+    return () => clearTimeout(id);
+  }, [closing]);
 
   // 打开时入模态栈；初始焦点落在"取消"按钮（危险操作默认安全项），关闭还原焦点
   useEffect(() => {
@@ -57,10 +80,22 @@ export function ConfirmModal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!visible) return null;
 
   return createPortal(
-    <div className="confirm" role="alertdialog" aria-modal="true" aria-label={title}>
+    <div
+      className={`confirm ${closing ? "is-closing" : ""}`}
+      role="alertdialog"
+      aria-modal="true"
+      aria-label={title}
+      onAnimationEnd={(e) => {
+        // 只认根节点自身的 fade-out（panel 的 scale-out 会冒泡上来，需过滤）
+        if (closing && e.target === e.currentTarget) {
+          setVisible(false);
+          setClosing(false);
+        }
+      }}
+    >
       <div className="confirm__backdrop" />
       <div
         className="confirm__panel"

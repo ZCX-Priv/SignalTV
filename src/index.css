@@ -373,26 +373,31 @@ textarea {
 }
 
 /* ============================================================
-   主题切换瞬间禁用所有过渡/动画
+   主题切换全局颜色过渡
    ============================================================
-   原因：data-theme 切换时，CSS 变量瞬间变化，但带 transition
+   原因：data-theme 切换时 CSS 变量瞬间变化，但各处带 transition
    的元素（.header__menu / .search / .select / .toggle / .nav__item
-   / .card / .btn 等 16 处）会按各自时长缓慢过渡到新主题色，
-   与主体内容的瞬时切换形成时差，视觉上非常扎眼。
+   / .card / .btn 等）会按各自时长参差不齐地过渡，其余元素则瞬切，
+   快慢不一视觉扎眼。
 
-   方案：在 toggleTheme 中切换前给 <html> 加 .theme-transitioning
-   类，本规则把该类下所有元素的 transition-duration 与
-   animation-duration 强制为 0s，等效于"瞬时切换"。
-   双 RAF 后移除该类，恢复正常过渡行为。
+   方案：setThemeMode 在切换前给 <html> 加 .theme-anim 类，本规则把
+   所有元素的颜色类属性统一为 0.3s 过渡，新旧主题间整体平滑渐变；
+   400ms 后移除该类，恢复各元素原有过渡行为（见 useStore 的
+   enableThemeTransition）。
 
-   注意：用 transition-duration:0s 而非 transition:none，以保留
-   transition-property 等其他属性，避免移除类时出现意外重排。 */
-html.theme-transitioning *,
-html.theme-transitioning *::before,
-html.theme-transitioning *::after {
-  transition-duration: 0s !important;
-  animation-duration: 0s !important;
-  animation-delay: 0s !important;
+   用 media 包裹而非依赖下方减弱动效规则覆盖：本规则选择器特异度
+   （html.theme-anim *）高于减弱规则的 *，同为 !important 时会胜出，
+   故必须用 prefers-reduced-motion: no-preference 直接排除。 */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-anim *,
+  html.theme-anim *::before,
+  html.theme-anim *::after {
+    transition-property: background-color, background, color, border-color,
+      fill, stroke, box-shadow, opacity !important;
+    transition-duration: 0.3s !important;
+    transition-timing-function: var(--ease-soft) !important;
+    transition-delay: 0s !important;
+  }
 }
 
 /* ============================================================

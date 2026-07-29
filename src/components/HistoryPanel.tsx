@@ -17,6 +17,7 @@ import type { ChannelWithStream } from "../types";
 import { clockMinute, historyDayLabel } from "../lib/format";
 import { toast } from "../lib/toast";
 import { useI18n } from "../i18n";
+import { useLayoutSwitchAnim } from "../hooks/useLayoutSwitchAnim";
 import { Select } from "./Select";
 import { EmptyState } from "./EmptyState";
 import { ConfirmModal } from "./ConfirmModal";
@@ -116,6 +117,8 @@ export function HistoryPanel() {
   const countries = useStore((s) => s.countries);
   const removeHistoryEntries = useStore((s) => s.removeHistoryEntries);
   const gridLayout = useStore((s) => s.gridLayouts.history);
+  // 卡片/列表切换的缩放过渡：与 ChannelGrid 同一套两阶段动画
+  const { shownLayout, animClass } = useLayoutSwitchAnim(gridLayout);
   const probeLatencyForIds = useStore((s) => s.probeLatencyForIds);
   const activeChannelId = useStore((s) => s.activeChannelId);
 
@@ -346,7 +349,9 @@ export function HistoryPanel() {
           }
         />
       ) : (
-        <div className={`history__timeline ${gridLayout === "list" ? "grid--list" : ""}`}>
+        <div
+          className={`history__timeline ${shownLayout === "list" ? "grid--list" : ""} ${animClass}`}
+        >
           {groups.map((g) => (
             <section className="history__tl-group" key={g.label}>
               {/* 日期大节点：大圆点由 ::before 绘制，对齐贯穿竖线 */}

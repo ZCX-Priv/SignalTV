@@ -46,6 +46,15 @@ export const dict = {
   "header.search": "搜索",
   "header.liveCountSuffix": "路信号直播中",
 
+  // ── 搜索历史下拉 ──
+  "searchHistory.aria": "搜索历史",
+  "searchHistory.title": "搜索历史",
+  "searchHistory.manage": "管理",
+  "searchHistory.done": "完成",
+  "searchHistory.selectAll": "全选",
+  "searchHistory.selectNone": "全不选",
+  "searchHistory.delete": "删除",
+
   // ── 侧边栏 ──
   "sidebar.home": "首页",
   "sidebar.favorites": "收藏夹",
@@ -82,6 +91,7 @@ export const dict = {
   "toast.updateModeSwitched": "更新方式：{name}",
   "toast.tzSwitched": "时区：{name}",
   "toast.streamFailover": "当前流不可用，已切换备用信号源",
+  "toast.streamRefreshed": "已刷新信号源",
   "toast.welcome": "欢迎来到 SignalTV",
   "toast.loading": "加载中",
 
@@ -177,6 +187,12 @@ export const dict = {
   "status.probedCount": "{count} 路",
   "status.reachable": "可达",
   "status.reachableValue": "{count} 路 ({pct}%)",
+  "status.probeStart": "开始检测",
+  "status.probeCancel": "取消检测",
+  "status.probeRunning": "检测中",
+  "status.probeProgressAria": "检测进度",
+  "status.probeDone": "检测完成：{count} 路可达 ({pct}%)",
+  "status.probeCancelled": "已取消检测",
 
   // ── 设置页 ──
   "settings.eyebrow": "控制台",

@@ -79,12 +79,14 @@ export function PlayerModal() {
     return true;
   }, [streamUrls.length, t]);
 
-  // 错误面板"重试"：从第一路流重新开始，retryToken 变化强制 remount
+  // 错误面板/头部刷新按钮：从第一路流重新开始，retryToken 变化强制 remount；
+  // 同 key 去重：连续点击只刷新同一条 toast 的时长，不叠加新条目
   const handleRetry = useCallback(() => {
     streamIdxRef.current = 0;
     setStreamIdx(0);
     setRetryToken((n) => n + 1);
-  }, []);
+    toast.success(t("toast.streamRefreshed"), { key: "stream-refreshed" });
+  }, [t]);
 
   const [latency, setLatency] = useState<number | null>(null);
   const [playerState, setPlayerState] = useState<"idle" | "loading" | "ready" | "paused" | "error">("idle");
