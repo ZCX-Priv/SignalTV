@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Settings as SettingsIcon,
   Monitor,
@@ -105,6 +105,11 @@ const UPDATE_OPTIONS: {
 // 不补足时长则「正在检查更新…」一闪而过不可感知
 const CHECK_TOAST_MIN_MS = 1200;
 
+// 检查更新按钮冷却时长：一次检查收尾后 10s 内不可再点，避免连点狂检
+const CHECK_COOLDOWN_MS = 10_000;
+// 冷却截止时间戳（模块级：设置页关闭重开不重置冷却）
+let checkCooldownUntil = 0;
+
 export function SettingsPanel() {
   const { t } = useI18n();
   const themeMode = useStore((s) => s.themeMode);
@@ -118,6 +123,19 @@ export function SettingsPanel() {
   const channels = useStore((s) => s.channels);
   // 手动检查更新进行中：按钮禁用 + 图标旋转
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  // 冷却中：仅禁用不转圈；挂载时按模块级截止时间戳初始化，
+  // 冷却期内关闭重开设置页不会提前解锁
+  const [coolingDown, setCoolingDown] = useState(
+    () => Date.now() < checkCooldownUntil,
+  );
+  useEffect(() => {
+    if (!coolingDown) return;
+    const timer = setTimeout(
+      () => setCoolingDown(false),
+      Math.max(0, checkCooldownUntil - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [coolingDown]);
 
   // 点「检查更新」：info 提示（不转圈）至少展示 CHECK_TOAST_MIN_MS 后，
   // 通过同一去重键（key）原地变身为成功/信息/错误结果提示，
@@ -145,6 +163,9 @@ export function SettingsPanel() {
     else if (result === "failed") toast.error(t("update.checkFailed"), { key: CHECK_KEY });
     else toast.dismiss(checkingId); // available/handled：updater 已弹自家 toast，只收检查中提示
     setCheckingUpdate(false);
+    // 检查收尾后进入 10s 冷却，期间按钮不可点
+    checkCooldownUntil = Date.now() + CHECK_COOLDOWN_MS;
+    setCoolingDown(true);
   };
 
   return (
@@ -294,7 +315,7 @@ export function SettingsPanel() {
               type="button"
               className="btn btn--ghost btn--sm settings__check-update"
               onClick={() => void handleCheckUpdate()}
-              disabled={checkingUpdate}
+              disabled={checkingUpdate || coolingDown}
               aria-label={t("settings.checkUpdate")}
             >
               <RefreshCw size={13} className={checkingUpdate ? "spin" : undefined} />
@@ -314,8 +335,11 @@ export function SettingsPanel() {
                 className={`settings__option ${active ? "is-active" : ""}`}
                 onClick={() => {
                   setUpdateMode(opt.value);
+                  // off 用独立文案「已关闭更新」，auto/manual 用「已切换到…」
                   toast.success(
-                    t("toast.updateModeSwitched", { name: t(opt.labelKey) }),
+                    opt.value === "off"
+                      ? t("toast.updateModeOff")
+                      : t("toast.updateModeSwitched", { name: t(opt.labelKey) }),
                   );
                 }}
                 aria-pressed={active}

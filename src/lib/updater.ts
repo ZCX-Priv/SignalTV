@@ -76,6 +76,10 @@ let retryScheduled = false; // 安装失败后的单次重试已排期
 let checking = false; // checkForUpdates 进行中（防重入）
 let explicitCheck = false; // manual 模式显式检查的下载中，完成后强制弹交互式 toast
 let explicitAutoCheck = false; // auto 模式显式检查的下载中，完成后走单 toast 进度流程收尾
+// 当前 waiting SW 已走完 auto 显式检查流程（已弹过「已完成更新」）：
+// 再次显式检查时直接提示已是最新，不重跑「下载→安装→完成」；
+// 新版本到达（handleNewVersion）时复位，允许对新版本重新走流程
+let autoFlowDone = false;
 let autoFlowToastId: string | null = null; // auto 显式检查的进度 toast id
 let autoFlowTimer: ReturnType<typeof setInterval> | null = null;
 let lastCheckAt = 0;
@@ -436,6 +440,8 @@ function startAutoFlow(durationMs: number, cap: number): void {
 
 // 进度跑满后：标题切「正在安装…」，短暂停留后收掉并弹 success「已完成更新」
 function showAutoFlowInstalled(id: string): void {
+  // 进入收尾即视为该 waiting 版本的显式流程已完成（含 cap=100 快路径）
+  autoFlowDone = true;
   toastStore.getState().update(id, {
     title: t("update.installing"),
     progress: 100,
@@ -452,6 +458,7 @@ function showAutoFlowInstalled(id: string): void {
 // 进度 toast 已被用户关闭时仅弹完成提示（更新确实已就绪）
 function finishAutoFlow(): void {
   explicitAutoCheck = false;
+  autoFlowDone = true;
   clearAutoFlowTimer();
   if (autoFlowToastId) {
     showAutoFlowInstalled(autoFlowToastId);
@@ -473,22 +480,30 @@ function failAutoFlow(): void {
 
 async function handleNewVersion(): Promise<void> {
   updateAvailable = true;
+  // 新 waiting 版本到达：作废旧版本的「auto 显式流程已完成」标记
+  autoFlowDone = false;
   await waitForHydration();
   versionId = await computeVersionId();
+  // 显式分支前校验模式匹配（防御：await 期间模式被切换时，标志虽已由
+  // 模式切换订阅复位，此处再兜底一层，杜绝旧模式分支在新模式下触发）
+  const mode = useStore.getState().updateMode;
   // auto 模式显式检查：真实安装完成 → 进度跳满转「正在安装…」→「已完成更新」，
   // 不弹交互式 toast（waiting SW 保持不动，下次启动无感激活）
-  if (explicitAutoCheck) {
+  if (explicitAutoCheck && mode !== "manual") {
     finishAutoFlow();
     return;
   }
   // manual 模式显式检查触发的下载完成：跳过忽略判定直接弹交互式 toast
-  if (explicitCheck) {
+  if (explicitCheck && mode === "manual") {
     explicitCheck = false;
     dismissedThisSession = false;
     if (!reloading && !toastId) showUpdateToast();
     return;
   }
-  applyMode(useStore.getState().updateMode);
+  // 走到这里说明并非当前模式的显式检查收尾：清掉可能错配的遗留标志
+  explicitCheck = false;
+  explicitAutoCheck = false;
+  applyMode(mode);
 }
 
 // 按当前模式落实行为（onNeedRefresh 与模式切换共用）
@@ -534,6 +549,9 @@ export async function checkForUpdates(): Promise<CheckUpdateResult> {
     if (registration.waiting) {
       updateAvailable = true;
       dismissedThisSession = false;
+      // auto：该 waiting 版本本会话已走完显式进度流程 → 视为已是最新，
+      // 不重跑「下载→安装→完成」（更新仍按 auto 语义下次启动无感激活）
+      if (mode !== "manual" && autoFlowDone) return "latest";
       if (versionId === null) versionId = await computeVersionId();
       if (mode === "manual") {
         // 跳过忽略版本/本会话关闭判定直接弹出
@@ -656,6 +674,16 @@ export function initUpdater(): void {
     // 用户显式切换视为新意图：清除「本会话已关闭」标记，
     // 切到 manual 且存在未忽略的 waiting SW 时能立即弹出
     dismissedThisSession = false;
+    // 作废旧模式的显式检查意图：遗留标志会让 onNeedRefresh 误入旧模式
+    // 分支（曾表现为 auto 下弹交互式 toast、manual 下被 auto 流程接管）
+    explicitCheck = false;
+    explicitAutoCheck = false;
+    // 收掉遗留的 auto 显式检查进度 toast（后台下载安装不受影响）
+    clearAutoFlowTimer();
+    if (autoFlowToastId) {
+      toastStore.getState().dismiss(autoFlowToastId);
+      autoFlowToastId = null;
+    }
     applyMode(s.updateMode);
   });
 }
