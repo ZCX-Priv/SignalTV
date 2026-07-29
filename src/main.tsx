@@ -2,6 +2,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./App.css";
+// 骨架屏库基础样式（shimmer 动画/尺寸继承）；配色由 index.css 的
+// --sk-base/--sk-highlight 变量接管，随主题自动切换
+import "react-loading-skeleton/dist/skeleton.css";
 import App from "./App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import {

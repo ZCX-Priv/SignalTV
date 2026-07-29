@@ -10,6 +10,7 @@ import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/l
 import { Loader2, AlertTriangle, Play } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { getVidstackTranslations, useI18n } from "../i18n";
+import { SkFill } from "./Skeletons";
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
 
@@ -278,6 +279,8 @@ export function TvPlayer({
 
       {state === "loading" && (
         <div className="player__overlay">
+          {/* shimmer 骨架底铺满视频区，spinner/文案浮其上（z-index 见 App.css） */}
+          <SkFill />
           <Loader2 size={28} className="spin" />
           <p className="mono">{t("tv.acquiring")}</p>
         </div>

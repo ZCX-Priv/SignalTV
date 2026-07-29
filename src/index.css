@@ -56,6 +56,11 @@
   --dur-modal: 0.28s;   /* 模态面板/Toast 进入 */
   --dur-page: 0.4s;     /* 页面级面板 fade-up */
   --dur-card: 0.5s;     /* 卡片入场 */
+
+  /* 骨架屏配色（react-loading-skeleton）：base 贴合卡片底色，
+     highlight 用半透明浅墨色保证 shimmer 在暗底下可见且含蓄 */
+  --sk-base: #191922;
+  --sk-highlight: rgba(245, 241, 232, 0.09);
 }
 
 * {
@@ -346,6 +351,10 @@ textarea {
 
   --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 8px 24px rgba(26, 26, 31, 0.08);
   --shadow-glow: 0 0 0 1px rgba(255, 59, 48, 0.3), 0 18px 60px -12px rgba(255, 59, 48, 0.25);
+
+  /* 白昼骨架配色：米色底上 base 用深一档的暖灰，highlight 用高亮白 */
+  --sk-base: #e3dcc9;
+  --sk-highlight: rgba(255, 255, 255, 0.6);
 }
 
 /* 白昼模式下氛围层调整：扫描线减弱、颗粒隐藏、辉光减半 */
@@ -373,31 +382,30 @@ textarea {
 }
 
 /* ============================================================
-   主题切换全局颜色过渡
+   主题切换过渡（View Transitions API 圆形扩散揭示）
    ============================================================
-   原因：data-theme 切换时 CSS 变量瞬间变化，但各处带 transition
-   的元素（.header__menu / .search / .select / .toggle / .nav__item
-   / .card / .btn 等）会按各自时长参差不齐地过渡，其余元素则瞬切，
-   快慢不一视觉扎眼。
+   原理：startViewTransition 对新旧主题各截一张快照，过渡在合成器层
+   完成（两层纹理混合，成本与 DOM 规模无关），取代旧的 theme-anim
+   全元素强制颜色过渡方案（paint 属性全量重绘，桌面端大 DOM 掉帧）。
 
-   方案：setThemeMode 在切换前给 <html> 加 .theme-anim 类，本规则把
-   所有元素的颜色类属性统一为 0.3s 过渡，新旧主题间整体平滑渐变；
-   400ms 后移除该类，恢复各元素原有过渡行为（见 useStore 的
-   enableThemeTransition）。
+   分工：扩散动画由 JS（lib/themeTransition.ts）用 WAAPI 对
+   ::view-transition-new(root) 做 clip-path 圆形揭示全权驱动；此处只负责
+   关掉浏览器默认的交叉淡化（否则旧快照同时淡出会透出底色）。
+   mix-blend-mode 复位为 normal：默认值 plus-lighter 仅适配双层淡化，
+   单向揭示下会产生错误提亮。
 
-   用 media 包裹而非依赖下方减弱动效规则覆盖：本规则选择器特异度
-   （html.theme-anim *）高于减弱规则的 *，同为 !important 时会胜出，
-   故必须用 prefers-reduced-motion: no-preference 直接排除。 */
-@media (prefers-reduced-motion: no-preference) {
-  html.theme-anim *,
-  html.theme-anim *::before,
-  html.theme-anim *::after {
-    transition-property: background-color, background, color, border-color,
-      fill, stroke, box-shadow, opacity !important;
-    transition-duration: 0.3s !important;
-    transition-timing-function: var(--ease-soft) !important;
-    transition-delay: 0s !important;
-  }
+   减弱动效无需在此处理：JS 守卫已直接跳过 startViewTransition。 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+/* 旧主题快照静止垫底，新主题从点击处圆形擦入 */
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 2;
 }
 
 /* ============================================================

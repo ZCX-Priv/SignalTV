@@ -160,8 +160,18 @@ export function SettingsPanel() {
               <button
                 key={opt.value}
                 className={`settings__option ${active ? "is-active" : ""}`}
-                onClick={() => {
-                  setThemeMode(opt.value);
+                onClick={(e) => {
+                  // 圆形扩散原点：指针点击用实际坐标；键盘触发（detail === 0，
+                  // 坐标不可靠）退回按钮几何中心
+                  let origin = { x: e.clientX, y: e.clientY };
+                  if (e.detail === 0) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    origin = {
+                      x: rect.left + rect.width / 2,
+                      y: rect.top + rect.height / 2,
+                    };
+                  }
+                  setThemeMode(opt.value, origin);
                   toast.success(t("toast.themeSwitched", { name: t(opt.labelKey) }));
                 }}
                 aria-pressed={active}

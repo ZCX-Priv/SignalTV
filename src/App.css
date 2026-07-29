@@ -336,24 +336,29 @@
     grid-template-columns: 56px 1fr;
   }
 }
-/* 桌面端收起：折叠为图标栏 */
-.sidebar.is-collapsed {
-  width: 56px;
-}
-.sidebar.is-collapsed .sidebar__scroll {
-  padding: 18px 8px 0;
-  align-items: center;
-}
-/* 豁免 .nav__flag：国家条目全是 span，若不豁免则折叠后只剩空白按钮 */
-.sidebar.is-collapsed .nav__item span:not(.nav__flag),
-.sidebar.is-collapsed .sidebar__label span,
-.sidebar.is-collapsed .sidebar__label-action,
-.sidebar.is-collapsed .nav__count {
-  display: none;
-}
-.sidebar.is-collapsed .nav__item {
-  justify-content: center;
-  padding: 8px;
+/* 桌面端收起：折叠为图标栏。
+   整段限定在 min-width: 861px：is-collapsed 是桌面态且会持久化，
+   若不限定，切到移动端抽屉后残留的类会与移动端样式发生特异性对抗
+  （曾导致抽屉展开后仍是无名称的折叠外观） */
+@media (min-width: 861px) {
+  .sidebar.is-collapsed {
+    width: 56px;
+  }
+  .sidebar.is-collapsed .sidebar__scroll {
+    padding: 18px 8px 0;
+    align-items: center;
+  }
+  /* 豁免 .nav__flag：国家条目全是 span，若不豁免则折叠后只剩空白按钮 */
+  .sidebar.is-collapsed .nav__item span:not(.nav__flag),
+  .sidebar.is-collapsed .sidebar__label span,
+  .sidebar.is-collapsed .sidebar__label-action,
+  .sidebar.is-collapsed .nav__count {
+    display: none;
+  }
+  .sidebar.is-collapsed .nav__item {
+    justify-content: center;
+    padding: 8px;
+  }
 }
 .sidebar__scroll {
   height: 100%;
@@ -1442,6 +1447,16 @@
 .grid--list .card__net {
   max-width: 220px;
 }
+/* 列表态骨架期媒体区锁高：列表条目高度随正文内容（别名行/标签行）
+   浮动（实测 70/101/122px 三档，均值 108px），骨架若随行拉伸会继承
+   参差不齐的高度；加载期把媒体区锁为实测均值并脱离 stretch。
+   与 JS 联动：SkeletonImg 在图片 onLoad/onError 后卸载 .sk-fill，
+   :has 不再命中，本规则自动失效，媒体区恢复随行拉伸（零回归）。
+   窄屏断点不另设值：条目高度由字体行高驱动，跨断点差异可忽略 */
+.grid--list .card__media:has(> .sk-fill) {
+  height: 108px;
+  align-self: flex-start;
+}
 /* 窄屏下缩略图再收窄，给文字区留出可读宽度 */
 @media (max-width: 510px) {
   .grid--list .card__media {
@@ -2383,30 +2398,15 @@
   .sidebar.is-mobile-open {
     transform: translateX(0);
   }
-  /* 遮罩从顶栏下方开始，顶栏始终可见可点击 */
+  /* 遮罩从顶栏下方开始，顶栏始终可见可点击。
+     不写 pointer-events：关闭态沿用基础样式的 none（否则隐形遮罩会拦截全屏点击），
+     打开态由特异性更高的 .sidebar__overlay.is-open 恢复 auto。
+     is-collapsed 的折叠样式已整体限定在桌面断点内，移动端无需反向覆盖 */
   .sidebar__overlay {
     top: var(--header-h);
     right: 0;
     bottom: 0;
     left: 0;
-    pointer-events: auto;
-  }
-  .sidebar.is-collapsed {
-    width: 248px;
-  }
-  .sidebar.is-collapsed .nav__item span,
-  .sidebar.is-collapsed .sidebar__label span,
-  .sidebar.is-collapsed .sidebar__label-action,
-  .sidebar.is-collapsed .nav__count {
-    display: inline;
-  }
-  .sidebar.is-collapsed .nav__item {
-    justify-content: flex-start;
-    padding: 8px 10px;
-  }
-  .sidebar.is-collapsed .sidebar__scroll {
-    padding: 18px 14px 0;
-    align-items: stretch;
   }
   .hero {
     padding: 24px 18px 8px;
@@ -3197,6 +3197,51 @@
   border-radius: 2px;
   background: var(--signaltv);
   transition: width 0.25s var(--ease-soft);
+}
+
+/* ============ 骨架屏（react-loading-skeleton 适配，Skeletons.tsx） ============ */
+/* 铺满定位父容器的骨架层：父需 position:relative + overflow:hidden */
+.sk-fill {
+  position: absolute;
+  inset: 0;
+  display: block;
+  z-index: 0;
+}
+.sk-fill .sk-fill__inner {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* 覆盖库默认 line-height 留白，确保真正铺满 */
+  line-height: 1;
+}
+/* 带骨架图片：加载完成前隐形，onLoad 后淡入（骨架同帧卸载） */
+.sk-img {
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-soft);
+}
+.sk-img.is-loaded {
+  opacity: 1;
+}
+/* 弹性占位骨架容器（如相关列表行的文本位） */
+.sk-grow {
+  flex: 1;
+  min-width: 0;
+}
+/* 播放器骨架头部：高度对齐真实头部实测 59px，chunk 就绪替换时零跳动 */
+.sk-player-head {
+  min-height: 59px;
+}
+/* 播放器 logo / 相关列表 logo 作为 sk-fill 定位基准
+  （两类已有 overflow:hidden，仅补 position） */
+.player__logo,
+.related__logo {
+  position: relative;
+}
+/* TvPlayer 获取信号覆盖层：shimmer 骨架底居下，spinner/文案浮其上 */
+.player__overlay > .spin,
+.player__overlay > p {
+  position: relative;
+  z-index: 1;
 }
 
 /* 移动端：状态面板适配 */

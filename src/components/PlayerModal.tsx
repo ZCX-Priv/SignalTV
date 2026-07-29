@@ -17,6 +17,7 @@ import { toast } from "../lib/toast";
 import { pushModal, trapFocus } from "../lib/modalStack";
 import { useI18n } from "../i18n";
 import { LatencyTag } from "./LatencyTag";
+import { SkeletonImg } from "./Skeletons";
 import { TvPlayer } from "./TvPlayer";
 
 export function PlayerModal() {
@@ -225,13 +226,9 @@ export function PlayerModal() {
             <div className="player__channel-head" ref={headRef}>
               <div className="player__logo">
                 {channel.logo ? (
-                  <img
-                    src={channel.logo}
-                    alt=""
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                    }}
-                  />
+                  // 加载完成前 logo 格内铺 shimmer 骨架，失败退化为空格
+                  //（与原 display:none 降级等效，格子底色/边框仍在）
+                  <SkeletonImg src={channel.logo} alt="" />
                 ) : (
                   <Tv2 size={22} />
                 )}
@@ -327,9 +324,8 @@ export function PlayerModal() {
                     >
                       <span className="related__logo">
                         {c.logo ? (
-                          <img src={c.logo} alt="" loading="lazy" onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.opacity = "0";
-                          }} />
+                          // 小 logo 同套骨架模式；失败退化为空格（原 opacity:0 等效）
+                          <SkeletonImg src={c.logo} alt="" loading="lazy" />
                         ) : (
                           <Play size={11} fill="currentColor" />
                         )}

@@ -14,6 +14,10 @@ import {
   type ApiErrorInfo,
 } from "../lib/api";
 import { probeBatch } from "../lib/latency";
+import {
+  runThemeTransition,
+  type ThemeTransitionOrigin,
+} from "../lib/themeTransition";
 import { idbGet, idbSet, idbStorage } from "../lib/idb";
 import { applySeo, describeView } from "../lib/seo";
 import {
@@ -216,29 +220,6 @@ export async function getInitialTimezone(): Promise<TimezonePref> {
   return "auto";
 }
 
-// 主题切换全局颜色过渡：在 <html> 上加 .theme-anim 类，CSS 规则强制所有元素
-// 的颜色类属性（background/color/border/fill/stroke/box-shadow）以 0.3s 统一过渡，
-// 新旧主题间平滑渐变而非瞬切；各元素自带的零散 transition 时长也被统一，
-// 消除快慢不一的时差。先强制回流确保类生效后再切 data-theme；过渡结束
-// （400ms，略大于 CSS 的 0.3s）后移除类恢复各元素原有过渡行为。
-// 重复切换时先清旧定时器，避免上一轮的移除把本轮过渡截断。
-// 减弱动效偏好下 CSS 规则被 media 排除，保持瞬切。
-let themeAnimTimer: ReturnType<typeof setTimeout> | null = null;
-const THEME_ANIM_MS = 400;
-
-function enableThemeTransition(): void {
-  if (typeof document === "undefined") return;
-  const root = document.documentElement;
-  if (themeAnimTimer) clearTimeout(themeAnimTimer);
-  root.classList.add("theme-anim");
-  // 强制回流，确保 .theme-anim 的过渡规则先生效再切换 data-theme
-  void root.offsetHeight;
-  themeAnimTimer = setTimeout(() => {
-    root.classList.remove("theme-anim");
-    themeAnimTimer = null;
-  }, THEME_ANIM_MS);
-}
-
 export type SortKey =
   | "default"
   | "country"
@@ -388,7 +369,7 @@ interface State {
   setMobileSidebar: (open: boolean) => void;
   setSearchOpen: (open: boolean) => void;
   setTheme: (t: Theme) => void;
-  setThemeMode: (m: ThemeMode) => void;
+  setThemeMode: (m: ThemeMode, origin?: ThemeTransitionOrigin) => void;
   setLanguage: (pref: LanguagePref) => Promise<void>;
   setUpdateMode: (m: UpdateMode) => void;
   setTimezonePref: (p: TimezonePref) => void;
@@ -744,13 +725,23 @@ export const useStore = create<State>()(
         syncThemeCache(t);
         set({ theme: t });
       },
-      setThemeMode: (m) => {
+      setThemeMode: (m, origin) => {
         // themeMode === "system" 时根据当前 prefers-color-scheme 推导实际渲染值，
         // 否则直接使用 light/dark 作为渲染值
         const actualTheme: Theme = m === "system" ? getSystemTheme() : m;
-        enableThemeTransition();
-        syncThemeCache(actualTheme);
-        set({ themeMode: m, theme: actualTheme });
+        // 渲染值不变（如 dark → system 且系统本就是 dark）时跳过过渡动画，
+        // 避免无意义的快照定格闪断
+        if (actualTheme === get().theme) {
+          syncThemeCache(actualTheme);
+          set({ themeMode: m, theme: actualTheme });
+          return;
+        }
+        // 状态变更放进过渡回调内执行：data-theme 属性与 React 重渲染
+        //（ChannelCard 内联国旗渐变等）都会被捕获进"新主题"快照
+        runThemeTransition(() => {
+          syncThemeCache(actualTheme);
+          set({ themeMode: m, theme: actualTheme });
+        }, origin);
       },
       setLanguage: async (pref) => {
         // 先加载语言包再提交 state：确保订阅组件重渲染时字典已就绪，
@@ -866,9 +857,11 @@ if (typeof window !== "undefined" && window.matchMedia) {
     const s = useStore.getState();
     if (s.themeMode !== "system") return;
     const next: Theme = e.matches ? "light" : "dark";
-    enableThemeTransition();
-    syncThemeCache(next);
-    useStore.setState({ theme: next });
+    // 系统自动切换无点击坐标，不传 origin，圆形扩散从视口中心展开
+    runThemeTransition(() => {
+      syncThemeCache(next);
+      useStore.setState({ theme: next });
+    });
   });
 }
 

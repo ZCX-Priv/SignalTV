@@ -5,6 +5,7 @@ import { useAllChannels } from "../hooks/useChannels";
 import { broadcastDate, channelPosition, flagUrlLg, fmt, prettyCategory } from "../lib/format";
 import { toast } from "../lib/toast";
 import { useI18n } from "../i18n";
+import { SkeletonImg } from "./Skeletons";
 
 // 精选分类列表——每次加载从这些分类中随机挑一个频道作为首屏主推
 const FEATURE_CATEGORIES = ["movies", "news", "sports", "music", "documentary", "entertainment"];
@@ -109,13 +110,13 @@ export function Hero() {
             <div className="feature__noise" />
             <div className="feature__scan" />
             {featured.logo && (
-              <img
+              // 精选卡大 logo：加载完成前铺满媒体区的 shimmer 骨架
+              //（feature__media 已是 relative + overflow:hidden），
+              // 失败退化为纯背景（与原 display:none 等效）
+              <SkeletonImg
                 className="feature__logo"
                 src={featured.logo}
                 alt=""
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
               />
             )}
             <div className="feature__badge">

@@ -12,6 +12,7 @@ import { HistoryPanel } from "./components/HistoryPanel";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Loader, ErrorState } from "./components/Loader";
 import { Toaster } from "./components/Toaster";
+import { PlayerModalSkeleton } from "./components/Skeletons";
 import { toast } from "./lib/toast";
 import { idbGet, idbSet } from "./lib/idb";
 import { hasOpenModal } from "./lib/modalStack";
@@ -210,7 +211,8 @@ function App() {
           </div>
         )}
       >
-        <Suspense fallback={null}>
+        {/* chunk 加载期间展示与真实弹窗同壳类的骨架（未点开频道时返回 null） */}
+        <Suspense fallback={<PlayerModalSkeleton />}>
           <PlayerModal />
         </Suspense>
       </ErrorBoundary>

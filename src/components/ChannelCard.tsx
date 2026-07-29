@@ -1,4 +1,4 @@
-import { memo, useRef, type CSSProperties } from "react";
+import { memo, useRef, useState, type CSSProperties } from "react";
 import { Play, Star, Tv2 } from "lucide-react";
 import type { ChannelWithStream } from "../types";
 import { useStore } from "../store/useStore";
@@ -6,6 +6,7 @@ import { channelPosition, flagUrl, flagPngBgUrl, countryGradient, prettyCategory
 import { toast } from "../lib/toast";
 import { useI18n } from "../i18n";
 import { LatencyTag } from "./LatencyTag";
+import { SkeletonImg } from "./Skeletons";
 
 interface Props {
   channel: ChannelWithStream;
@@ -25,6 +26,9 @@ export const ChannelCard = memo(function ChannelCard({ channel, index, animate }
   // 实际渲染主题（dark|light）：国旗背景是内联样式，无法被
   // [data-theme="light"] CSS 规则覆盖，需随主题重算渐变遮罩配色
   const theme = useStore((s) => s.theme);
+  // logo 加载失败 → 媒体区切换到降级占位态（原 DOM 直接改类的逻辑
+  // 改为 state 驱动，供 SkeletonImg 的 onFailed 回调接入）
+  const [mediaEmpty, setMediaEmpty] = useState(false);
 
   const cat = channel.categories[0];
   const pos = channelPosition(channel.id);
@@ -72,19 +76,21 @@ export const ChannelCard = memo(function ChannelCard({ channel, index, animate }
       style={entry.animate ? { animationDelay: `${entry.delay}ms` } : undefined}
       onClick={() => openChannel(channel.id)}
     >
-      <div className="card__media" style={mediaStyle}>
+      <div
+        className={`card__media${mediaEmpty ? " card__media--empty" : ""}`}
+        style={mediaStyle}
+      >
         <div className="card__noise" />
-        {channel.logo ? (
-          <img
+        {channel.logo && !mediaEmpty ? (
+          // 加载完成前铺满媒体区的 shimmer 骨架，尺寸随媒体区
+          // aspect-ratio 自适应（卡片/列表两形态天然一致）；
+          // 失败切入 --empty 降级占位（频道名文字）
+          <SkeletonImg
             className="card__logo"
             src={channel.logo}
             alt=""
             loading="lazy"
-            onError={(e) => {
-              const img = e.currentTarget as HTMLImageElement;
-              img.style.display = "none";
-              img.parentElement?.classList.add("card__media--empty");
-            }}
+            onFailed={() => setMediaEmpty(true)}
           />
         ) : null}
         <div className="card__placeholder">
