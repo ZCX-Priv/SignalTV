@@ -43,8 +43,10 @@ const LATENCY_FLUSH_MS = 200;
 // 会重复探测同一批 URL，用此集合拦截，避免浪费带宽
 const probeInFlight = new Set<string>();
 
-// 延迟探测固定并发：所有探测入口（按需 / 全量）统一 16 路，不区分网络环境
-const PROBE_CONCURRENCY = 16;
+// 延迟探测全局并发：所有探测入口（按需 / 全量）统一 128 路，不区分网络环境。
+// probeBatch 内部还有主机感知调度（单主机 4 路 + 连续 3 次超时/网络错误熔断），
+// 保证发包时必有空闲 socket 配额，计时不含浏览器内部排队时间
+const PROBE_CONCURRENCY = 128;
 
 // 手动全量探测（状态页）：模块级 controller 供取消；进度写回 200ms 节流，
 // 避免 5000+ 次回调逐条 setState 刷屏
@@ -727,6 +729,9 @@ export const useStore = create<State>()(
         updateMode: s.updateMode,
         timezonePref: s.timezonePref,
         gridLayouts: s.gridLayouts,
+        // 延迟结果跨会话持久化：全量/按需探测过的频道（含 -1 失败项）
+        // 下次会话不再重测；Map 无法直接 JSON 序列化，转 entries 数组存储
+        latency: Array.from(s.latency.entries()) as unknown as State["latency"],
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -747,6 +752,19 @@ export const useStore = create<State>()(
         if (typeof state.gridLayouts !== "object" || state.gridLayouts === null) {
           state.gridLayouts = DEFAULT_GRID_LAYOUTS;
         }
+        // latency 以 entries 数组持久化，还原为 Map；逐项校验形状，
+        // 污染/旧版无此字段时回落空 Map（与其他字段校验风格一致）
+        const rawLatency = state.latency as unknown;
+        state.latency = new Map(
+          Array.isArray(rawLatency)
+            ? rawLatency.filter(
+                (e): e is [string, number] =>
+                  Array.isArray(e) &&
+                  typeof e[0] === "string" &&
+                  typeof e[1] === "number",
+              )
+            : [],
+        );
         // 旧版持久化数据没有 themeMode → 从 theme 推断（保留旧用户的实际偏好），
         // 否则新字段缺失会导致"跟随系统"语义意外覆盖用户已选主题
         if (!state.themeMode) {

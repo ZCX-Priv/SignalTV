@@ -1178,7 +1178,9 @@
   place-items: center;
   overflow: hidden;
 }
-/* 占位文字：默认隐藏，无 logo 或加载失败时显示 */
+/* 占位文字：默认隐藏，无 logo 或加载失败时显示。
+   max-width + min-width:0 约束网格项：默认 min-width:auto 会让长标题
+   把 div 撑得比媒体区还宽，居中后向两侧溢出错位 */
 .card__placeholder {
   display: none;
   flex-direction: column;
@@ -1188,6 +1190,8 @@
   z-index: 1;
   text-align: center;
   padding: 8px 12px;
+  max-width: 100%;
+  min-width: 0;
   pointer-events: none;
 }
 .card__media:not(:has(.card__logo)) .card__placeholder {
@@ -1205,8 +1209,13 @@
   line-height: 1.2;
   max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* 两行自适应截断：短标题一行居中，长标题换行到两行后省略，
+     div 尺寸随内容自适应且始终水平垂直居中 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 .card__placeholder-country {
   font-family: var(--font-mono);

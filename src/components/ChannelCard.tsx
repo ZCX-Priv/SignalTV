@@ -22,6 +22,8 @@ export const ChannelCard = memo(function ChannelCard({ channel, index, animate }
   // 直接订阅布尔结果（zustand 比较原始值）：收藏任一频道时
   // 只有相关卡片重渲染，而非订阅整个 favorites 数组引发全卡片重渲染
   const isFav = useStore((s) => s.favorites.includes(channel.id));
+  // 无流频道（信号已丢失）不会被探测，直接传 -1 显示“—”，
+  // 避免永远停在“··”待测态（探测侧本就只收集有流频道）
   const latency = useStore((s) => s.latency.get(channel.id));
   // 实际渲染主题（dark|light）：国旗背景是内联样式，无法被
   // [data-theme="light"] CSS 规则覆盖，需随主题重算渐变遮罩配色
@@ -110,7 +112,7 @@ export const ChannelCard = memo(function ChannelCard({ channel, index, animate }
           <span className="dot" /> {t("common.live")}
         </div>
 
-        <LatencyTag ms={latency} className="card__ping" />
+        <LatencyTag ms={channel.streamUrl ? latency : -1} className="card__ping" />
         {channel.is_nsfw && (
           <span className="card__nsfw">{t("card.nsfw")}</span>
         )}

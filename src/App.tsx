@@ -88,7 +88,7 @@ function App() {
   }, [loaded]);
 
   // 注：原 loaded 后自动触发 runLatencyProbe 的逻辑已移除。
-  // 全量探测会挤占首屏带宽（5000 频道 × 16 并发 × 5s 超时），
+  // 全量探测会挤占首屏带宽（5000 频道即使高并发也需数十秒），
   // 改由 ChannelGrid 在渲染窗口变化后 debounce 150ms 调用 probeLatencyForIds，
   // 按需探测窗口内（可见 + overscan 预挂）频道。
 
