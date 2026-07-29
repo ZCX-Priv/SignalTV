@@ -2,7 +2,7 @@ import { memo, useRef, useState, type CSSProperties } from "react";
 import { Play, Star, Tv2 } from "lucide-react";
 import type { ChannelWithStream } from "../types";
 import { useStore } from "../store/useStore";
-import { channelPosition, flagUrl, flagPngBgUrl, countryGradient, prettyCategory } from "../lib/format";
+import { channelPosition, flagUrl, flagSvgBgUrl, countryGradient, prettyCategory } from "../lib/format";
 import { toast } from "../lib/toast";
 import { useI18n } from "../i18n";
 import { LatencyTag } from "./LatencyTag";
@@ -33,9 +33,9 @@ export const ChannelCard = memo(function ChannelCard({ channel, index, animate }
   const cat = channel.categories[0];
   const pos = channelPosition(channel.id);
 
-  // 卡片背景用 w160 PNG 国旗：CSS background 无法懒加载，
-  // 整幅 SVG 单张可达数百 KB，60 张卡片即时下载会拖垮弱网首屏
-  const flagBg = flagPngBgUrl(channel.country);
+  // 卡片背景用整幅 SVG 国旗：矢量在任意卡片尺寸/DPR 下都不糊，
+  // 重复下载开销由 SW 对 flagcdn 的 CacheFirst 30 天缓存兜底
+  const flagBg = flagSvgBgUrl(channel.country);
   const mediaBackground = flagBg
     ? [
         "radial-gradient(120% 80% at 50% 30%, rgba(255, 59, 48, 0.10), transparent 60%)",

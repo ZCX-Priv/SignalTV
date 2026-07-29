@@ -37,25 +37,37 @@ function isValidCountryCode(code: string): boolean {
   return !!code && COUNTRY_CODE_RE.test(code);
 }
 
+// iptv-org 与 flagcdn 的代码体系差异：iptv-org 用 UK 表示英国，
+// flagcdn 只认 ISO 3166-1 的 gb（uk.png 会 404，英国频道国旗全部丢失），
+// 在唯一取码入口做归一化映射（实测比对两方代码表，仅此一处不匹配）
+const FLAG_CODE_FIX: Record<string, string> = { uk: "gb" };
+
+function flagCode(code: string): string | null {
+  if (!isValidCountryCode(code)) return null;
+  const lower = code.toLowerCase();
+  return FLAG_CODE_FIX[lower] ?? lower;
+}
+
 /** 根据国家代码获取小尺寸国旗图片 URL。 */
 export function flagUrl(code: string): string | null {
-  if (!isValidCountryCode(code)) return null;
-  return `${FLAG_BASE}/w40/${code.toLowerCase()}.png`;
+  const c = flagCode(code);
+  return c ? `${FLAG_BASE}/w40/${c}.png` : null;
 }
 
 /** 获取高分辨率国旗（用于首屏/详情）。 */
 export function flagUrlLg(code: string): string | null {
-  if (!isValidCountryCode(code)) return null;
-  return `${FLAG_BASE}/w80/${code.toLowerCase()}.png`;
+  const c = flagCode(code);
+  return c ? `${FLAG_BASE}/w80/${c}.png` : null;
 }
 
 /**
- * 卡片背景用中等尺寸 PNG 国旗（CSS background 无法懒加载，
- * 改用 w160 PNG 替代整幅 SVG，单张从数百 KB 降到几 KB）。
+ * 卡片背景用整幅 SVG 国旗（flagcdn SVG 无尺寸后缀，单国一张）：
+ * 矢量在任意卡片尺寸/DPR 下都不糊；个别国徽复杂的 SVG 体积较大，
+ * 由 Service Worker 对 flagcdn 的 CacheFirst 30 天缓存兜底重复开销。
  */
-export function flagPngBgUrl(code: string): string | null {
-  if (!isValidCountryCode(code)) return null;
-  return `${FLAG_BASE}/w160/${code.toLowerCase()}.png`;
+export function flagSvgBgUrl(code: string): string | null {
+  const c = flagCode(code);
+  return c ? `${FLAG_BASE}/${c}.svg` : null;
 }
 
 /**

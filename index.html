@@ -216,6 +216,16 @@
           theme = m && m.matches ? "light" : "dark";
         }
         document.documentElement.dataset.theme = theme;
+        /* 同步改写 theme-color meta（静态默认深色）：白昼用户的状态栏/
+           PWA 标题栏首帧即为米黄，不等 React 挂载后的 syncThemeCache；
+           色值与 index.css 的 --bg 及 useStore.ts 保持一致 */
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+          meta.setAttribute(
+            "content",
+            theme === "light" ? "#f5f1e8" : "#0a0a0f"
+          );
+        }
       })();
     </script>
   </head>

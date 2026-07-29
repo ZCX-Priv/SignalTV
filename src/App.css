@@ -370,6 +370,17 @@
     justify-content: center;
     padding: 8px;
   }
+  /* 标题行（分类/国家）只剩图标后改为居中：展开态的 padding: 0 8px
+     左对齐会使标题图标中心与下方居中的 .nav__item 图标中心错开竖线 */
+  .sidebar.is-collapsed .sidebar__label {
+    justify-content: center;
+    padding: 0;
+  }
+  /* 复位展开态的 -1px 光学位移：那是为与 CJK 文字墨迹中心对齐，
+     折叠后无文字，保留反而使图标偏离几何中心 */
+  .sidebar.is-collapsed .sidebar__label svg {
+    transform: none;
+  }
 }
 .sidebar__scroll {
   height: 100%;
@@ -1908,6 +1919,19 @@
   --media-brand: var(--signaltv, #ff3b30);
   --media-controls-color: #f5f5f5;
   --media-focus-ring-color: var(--signaltv, #ff3b30);
+}
+/* 桌面端：视频区四周留边，透出面板底色，12px 圆角完整可见，
+   不再与右侧信息栏分隔线生硬贴合；尺寸改 auto 后 grid 默认
+   stretch 会自动扣除 margin，不会像 width/height:100% 那样溢出。
+   覆盖关系：本规则与上方基础 .player__video 同特异性，必须位于其
+   源码顺序之后才能覆盖 width/height:100%（写在前面会被反杀——
+   100% 尺寸 + margin 溢出被 stage overflow:hidden 裁掉右/下圆角） */
+@media (min-width: 1081px) {
+  .player__video {
+    width: auto;
+    height: auto;
+    margin: 14px;
+  }
 }
 /* 隐藏 vidstack 内置 buffering spinner，避免与网站自定义加载圈重复显示 */
 .player__video .vds-buffering-indicator {
@@ -3590,19 +3614,19 @@
 [data-theme="light"] .player__panel {
   box-shadow: 0 40px 120px -30px rgba(26, 26, 31, 0.35), 0 0 0 1px rgba(255, 59, 48, 0.08);
 }
-/* 排除 --paused：paused 覆盖层由 [data-theme="light"] .player__overlay--paused
-   专属规则接管（纯白文字），此处通用规则只作用于 loading/error 态，
-   避免同特异度下靠后声明覆盖纯白 */
-[data-theme="light"] .player__overlay:not(.player__overlay--paused) {
+/* 白昼白字只限 error 态：其背景恒为深色径向渐变（盖在黑色播放区上）。
+   loading 态不能用白字：其底层是随主题的 shimmer 骨架（白昼为米色
+   --sk-base），白字压浅底不可读，回落基础规则的 var(--ink-dim)
+  （白昼深色/夜间浅色）；paused 态仍由上方专属规则接管 */
+[data-theme="light"] .player__overlay--error {
   color: rgba(255, 255, 255, 0.8);
 }
-[data-theme="light"] .player__overlay:not(.player__overlay--paused) p {
+[data-theme="light"] .player__overlay--error p {
   color: rgba(255, 255, 255, 0.6);
 }
-/* 覆盖层背景在任何主题下都是深色的（信号丢失/加载中盖在黑色播放区上），
-   但 .player__overlay h3 写死 color: var(--ink)，白昼模式下 --ink 是深灰
-   → 标题强制纯白，保证「信号丢失」等标题永远清晰可读 */
-[data-theme="light"] .player__overlay:not(.player__overlay--paused) h3 {
+/* error 态标题写死 color: var(--ink)，白昼下 --ink 是深灰
+   → 强制纯白，保证「信号丢失」标题在深色背景上永远清晰可读 */
+[data-theme="light"] .player__overlay--error h3 {
   color: #ffffff;
 }
 /* 断点与移动端抽屉侧栏保持一致（860px，见 .app 单列布局断点），
