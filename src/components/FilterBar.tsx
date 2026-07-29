@@ -23,10 +23,39 @@ export function FilterBar({ list }: FilterBarProps) {
   const categories = useStore((s) => s.categories);
   const countries = useStore((s) => s.countries);
   const view = useStore((s) => s.view);
+  const favorites = useStore((s) => s.favorites);
+  const channels = useStore((s) => s.channels);
 
   // 收藏夹视图不提供成人内容开关与"成人内容优先"排序：
   // 收藏是用户自己选的，列表也不受 nsfw 过滤影响（见 useFilteredChannels）
   const isFavorites = view.kind === "favorites";
+  // 分类/国家页自身已限定范围，不再渲染同维度的冗余下拉
+  //（setView 切页时已重置 categoryId/countryCode，无残留筛选）
+  const isCategoryView = view.kind === "category";
+  const isCountryView = view.kind === "country";
+
+  // 收藏夹视图：下拉只列收藏频道实际出现的分类/国家（收藏为空时
+  // 回退完整列表）；基于收藏全集而非过滤后的 list prop 计算，
+  // 避免选中某项后候选项塌缩成单项无法切换
+  const { categoryOptions, countryOptions } = useMemo(() => {
+    if (!isFavorites) {
+      return { categoryOptions: categories, countryOptions: countries };
+    }
+    const catIds = new Set<string>();
+    const codes = new Set<string>();
+    for (const id of favorites) {
+      const c = channels.get(id);
+      if (!c) continue;
+      for (const cat of c.categories) catIds.add(cat);
+      codes.add(c.country);
+    }
+    return {
+      categoryOptions:
+        catIds.size > 0 ? categories.filter((c) => catIds.has(c.id)) : categories,
+      countryOptions:
+        codes.size > 0 ? countries.filter((c) => codes.has(c.code)) : countries,
+    };
+  }, [isFavorites, favorites, channels, categories, countries]);
 
   // 当 nsfw 关闭或处于收藏夹视图时，sort=nsfw-first 无意义，自动回退到 default
   useEffect(() => {
@@ -38,7 +67,6 @@ export function FilterBar({ list }: FilterBarProps) {
   const sortOptions = useMemo(
     () => [
       { value: "default", label: t("sort.default") },
-      { value: "country", label: t("sort.country") },
       { value: "recent", label: t("sort.recent") },
       { value: "latency-asc", label: t("sort.latencyAsc") },
       { value: "latency-desc", label: t("sort.latencyDesc") },
@@ -86,47 +114,51 @@ export function FilterBar({ list }: FilterBarProps) {
           {/* 卡片/列表视图切换：收藏页独立偏好，其余浏览页共享一份 */}
           <ViewToggle scope={isFavorites ? "favorites" : "browse"} />
 
-          <Select
-            aria-label={t("filter.categoryAria")}
-            icon={<Hash size={13} />}
-            placeholder={t("filter.allCategories")}
-            value={filter.categoryId ?? ALL}
-            onValueChange={(v) => {
-              setFilter({ categoryId: v === ALL ? null : v });
-              if (v === ALL) toast.info(t("toast.categoryCleared"));
-              else {
-                const c = categories.find((x) => x.id === v);
-                if (c) toast.info(t("toast.categorySet", { name: c.name }));
-              }
-            }}
-            options={[
-              { value: ALL, label: t("filter.allCategories") },
-              ...categories.map((c) => ({ value: c.id, label: c.name })),
-            ]}
-          />
+          {!isCategoryView && (
+            <Select
+              aria-label={t("filter.categoryAria")}
+              icon={<Hash size={13} />}
+              placeholder={t("filter.allCategories")}
+              value={filter.categoryId ?? ALL}
+              onValueChange={(v) => {
+                setFilter({ categoryId: v === ALL ? null : v });
+                if (v === ALL) toast.info(t("toast.categoryCleared"));
+                else {
+                  const c = categories.find((x) => x.id === v);
+                  if (c) toast.info(t("toast.categorySet", { name: c.name }));
+                }
+              }}
+              options={[
+                { value: ALL, label: t("filter.allCategories") },
+                ...categoryOptions.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+            />
+          )}
 
-          <Select
-            aria-label={t("filter.countryAria")}
-            icon={<Globe size={13} />}
-            placeholder={t("filter.allCountries")}
-            value={filter.countryCode ?? ALL}
-            onValueChange={(v) => {
-              setFilter({ countryCode: v === ALL ? null : v });
-              if (v === ALL) toast.info(t("toast.countryCleared"));
-              else {
-                const c = countries.find((x) => x.code === v);
-                if (c) toast.info(t("toast.countrySet", { name: c.name }));
-              }
-            }}
-            options={[
-              { value: ALL, label: t("filter.allCountries") },
-              ...countries.map((c) => ({
-                value: c.code,
-                label: <>{c.name}（{c.channelCount}）</>,
-                textValue: c.name,
-              })),
-            ]}
-          />
+          {!isCountryView && (
+            <Select
+              aria-label={t("filter.countryAria")}
+              icon={<Globe size={13} />}
+              placeholder={t("filter.allCountries")}
+              value={filter.countryCode ?? ALL}
+              onValueChange={(v) => {
+                setFilter({ countryCode: v === ALL ? null : v });
+                if (v === ALL) toast.info(t("toast.countryCleared"));
+                else {
+                  const c = countries.find((x) => x.code === v);
+                  if (c) toast.info(t("toast.countrySet", { name: c.name }));
+                }
+              }}
+              options={[
+                { value: ALL, label: t("filter.allCountries") },
+                ...countryOptions.map((c) => ({
+                  value: c.code,
+                  label: <>{c.name}（{c.channelCount}）</>,
+                  textValue: c.name,
+                })),
+              ]}
+            />
+          )}
 
           <Select
             aria-label={t("filter.sortAria")}

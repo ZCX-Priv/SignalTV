@@ -114,7 +114,6 @@ export const dict: Dict = {
 
   // ── 정렬 옵션 ──
   "sort.default": "기본",
-  "sort.country": "국가",
   "sort.recent": "최근 시청",
   "sort.latencyAsc": "지연: 낮음 → 높음",
   "sort.latencyDesc": "지연: 높음 → 낮음",

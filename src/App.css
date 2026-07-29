@@ -19,8 +19,12 @@
   height: clamp(22px, 5vw, 30px);
   border: 1px solid var(--line-strong);
   border-radius: 7px;
-  color: var(--ink);
+  /* 广播图标走红色系而非 --ink：夜间深红压住暗底，白昼浅红提亮 */
+  color: #b3261e;
   background: radial-gradient(120% 120% at 50% 0%, rgba(255, 59, 48, 0.18), transparent 70%);
+}
+[data-theme="light"] .logo__mark {
+  color: #ff6b61;
 }
 .logo__mark .dot {
   position: absolute;
@@ -174,6 +178,13 @@
 .search-history.is-closing {
   animation: select-out var(--dur-micro) var(--ease) forwards;
   pointer-events: none;
+}
+/* 白昼模式：下拉底色用 --bg-2 米黄（#e8e1d0，与 header 暖色调同源）。
+   不用 --bg/--bg-elev：两者亮度近 96%且与页面底色几乎一致，
+   在米黄页面上读作白色；--bg-2 深两档，米黄感肉眼可辨且边界清晰，
+   行 hover 的 --bg-3 仍深一档，悬停层次保留；夜间模式不变 */
+[data-theme="light"] .search-history {
+  background: var(--bg-2);
 }
 /* 头部工具行：左侧区块标签 + 右侧管理/全选/删除/完成 */
 .search-history__bar {

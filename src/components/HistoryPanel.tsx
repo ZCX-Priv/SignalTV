@@ -126,6 +126,26 @@ export function HistoryPanel() {
   const [countryCode, setCountryCode] = useState<string | null>(null);
   const hasFilter = categoryId !== null || countryCode !== null;
 
+  // 下拉只列历史频道实际出现的分类/国家（历史为空或全部已下线时
+  // 回退完整列表）；基于历史全集而非 filtered 计算，
+  // 避免选中某项后候选项塌缩成单项无法切换
+  const { categoryOptions, countryOptions } = useMemo(() => {
+    const catIds = new Set<string>();
+    const codes = new Set<string>();
+    for (const e of history) {
+      const ch = channels.get(e.id);
+      if (!ch) continue;
+      for (const cat of ch.categories) catIds.add(cat);
+      codes.add(ch.country);
+    }
+    return {
+      categoryOptions:
+        catIds.size > 0 ? categories.filter((c) => catIds.has(c.id)) : categories,
+      countryOptions:
+        codes.size > 0 ? countries.filter((c) => codes.has(c.code)) : countries,
+    };
+  }, [history, channels, categories, countries]);
+
   // 管理模式：selected 存频道 id（history 按频道去重，id 即条目唯一键）
   const [managing, setManaging] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -267,7 +287,7 @@ export function HistoryPanel() {
               }}
               options={[
                 { value: ALL, label: t("filter.allCategories") },
-                ...categories.map((c) => ({ value: c.id, label: c.name })),
+                ...categoryOptions.map((c) => ({ value: c.id, label: c.name })),
               ]}
             />
 
@@ -286,7 +306,7 @@ export function HistoryPanel() {
               }}
               options={[
                 { value: ALL, label: t("filter.allCountries") },
-                ...countries.map((c) => ({
+                ...countryOptions.map((c) => ({
                   value: c.code,
                   label: <>{c.name}（{c.channelCount}）</>,
                   textValue: c.name,

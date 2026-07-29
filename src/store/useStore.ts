@@ -10,7 +10,6 @@ import {
   ApiError,
   buildChannelIndex,
   buildCountryInfo,
-  getMeasuredSpeed,
   type ApiErrorInfo,
 } from "../lib/api";
 import { probeBatch } from "../lib/latency";
@@ -41,8 +40,11 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 const LATENCY_FLUSH_MS = 200;
 
 // 探测 in-flight 去重：探测需 1-3s 才写入 latency，期间滚动触发的下一批
-// 会重复探测同一批 URL，用此集合拦截，避免浪费带宽（弱网致命）
+// 会重复探测同一批 URL，用此集合拦截，避免浪费带宽
 const probeInFlight = new Set<string>();
+
+// 延迟探测固定并发：所有探测入口（按需 / 全量）统一 16 路，不区分网络环境
+const PROBE_CONCURRENCY = 16;
 
 // 手动全量探测（状态页）：模块级 controller 供取消；进度写回 200ms 节流，
 // 避免 5000+ 次回调逐条 setState 刷屏
@@ -78,42 +80,6 @@ function batchSetLatency(id: string, ms: number) {
       return { latency: next };
     });
   }, LATENCY_FLUSH_MS);
-}
-
-// 弱网判定：首选首屏加载实测速度（getMeasuredSpeed），低于 500KB/s 判为 slow；
-// 样本全部命中缓存（无有效样本）时依次回退：上次会话持久化的实测画像
-// → Network Information API（慢 WiFi 下普遍误报 fast，仅作末位兜底）。
-export type NetworkProfile = "fast" | "slow";
-
-const SLOW_SPEED_THRESHOLD = 500_000; // 500KB/s
-
-// 上次会话实测网络画像的 IDB key：二次访问命中 SW 缓存时无实测样本，
-// 用上次实测值作初值，避免弱网用户被误判 fast 后以 16 并发挤占带宽
-const NETWORK_PROFILE_KEY = "signaltv-network-profile";
-
-// 回退路径：navigator.connection 的 saveData/2g/slow-2g 判为弱网
-// （Safari/Firefox 不支持时返回 false，不阻断功能）
-function connectionSaysWeak(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const conn = (
-    navigator as {
-      connection?: { effectiveType?: string; saveData?: boolean };
-    }
-  ).connection;
-  if (!conn) return false;
-  if (conn.saveData) return true;
-  const t = conn.effectiveType;
-  return t === "slow-2g" || t === "2g";
-}
-
-/** 实测速度 > 上次会话持久化画像 > Network Information API，逐级回退 */
-function resolveNetworkProfile(persisted: NetworkProfile | null): NetworkProfile {
-  const speed = getMeasuredSpeed();
-  if (speed !== null) {
-    return speed < SLOW_SPEED_THRESHOLD ? "slow" : "fast";
-  }
-  if (persisted) return persisted;
-  return connectionSaysWeak() ? "slow" : "fast";
 }
 
 export type Theme = "dark" | "light";
@@ -222,7 +188,6 @@ export async function getInitialTimezone(): Promise<TimezonePref> {
 
 export type SortKey =
   | "default"
-  | "country"
   | "recent"
   | "latency-asc"
   | "latency-desc"
@@ -317,8 +282,6 @@ interface State {
   error: ApiErrorInfo | null;
   /** 首屏加载进度（固定五行 Loader；null = 未开始/已结束） */
   loadProgress: LoadProgress | null;
-  /** 网络画像：首屏实测 < 500KB/s 判为 slow，控制探测并发与 hls 缓冲策略 */
-  networkProfile: NetworkProfile;
 
   // 延迟探测
   latency: Map<string, number>; // 频道id → 延迟ms，-1 表示失败
@@ -386,7 +349,6 @@ export const useStore = create<State>()(
       loading: false,
       error: null,
       loadProgress: null,
-      networkProfile: "fast",
 
       view: { kind: "home" },
       filter: { q: "", categoryId: null, countryCode: null, sort: "default", nsfw: false },
@@ -419,17 +381,6 @@ export const useStore = create<State>()(
           error: null,
           loadProgress: { channelsReady: false, streamsReady: false },
         });
-        // 上次会话实测的网络画像：本次命中 SW 缓存无实测样本时作为判定依据；
-        // 提前写入 state 让加载完成前的首批探测就用对并发
-        let persistedProfile: NetworkProfile | null = null;
-        void idbGet(NETWORK_PROFILE_KEY)
-          .then((v) => {
-            if (v === "slow" || v === "fast") {
-              persistedProfile = v;
-              if (!get().loaded) set({ networkProfile: v });
-            }
-          })
-          .catch(() => {});
         try {
           // 原地合并更新进度（行位置固定，不滚动）
           const patch = (p: Partial<LoadProgress>) =>
@@ -529,13 +480,6 @@ export const useStore = create<State>()(
           patch({ mergeOk: true });
           // 全流程唯一停留：合并行 [OK] 后 1s 进主页
           await new Promise((r) => setTimeout(r, 1000));
-          // 加载完成后据实测速度判定网络画像（< 500KB/s → slow）；
-          // 无实测样本（缓存命中）时回退上次会话持久化的实测画像
-          const profile = resolveNetworkProfile(persistedProfile);
-          // 仅在有实测样本时持久化，供下次会话（缓存命中无样本）作初值
-          if (getMeasuredSpeed() !== null) {
-            void idbSet(NETWORK_PROFILE_KEY, profile).catch(() => {});
-          }
           set({
             channels: idx,
             categories: cats,
@@ -543,7 +487,6 @@ export const useStore = create<State>()(
             loaded: true,
             loading: false,
             loadProgress: null,
-            networkProfile: profile,
           });
         } catch (e) {
           set({
@@ -629,7 +572,7 @@ export const useStore = create<State>()(
           recentCountries: [code, ...s.recentCountries.filter((r) => r !== code)].slice(0, 24),
         })),
       probeLatencyForIds: async (ids) => {
-        // 播放器打开时暂停探测，避免与视频流抢带宽（弱网下尤其致命）；
+        // 播放器打开时暂停探测，避免与视频流抢带宽；
         // 关闭播放器后 ChannelGrid 的 effect 会重新触发补测
         if (get().activeChannelId !== null) return;
         const channels = get().channels;
@@ -639,7 +582,7 @@ export const useStore = create<State>()(
           const c = channels.get(id);
           // 只探测有流、未探测过且不在 in-flight / 节流待刷队列中的频道
           //（探测结果先进 pendingLatency 等 200ms flush，窗口期内若不查
-          // 该队列会对同一 URL 重复发起探测，弱网下白白浪费带宽）
+          // 该队列会对同一 URL 重复发起探测，白白浪费带宽）
           if (
             c?.streamUrl &&
             !existing.has(id) &&
@@ -651,12 +594,10 @@ export const useStore = create<State>()(
         }
         if (urls.size === 0) return;
         for (const id of urls.keys()) probeInFlight.add(id);
-        // slow 网络（首屏实测 < 500KB/s）下并发 16 → 4，保留基本可用性信息
-        const concurrency = get().networkProfile === "slow" ? 4 : 16;
         // 按需探测不持有全局 controller，调用方（ChannelGrid）通过
         // useEffect cleanup 自动停止触发新批次，进行中的请求由 fetch 自身超时兑底处理
         try {
-          await probeBatch(urls, concurrency, (id, ms) => {
+          await probeBatch(urls, PROBE_CONCURRENCY, (id, ms) => {
             probeInFlight.delete(id);
             batchSetLatency(id, ms);
           });
@@ -679,14 +620,13 @@ export const useStore = create<State>()(
         // 登记 in-flight：全量探测期间拦截 ChannelGrid 窗口探测的重复请求
         for (const id of urls.keys()) probeInFlight.add(id);
         set({ probeRun: { running: true, total: urls.size, done: 0 } });
-        // 并发与按需探测同策略：弱网 4 / 常规 16
-        const concurrency = get().networkProfile === "slow" ? 4 : 16;
+        // 并发与按需探测同策略：固定 16
         let done = 0;
         let ok = 0;
         try {
           await probeBatch(
             urls,
-            concurrency,
+            PROBE_CONCURRENCY,
             (id, ms) => {
               probeInFlight.delete(id);
               done++;

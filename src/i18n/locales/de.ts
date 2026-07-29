@@ -117,7 +117,6 @@ export const dict: Dict = {
 
   // ── Sortieroptionen ──
   "sort.default": "Standard",
-  "sort.country": "Land",
   "sort.recent": "Zuletzt gesehen",
   "sort.latencyAsc": "Latenz: niedrig → hoch",
   "sort.latencyDesc": "Latenz: hoch → niedrig",

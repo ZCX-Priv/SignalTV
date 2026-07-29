@@ -130,7 +130,6 @@ export const dict: Dict = {
 
   // ── Сортировка ──
   "sort.default": "По умолчанию",
-  "sort.country": "По стране",
   "sort.recent": "Недавно просмотренные",
   "sort.latencyAsc": "Задержка: по возрастанию",
   "sort.latencyDesc": "Задержка: по убыванию",

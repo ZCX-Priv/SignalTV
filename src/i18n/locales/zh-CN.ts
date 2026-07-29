@@ -130,7 +130,6 @@ export const dict = {
 
   // ── 排序选项 ──
   "sort.default": "默认",
-  "sort.country": "国家",
   "sort.recent": "最近观看",
   "sort.latencyAsc": "延迟：低 → 高",
   "sort.latencyDesc": "延迟：高 → 低",

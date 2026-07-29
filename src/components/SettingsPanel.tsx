@@ -119,23 +119,31 @@ export function SettingsPanel() {
   // 手动检查更新进行中：按钮禁用 + 图标旋转
   const [checkingUpdate, setCheckingUpdate] = useState(false);
 
-  // 点「检查更新」：info 提示（不转圈）至少展示 CHECK_TOAST_MIN_MS 后再转
-  // 成功/信息/错误结果提示；available（manual 交互式 toast）与 handled
-  //（auto 单条进度 toast 全程接管）均由 updater 弹出，此处只收掉检查中
+  // 点「检查更新」：info 提示（不转圈）至少展示 CHECK_TOAST_MIN_MS 后，
+  // 通过同一去重键（key）原地变身为成功/信息/错误结果提示，
+  // 避免「先收掉再新弹」的双 toast 硬切换（info 退场与结果弹出同帧，
+  // 观感为突然消失）；available（manual 交互式 toast）与 handled
+  //（auto 单条进度 toast 全程接管）由 updater 弹出，此处只收掉检查中
   // 提示、不再叠加任何 toast（避免双 toast）
   const handleCheckUpdate = async () => {
     if (checkingUpdate) return;
     setCheckingUpdate(true);
-    const checkingId = toast.info(t("update.checking"), { duration: Infinity });
+    // 去重键：结果提示复用同 key，命中 toastStore.add() 的 key 去重路径，
+    // 同一条目原地刷新 type/文案/时长（Infinity → 默认 3500ms 自动消失）
+    const CHECK_KEY = "update-check";
+    const checkingId = toast.info(t("update.checking"), {
+      duration: Infinity,
+      key: CHECK_KEY,
+    });
     const startedAt = Date.now();
     const result = await checkForUpdates().catch(() => "failed" as const);
     // 补足最短展示时长，按钮旋转态与提示同步持续到结果弹出
     const remain = CHECK_TOAST_MIN_MS - (Date.now() - startedAt);
     if (remain > 0) await new Promise((r) => setTimeout(r, remain));
-    toast.dismiss(checkingId);
-    if (result === "latest") toast.success(t("update.latest"));
-    else if (result === "downloading") toast.info(t("update.foundDownloading"));
-    else if (result === "failed") toast.error(t("update.checkFailed"));
+    if (result === "latest") toast.success(t("update.latest"), { key: CHECK_KEY });
+    else if (result === "downloading") toast.info(t("update.foundDownloading"), { key: CHECK_KEY });
+    else if (result === "failed") toast.error(t("update.checkFailed"), { key: CHECK_KEY });
+    else toast.dismiss(checkingId); // available/handled：updater 已弹自家 toast，只收检查中提示
     setCheckingUpdate(false);
   };
 

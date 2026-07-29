@@ -8,7 +8,6 @@ import {
 } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
 import { Loader2, AlertTriangle, Play } from "lucide-react";
-import { useStore } from "../store/useStore";
 import { getVidstackTranslations, useI18n } from "../i18n";
 import { SkFill } from "./Skeletons";
 import "@vidstack/react/player/styles/default/theme.css";
@@ -219,10 +218,8 @@ export function TvPlayer({
           if (isHLSProvider(provider)) {
             // 使用本地 hls.js,避免 vidstack 默认从 CDN 加载
             provider.library = Hls;
-            // 弱网友好配置：按播放器尺寸封顶清晰度，缓冲区保守，
-            // slow 网络（首屏实测 < 500KB/s）下进一步缩小缓冲长度
-            const slow = useStore.getState().networkProfile === "slow";
-            // 加载策略：hls.js 默认超时/重试偏宽松，弱网下 fatal 判定
+            // 保守缓冲配置：按播放器尺寸封顶清晰度，缓冲区保守，不区分网络环境
+            // 加载策略：hls.js 默认超时/重试偏宽松，fatal 判定
             // 过晚导致故障转移（切下一路流）等待过长，收紧超时与重试上限
             const loadPolicy = (timeoutMs: number) => ({
               default: {
@@ -234,7 +231,7 @@ export function TvPlayer({
                   maxRetryDelayMs: 1000,
                 },
                 errorRetry: {
-                  maxNumRetry: slow ? 1 : 2,
+                  maxNumRetry: 2,
                   retryDelayMs: 500,
                   maxRetryDelayMs: 2000,
                 },
@@ -242,12 +239,12 @@ export function TvPlayer({
             });
             provider.config = {
               capLevelToPlayerSize: true,
-              maxBufferLength: slow ? 10 : 15,
+              maxBufferLength: 15,
               maxMaxBufferLength: 30,
               startLevel: -1,
-              manifestLoadPolicy: loadPolicy(slow ? 8000 : 10000),
-              playlistLoadPolicy: loadPolicy(slow ? 8000 : 10000),
-              fragLoadPolicy: loadPolicy(slow ? 12000 : 20000),
+              manifestLoadPolicy: loadPolicy(10000),
+              playlistLoadPolicy: loadPolicy(10000),
+              fragLoadPolicy: loadPolicy(20000),
             };
           }
         }}

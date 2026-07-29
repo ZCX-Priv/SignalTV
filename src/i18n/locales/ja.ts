@@ -114,7 +114,6 @@ export const dict: Dict = {
 
   // ── 並び替え ──
   "sort.default": "デフォルト",
-  "sort.country": "国",
   "sort.recent": "最近視聴した順",
   "sort.latencyAsc": "遅延：低 → 高",
   "sort.latencyDesc": "遅延：高 → 低",

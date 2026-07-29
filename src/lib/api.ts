@@ -42,33 +42,6 @@ export class ApiError extends Error {
   }
 }
 
-// 首屏加载实测速度样本（仅大文件 channels.json / streams.json 产出），
-// 用于弱网判定：聚合速度 < 500KB/s 判为弱网。
-interface SpeedSample {
-  bytes: number;
-  ms: number;
-}
-const speedSamples: SpeedSample[] = [];
-
-// 排除缓存干扰：字节数过小或耗时过短的样本大概率命中 SW/浏览器缓存，不计入
-const MIN_SAMPLE_BYTES = 100_000;
-const MIN_SAMPLE_MS = 50;
-
-/**
- * 聚合实测下载速度（字节/秒）。无有效样本（全部命中缓存）时返回 null，
- * 调用方应回退到 Network Information API 判定。
- */
-export function getMeasuredSpeed(): number | null {
-  const valid = speedSamples.filter(
-    (s) => s.bytes >= MIN_SAMPLE_BYTES && s.ms >= MIN_SAMPLE_MS,
-  );
-  if (valid.length === 0) return null;
-  const bytes = valid.reduce((sum, s) => sum + s.bytes, 0);
-  const ms = valid.reduce((sum, s) => sum + s.ms, 0);
-  if (ms <= 0) return null;
-  return (bytes / ms) * 1000;
-}
-
 function isRetryableError(err: unknown): boolean {
   if (err instanceof ApiError) return err.retryable;
   // TypeError 通常是网络错误（fetch 失败）
@@ -136,12 +109,11 @@ async function fetchWithTimeout(
 }
 
 /**
- * 手动读流并计量：累计字节数与耗时，产出一条测速样本，
- * 同时通过 onProgress 回报已下载（解压后）字节数（供 Loader 显示进度；
- * 百分比分母由 store 侧用上次会话实测体积提供，不用 Content-Length ——
- * gzip 传输下它是压缩后大小，与解压后字节比值失真）。
- * 无 body（极端环境）时回退 res.text()，不产出样本。
- * chunk 间隔停滞超时：弱网下连接中途停滞时 reader.read() 会无限挂起
+ * 手动读流并回报进度：通过 onProgress 回报已下载（解压后）字节数
+ * （供 Loader 显示进度；百分比分母由 store 侧用上次会话实测体积提供，
+ * 不用 Content-Length —— gzip 传输下它是压缩后大小，与解压后字节比值失真）。
+ * 无 body（极端环境）时回退 res.text()。
+ * chunk 间隔停滞超时：连接中途停滞时 reader.read() 会无限挂起
  * （fetchWithTimeout 的超时在收到响应头后已解除），60s 无新数据即
  * cancel reader 使 read() 以 reject 结束，由 fetchJson 按可重试错误处理。
  */
@@ -151,7 +123,6 @@ async function readBodyMeasured(
 ): Promise<string> {
   const reader = res.body?.getReader();
   if (!reader) return res.text();
-  const start = performance.now();
   const chunks: Uint8Array[] = [];
   let bytes = 0;
   let stallTimer: ReturnType<typeof setTimeout> | null = null;
@@ -185,8 +156,6 @@ async function readBodyMeasured(
   } finally {
     if (stallTimer) clearTimeout(stallTimer);
   }
-  const ms = performance.now() - start;
-  speedSamples.push({ bytes, ms });
   const buf = new Uint8Array(bytes);
   let offset = 0;
   for (const c of chunks) {

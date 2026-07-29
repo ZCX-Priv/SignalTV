@@ -88,11 +88,6 @@ export function useFilteredChannels(): ChannelWithStream[] {
 
     // 排序
     switch (filter.sort) {
-      case "country":
-        list = [...list].sort(
-          (a, b) => collator.compare(a.country, b.country) || byName(a, b),
-        );
-        break;
       case "recent":
         list = [...list].sort((a, b) => {
           const ia = recentsIndex.get(a.id);

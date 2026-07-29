@@ -178,7 +178,16 @@ export function Header() {
   }
 
   return (
-    <header className={`header${isMobile && searchOpen ? " is-search-open" : ""}`}>
+    <header
+      className={`header${isMobile && searchOpen ? " is-search-open" : ""}`}
+      // 移动端抽屉展开时，点击 Header 任意位置收起侧边栏（遮罩不覆盖 Header 区域）；
+      // 排除菜单按钮——其自身 onClick 已负责开合切换，避免同一次点击被两处处理
+      onClick={(e) => {
+        if (!isMobile || !mobileSidebarOpen) return;
+        if (e.target instanceof Element && e.target.closest(".header__menu")) return;
+        setMobileSidebar(false);
+      }}
+    >
       <button
         className="header__menu"
         onClick={onMenuClick}

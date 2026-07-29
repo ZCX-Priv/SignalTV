@@ -133,21 +133,36 @@ export const toastStore = createStore<ToastState>((set, get) => ({
       createdAt: Date.now(),
     };
     set((s) => {
-      // sticky 条目（更新 toast）插入队头：顶部居中列自上而下渲染，
-      // 队头 = 视觉最顶部，后续普通 toast 全部排在其下方，永久置顶
-      const next = item.sticky ? [toast, ...s.toasts] : [...s.toasts, toast];
-      // 滚动上限：未在关闭中的条目超过 5 条时，从头部（最旧）直接淘汰多余的，
+      // 顺应从上往下阅读习惯：新消息插入视觉顶部，旧消息依次下移。
+      // sticky 条目（更新 toast）始终插队头永久置顶；普通条目插到
+      // 队头连续 sticky 块之后（数组顺序 = 自上而下渲染顺序）
+      let next: ToastItem[];
+      if (item.sticky) {
+        next = [toast, ...s.toasts];
+      } else {
+        let stickyHead = 0;
+        while (stickyHead < s.toasts.length && s.toasts[stickyHead].sticky) {
+          stickyHead++;
+        }
+        next = [
+          ...s.toasts.slice(0, stickyHead),
+          toast,
+          ...s.toasts.slice(stickyHead),
+        ];
+      }
+      // 滚动上限：未在关闭中的条目超过 5 条时，从尾部（最旧）直接淘汰多余的，
       // 不走 180ms 关闭动画，避免快速连发时动画堆积；
       // sticky 条目（更新 toast）跳过淘汰，不被普通 toast 连发挤掉
       let visible = next.filter((it) => !it.closing).length;
       const kept: ToastItem[] = [];
-      for (const it of next) {
+      for (let i = next.length - 1; i >= 0; i--) {
+        const it = next[i];
         if (!it.closing && !it.sticky && visible > MAX_VISIBLE_TOASTS) {
           visible--;
           clearTimer(it.id);
           continue;
         }
-        kept.push(it);
+        kept.unshift(it);
       }
       return { toasts: kept };
     });
