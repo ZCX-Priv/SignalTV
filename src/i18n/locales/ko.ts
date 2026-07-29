@@ -37,6 +37,8 @@ export const dict: Dict = {
   "searchHistory.selectAll": "전체 선택",
   "searchHistory.selectNone": "전체 해제",
   "searchHistory.delete": "삭제",
+  "searchHistory.deleteConfirmTitle": "검색 기록 삭제",
+  "searchHistory.deleteConfirmDesc": "선택한 검색 기록 {count}개를 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
 
   // ── 사이드바 ──
   "sidebar.home": "홈",

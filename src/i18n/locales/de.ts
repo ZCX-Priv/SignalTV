@@ -37,6 +37,8 @@ export const dict: Dict = {
   "searchHistory.selectAll": "Alle auswählen",
   "searchHistory.selectNone": "Auswahl aufheben",
   "searchHistory.delete": "Löschen",
+  "searchHistory.deleteConfirmTitle": "Suchverlauf löschen",
+  "searchHistory.deleteConfirmDesc": "Die {count} ausgewählten Sucheinträge werden gelöscht. Dies kann nicht rückgängig gemacht werden.",
 
   // ── Seitenleiste ──
   "sidebar.home": "Startseite",

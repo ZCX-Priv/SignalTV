@@ -48,6 +48,14 @@ export function Header() {
   const pushSearchHistory = useStore((s) => s.pushSearchHistory);
   // 搜索历史下拉：输入框聚焦打开，失焦/ESC/选词后关闭（出场动画在组件内部）
   const [historyOpen, setHistoryOpen] = useState(false);
+  // 下拉内交互标记：个别移动浏览器在下拉的 pointerdown preventDefault
+  // 生效前就让输入框 blur（拦截失效），需要此 ref 在 blur 处理中辨认
+  // 「blur 源自下拉内点击」——此时不收下拉/搜索框，并把焦点还给输入框；
+  // capture 阶段的 pointerdown 先于 blur 触发，标记时序可靠。
+  // 拦截生效（blur 未发生）时标记无人消费，靠超时自动复位，
+  // 避免残留 true 误吃后续真正的外部点击 blur
+  const historyInteractRef = useRef(false);
+  const historyInteractTimer = useRef<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -131,8 +139,26 @@ export function Header() {
     searchInputRef.current?.focus();
   }
 
-  function onSearchBlur() {
-    // 失焦关闭历史下拉（下拉内点击已被 mousedown preventDefault 拦截，不会走到这）
+  function onSearchBlur(e: React.FocusEvent<HTMLInputElement>) {
+    // 焦点进了删除确认模态（ConfirmModal 打开时自动聚焦取消按钮）：
+    // 不关下拉、不收搜索框，也不能把焦点抢回来（会和模态焦点圈定打架）；
+    // 模态关闭时自带焦点还原会把焦点送回输入框，下拉保持打开
+    if (e.relatedTarget instanceof Element && e.relatedTarget.closest(".confirm")) {
+      historyInteractRef.current = false;
+      return;
+    }
+    // blur 源自下拉内点击（第一层 pointerdown 拦截在个别移动浏览器失效时
+    // 的兜底）：不收下拉、不收搜索框，把焦点还给输入框让后续交互继续；
+    // relatedTarget 落在下拉内（如键盘 Tab 进下拉按钮）同样视为内部交互。
+    // 范围限 .search-history 而非整个表单：Tab 到清空按钮不应被拉回输入框（焦点陷阱）
+    const toInside =
+      e.relatedTarget instanceof Element && e.relatedTarget.closest(".search-history") !== null;
+    if (historyInteractRef.current || toInside) {
+      historyInteractRef.current = false;
+      searchInputRef.current?.focus();
+      return;
+    }
+    // 失焦关闭历史下拉（下拉内点击已被上方分支拦截，不会走到这）
     setHistoryOpen(false);
     // 失焦时若无搜索词则自动收起；有搜索词时保持展开（用户明确要求）
     if (isMobile && !filter.q.trim()) {
@@ -162,15 +188,41 @@ export function Header() {
         <Menu size={18} />
       </button>
       <Logo />
-      <form className="search" onSubmit={onSubmit} role="search">
+      <form
+        className="search"
+        onSubmit={onSubmit}
+        role="search"
+        // capture 阶段先于 blur：点击落在历史下拉内时打标记，
+        // 供 onSearchBlur 辨认内部交互；若拦截生效、blur 未发生，
+        // 500ms 后自动复位残留标记（见 historyInteractRef 注释）
+        onPointerDownCapture={(e) => {
+          if (e.target instanceof Element && e.target.closest(".search-history")) {
+            historyInteractRef.current = true;
+            if (historyInteractTimer.current !== null) {
+              clearTimeout(historyInteractTimer.current);
+            }
+            historyInteractTimer.current = window.setTimeout(() => {
+              historyInteractRef.current = false;
+              historyInteractTimer.current = null;
+            }, 500);
+          }
+        }}
+      >
         <Search size={16} strokeWidth={2} className="search__icon" />
         <input
           className="search__input"
           type="text"
           placeholder={t("header.searchPlaceholder")}
           value={filter.q}
-          onChange={(e) => setFilter({ q: e.target.value })}
+          onChange={(e) => {
+            setFilter({ q: e.target.value });
+            // 选词后继续编辑时重开下拉（仿 YouTube：输入即展示候选）
+            setHistoryOpen(true);
+          }}
           onFocus={() => setHistoryOpen(true)}
+          // 已聚焦状态下再点输入框不会产生新 focus 事件（选词收起后
+          // 焦点从未离开），需 onClick 补一个重开入口
+          onClick={() => setHistoryOpen(true)}
           onBlur={onSearchBlur}
           onKeyDown={(e) => {
             // ESC 只收历史下拉，不干扰模态栈（下拉非模态，不入栈）

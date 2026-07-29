@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, History, ListChecks, Trash2, CheckSquare, Square, X } from "lucide-react";
+import { Check, History, ListChecks, Trash2, CheckSquare, Square, Undo2 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useI18n } from "../i18n";
+import { ConfirmModal } from "./ConfirmModal";
 
 interface SearchHistoryDropdownProps {
   /** 由 Header 按输入框聚焦态控制；翻 false 后本组件播完出场动画再卸载 */
@@ -19,8 +20,13 @@ const MAX_SHOWN = 8;
  * 搜索框下拉历史（仿 YouTube）：聚焦时展示历史词（按当前输入前缀过滤），
  * 点击词条即执行搜索；右上「管理」进入多选模式——行首变勾选框，
  * 工具行切换为「全选/全不选 + 删除所选 + 完成」。
- * 内部所有元素 onMouseDown preventDefault：避免夺走输入框焦点触发
- * blur（移动端 blur 会收起整个搜索框）。关闭时自动退出管理模式。
+ * 焦点拦截双保险：根节点 onPointerDown + onMouseDown 均 preventDefault，
+ * 避免点击夺走输入框焦点触发 blur（移动端 blur 会收起整个搜索框）。
+ * pointerdown 是触摸/鼠标统一的最早可取消事件——移动端触摸序列为
+ * pointerdown → touchstart → touchend → 合成 mousedown，部分移动浏览器
+ * 在合成 mousedown 前就已让输入框 blur，仅拦 mousedown 会失效；
+ * 保留 mousedown 版本兼容无 Pointer Events 的旧环境。
+ * 关闭时自动退出管理模式。
  */
 export function SearchHistoryDropdown({ open, onPick }: SearchHistoryDropdownProps) {
   const { t } = useI18n();
@@ -35,6 +41,8 @@ export function SearchHistoryDropdown({ open, onPick }: SearchHistoryDropdownPro
   // 管理模式（多选删除）；selected 存词条原文（词条即唯一键）
   const [managing, setManaging] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  // 删除二次确认模态（不可撤销操作，与播放历史批量删除同规范）
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -42,9 +50,10 @@ export function SearchHistoryDropdown({ open, onPick }: SearchHistoryDropdownPro
       setClosing(false);
     } else if (visible) {
       setClosing(true);
-      // 关闭即退出管理模式，下次打开回到浏览态
+      // 关闭即退出管理模式，下次打开回到浏览态；确认模态同步收起
       setManaging(false);
       setSelected(new Set());
+      setConfirmOpen(false);
     }
   }, [open, visible]);
 
@@ -98,6 +107,7 @@ export function SearchHistoryDropdown({ open, onPick }: SearchHistoryDropdownPro
   const deleteSelected = () => {
     removeSearchHistory([...selected]);
     setSelected(new Set());
+    setConfirmOpen(false);
     // 删空后管理模式已无对象，自动退出（组件因 items 为空自然隐藏）
     if (selected.size >= items.length) setManaging(false);
   };
@@ -107,7 +117,9 @@ export function SearchHistoryDropdown({ open, onPick }: SearchHistoryDropdownPro
       className={`search-history${closing ? " is-closing" : ""}`}
       role="listbox"
       aria-label={t("searchHistory.aria")}
-      // 拦截焦点转移：点击下拉内任何位置都不夺走输入框焦点（blur 会关下拉/收起移动端搜索框）
+      // 拦截焦点转移：点击下拉内任何位置都不夺走输入框焦点（blur 会关下拉/收起移动端搜索框）；
+      // pointerdown 先于 blur 且触摸/鼠标通用，mousedown 兜底旧环境（见组件 JSDoc）
+      onPointerDown={(e) => e.preventDefault()}
       onMouseDown={(e) => e.preventDefault()}
       onAnimationEnd={(e) => {
         if (closing && e.target === e.currentTarget) {
@@ -131,7 +143,7 @@ export function SearchHistoryDropdown({ open, onPick }: SearchHistoryDropdownPro
             <button
               type="button"
               className="search-history__tool search-history__tool--danger"
-              onClick={deleteSelected}
+              onClick={() => setConfirmOpen(true)}
               disabled={selected.size === 0}
             >
               <Trash2 size={12} /> {t("searchHistory.delete")}
@@ -145,7 +157,7 @@ export function SearchHistoryDropdown({ open, onPick }: SearchHistoryDropdownPro
                 setSelected(new Set());
               }}
             >
-              <X size={12} /> {t("searchHistory.done")}
+              <Undo2 size={12} /> {t("searchHistory.done")}
             </button>
           </div>
         ) : (
@@ -184,6 +196,20 @@ export function SearchHistoryDropdown({ open, onPick }: SearchHistoryDropdownPro
           </li>
         ))}
       </ul>
+
+      {/* 删除二次确认：组件自身 portal 到 body，不受下拉 DOM/层级影响；
+          打开时输入框 blur 由 Header 的 .confirm 分支放行（不收下拉/搜索框），
+          关闭时模态焦点还原把焦点送回输入框 */}
+      <ConfirmModal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={deleteSelected}
+        title={t("searchHistory.deleteConfirmTitle")}
+        desc={t("searchHistory.deleteConfirmDesc", { count: selected.size })}
+        icon={<Trash2 size={16} />}
+        confirmLabel={t("searchHistory.delete")}
+        danger
+      />
     </div>
   );
 }

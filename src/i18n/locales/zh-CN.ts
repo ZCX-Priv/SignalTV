@@ -54,6 +54,8 @@ export const dict = {
   "searchHistory.selectAll": "全选",
   "searchHistory.selectNone": "全不选",
   "searchHistory.delete": "删除",
+  "searchHistory.deleteConfirmTitle": "删除搜索历史",
+  "searchHistory.deleteConfirmDesc": "将删除所选的 {count} 条搜索记录，此操作不可撤销。",
 
   // ── 侧边栏 ──
   "sidebar.home": "首页",

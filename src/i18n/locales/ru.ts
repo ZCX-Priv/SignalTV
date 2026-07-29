@@ -38,6 +38,8 @@ export const dict: Dict = {
   "searchHistory.selectAll": "Выбрать все",
   "searchHistory.selectNone": "Снять выбор",
   "searchHistory.delete": "Удалить",
+  "searchHistory.deleteConfirmTitle": "Удалить историю поиска",
+  "searchHistory.deleteConfirmDesc": "Выбранные записи поиска ({count}) будут удалены. Это действие нельзя отменить.",
 
   // ── Боковая панель ──
   "sidebar.home": "Главная",
