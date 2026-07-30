@@ -253,6 +253,16 @@ const BYTES_KEY = {
   streams: "signaltv-bytes-streams",
 } as const;
 
+// 首访无 IDB 实测基准时的兜底分母：Content-Length（压缩后）× gzip 解压比率
+// 估算解压后体积。比率为对 iptv-org 线上文件的实测经验值（channels.json
+// 压缩 1.27MB/解压 10.3MB ≈ 8.1x；streams.json 0.59MB/3.73MB ≈ 6.3x），
+// 数据形态稳定漂移缓慢；估算误差由钳制 99 与 [OK] 完成信号兜底。
+// 首次会话结束写入实测体积后，后续会话均优先用实测基准。
+const GZIP_EST_RATIO = {
+  channels: 8,
+  streams: 6.3,
+} as const;
+
 // 首屏加载进度（固定五行 Loader 用）：所有字段均原地刷新，不重挂载
 export interface LoadProgress {
   /** 频道表已就绪 → 第2行 [OK] */
@@ -400,45 +410,57 @@ export const useStore = create<State>()(
           const fmtBytes = (b: number) =>
             b >= 1_048_576 ? `${(b / 1_048_576).toFixed(1)}MB` : `${Math.round(b / 1024)}KB`;
           const fileBytes = { channels: 0, streams: 0 };
-          // 进度百分比分母：上次会话实测的解压后字节数（异步读取，
-          // 就绪前不显示百分比；首次访问无记录时整程缺省，回退为仅 [OK]）
+          // 进度百分比分母兜底链路：IDB 实测基准（精确，上次会话解压后
+          // 字节数）→ Content-Length × 估算比率（首访无基准）→ 缺省不显示。
+          // 基准读取必须 await：SW 缓存命中时下载毫秒级结束，异步读取
+          // 会晚于全部 onProgress tick 导致百分比整程缺失（单次 IDB 读
+          // 仅毫秒级，不阻塞启动；失败静默忽略，回退估算/不显示）
           const expectedBytes: { channels?: number; streams?: number } = {};
-          for (const file of ["channels", "streams"] as const) {
-            void idbGet(BYTES_KEY[file])
-              .then((v) => {
-                const n = Number(v);
-                if (Number.isFinite(n) && n > 0) expectedBytes[file] = n;
-              })
-              .catch(() => {});
-          }
-          // 各文件下载百分比（基于上次实测体积；无基准时不显示）
+          await Promise.all(
+            (["channels", "streams"] as const).map((file) =>
+              idbGet(BYTES_KEY[file])
+                .then((v) => {
+                  const n = Number(v);
+                  if (Number.isFinite(n) && n > 0) expectedBytes[file] = n;
+                })
+                .catch(() => {}),
+            ),
+          );
+          // 首访估算分母（与实测基准分开存，实测始终优先）
+          const estimatedBytes: { channels?: number; streams?: number } = {};
+          // 各文件下载百分比（无任何分母时不显示）
           const filePct: { channels?: number; streams?: number } = {};
           let prevTotal = 0;
           let prevTime = 0;
-          const onProgress = (file: keyof typeof fileBytes) => (bytes: number) => {
-            fileBytes[file] = bytes;
-            // 会话间体积漂移很小（iptv-org 日更 ±几个百分点），百分比真实
-            // 平滑推进；体积增长时比值可能略超 100%，钳制 99，真正完成由 [OK] 表达
-            const expected = expectedBytes[file];
-            if (expected) {
-              filePct[file] = Math.min(99, Math.floor((bytes / expected) * 100));
-            }
-            const now = Date.now();
-            if (prevTime && now - prevTime < 300) return;
-            const total = fileBytes.channels + fileBytes.streams;
-            // 首次 tick 无基准不算速度
-            const speed = prevTime
-              ? `${fmtBytes(((total - prevTotal) / (now - prevTime)) * 1000)}/s`
-              : undefined;
-            prevTotal = total;
-            prevTime = now;
-            patch({
-              size: fmtBytes(total),
-              ...(speed ? { speed } : {}),
-              channelsPct: filePct.channels,
-              streamsPct: filePct.streams,
-            });
-          };
+          const onProgress =
+            (file: keyof typeof fileBytes) => (bytes: number, contentLength?: number) => {
+              fileBytes[file] = bytes;
+              // 会话间体积漂移很小（iptv-org 日更 ±几个百分点），百分比真实
+              // 平滑推进；体积增长/估算偏小时比值可能超 100%，钳制 99，
+              // 真正完成由 [OK] 表达
+              if (estimatedBytes[file] === undefined && contentLength) {
+                estimatedBytes[file] = contentLength * GZIP_EST_RATIO[file];
+              }
+              const expected = expectedBytes[file] ?? estimatedBytes[file];
+              if (expected) {
+                filePct[file] = Math.min(99, Math.floor((bytes / expected) * 100));
+              }
+              const now = Date.now();
+              if (prevTime && now - prevTime < 300) return;
+              const total = fileBytes.channels + fileBytes.streams;
+              // 首次 tick 无基准不算速度
+              const speed = prevTime
+                ? `${fmtBytes(((total - prevTotal) / (now - prevTime)) * 1000)}/s`
+                : undefined;
+              prevTotal = total;
+              prevTime = now;
+              patch({
+                size: fmtBytes(total),
+                ...(speed ? { speed } : {}),
+                channelsPct: filePct.channels,
+                streamsPct: filePct.streams,
+              });
+            };
           // 两大文件就绪即进入合并阶段，不等 categories/countries 小文件
           // （SW 缓存过期时小文件可能走慢网络，避免卡在大小/速率行）；
           // 同时补一次最终大小与全程均值速率（缓存场景下载在 300ms

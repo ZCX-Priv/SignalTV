@@ -109,9 +109,10 @@ async function fetchWithTimeout(
 }
 
 /**
- * 手动读流并回报进度：通过 onProgress 回报已下载（解压后）字节数
- * （供 Loader 显示进度；百分比分母由 store 侧用上次会话实测体积提供，
- * 不用 Content-Length —— gzip 传输下它是压缩后大小，与解压后字节比值失真）。
+ * 手动读流并回报进度：通过 onProgress 回报已下载（解压后）字节数与
+ * Content-Length（供 Loader 显示进度；百分比分母优先由 store 侧用上次
+ * 会话实测体积提供 —— gzip 传输下 Content-Length 是压缩后大小，与解压后
+ * 字节比值失真，仅供 store 侧在首访无实测基准时按估算比率兜底分母）。
  * 无 body（极端环境）时回退 res.text()。
  * chunk 间隔停滞超时：连接中途停滞时 reader.read() 会无限挂起
  * （fetchWithTimeout 的超时在收到响应头后已解除），60s 无新数据即
@@ -119,10 +120,13 @@ async function fetchWithTimeout(
  */
 async function readBodyMeasured(
   res: Response,
-  onProgress?: (bytes: number) => void,
+  onProgress?: (bytes: number, contentLength?: number) => void,
 ): Promise<string> {
   const reader = res.body?.getReader();
   if (!reader) return res.text();
+  // Content-Length 属 CORS 安全响应头可直接读取；无效或缺失时回报 undefined
+  const lenRaw = Number(res.headers.get("content-length"));
+  const contentLength = Number.isFinite(lenRaw) && lenRaw > 0 ? lenRaw : undefined;
   const chunks: Uint8Array[] = [];
   let bytes = 0;
   let stallTimer: ReturnType<typeof setTimeout> | null = null;
@@ -150,7 +154,7 @@ async function readBodyMeasured(
       if (value) {
         chunks.push(value);
         bytes += value.length;
-        onProgress?.(bytes);
+        onProgress?.(bytes, contentLength);
       }
     }
   } finally {
@@ -170,8 +174,8 @@ interface FetchJsonOpts {
   signal?: AbortSignal;
   /** 手动读流计量下载速度（仅大文件开启） */
   measure?: boolean;
-  /** 下载进度回调（仅 measure 时生效；回报解压后已下载字节数） */
-  onProgress?: (bytes: number) => void;
+  /** 下载进度回调（仅 measure 时生效；回报解压后已下载字节数与压缩后 Content-Length） */
+  onProgress?: (bytes: number, contentLength?: number) => void;
 }
 
 /**
@@ -245,14 +249,14 @@ async function fetchJson<T>(url: string, opts: FetchJsonOpts = {}): Promise<T> {
 }
 
 export const api = {
-  channels: (signal?: AbortSignal, onProgress?: (bytes: number) => void) =>
+  channels: (signal?: AbortSignal, onProgress?: (bytes: number, contentLength?: number) => void) =>
     fetchJson<Channel[]>(`${BASE}/channels.json`, {
       timeoutMs: LARGE_FILE_TIMEOUT_MS,
       signal,
       measure: true,
       onProgress,
     }),
-  streams: (signal?: AbortSignal, onProgress?: (bytes: number) => void) =>
+  streams: (signal?: AbortSignal, onProgress?: (bytes: number, contentLength?: number) => void) =>
     fetchJson<Stream[]>(`${BASE}/streams.json`, {
       timeoutMs: LARGE_FILE_TIMEOUT_MS,
       signal,
