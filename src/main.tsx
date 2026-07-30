@@ -88,6 +88,10 @@ async function bootstrap() {
   initSeo();
   // 注册 Service Worker 并启动 PWA 更新管理（auto/manual/off 由用户设置决定）
   initUpdater();
+  // 申请持久存储：SW 运行时缓存的 opaque 图片按 ~7MB/条虚占配额，
+  // 非 persistent 模式下配额吃紧时浏览器可能整源驱逐存储（收藏/历史
+  // 所在的 IndexedDB 一并被清）；fire-and-forget，拒绝/不支持时静默忽略
+  void navigator.storage?.persist?.().catch(() => {});
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <ErrorBoundary>

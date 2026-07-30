@@ -476,16 +476,26 @@ async function applyUpdate(): Promise<void> {
   };
   // 优先读当前 registration 的实时 waiting；缺失时从最新 registration 再取一次
   let worker = registration?.waiting ?? null;
+  let latestReg: ServiceWorkerRegistration | undefined;
   if (!worker) {
-    const reg = await navigator.serviceWorker
+    latestReg = await navigator.serviceWorker
       .getRegistration()
       .catch(() => undefined);
-    worker = reg?.waiting ?? null;
+    worker = latestReg?.waiting ?? null;
   }
   if (!worker) {
-    // 无 waiting（已被其他 tab 激活等）→ 直接刷新即是新版本
-    reloadOnce();
-    return;
+    // 无 waiting 但有 installing（manual 认领了仍在下载的 worker，用户在其
+    // 转 waiting 前就点了「更新」）：立即 reload 会重载回旧版本，必须等
+    // statechange 到 installed 后再发 SKIP_WAITING（activated/兜底超时照旧
+    // 由下方监听与 APPLY_FALLBACK_MS 接管）
+    const installing = latestReg?.installing ?? registration?.installing ?? null;
+    if (installing) {
+      worker = installing;
+    } else {
+      // 无 waiting 也无 installing（已被其他 tab 激活等）→ 直接刷新即是新版本
+      reloadOnce();
+      return;
+    }
   }
   const target = worker;
   navigator.serviceWorker.addEventListener("controllerchange", reloadOnce, {
@@ -493,14 +503,20 @@ async function applyUpdate(): Promise<void> {
   });
   target.addEventListener("statechange", () => {
     if (target.state === "activated") reloadOnce();
+    // installing 路径：安装完成转 installed 的瞬间补发 SKIP_WAITING
+    //（此前发送会被 SW 忽略：skipWaiting 对未安装完的 worker 无效）
+    if (target.state === "installed") {
+      target.postMessage({ type: "SKIP_WAITING" });
+    }
   });
   if (isInstalled(target) && target.state === "activated") {
     // 极罕见竞态：已激活 → 直接重载
     reloadOnce();
-  } else {
+  } else if (target.state !== "installing") {
     target.postMessage({ type: "SKIP_WAITING" });
   }
   // 逃生舱：正常路径 controllerchange/activated 先到，不会触发此兜底
+  //（installing 超时/redundant 也由它接管：重载后仍是旧版，下次 reconcile 重提）
   setTimeout(reloadOnce, APPLY_FALLBACK_MS);
 }
 
@@ -633,6 +649,10 @@ function cancelAutoFlow(): void {
 export function presentAutoProgress(reuseId: string): void {
   const worker = registration?.installing ?? registration?.waiting ?? null;
   if (phase !== "progress" || !worker || autoFlowToastId !== null) {
+    // 兜底早退前复位 phase：checkForUpdates 已置 progress 但 worker 在等待
+    // 窗口内消失（如被另一标签页激活）时，若不复位，reconcile/maybeCheck
+    // 会因 phase !== "idle" 永久让路，本会话后台更新检查全部停摆
+    if (phase === "progress" && autoFlowToastId === null) phase = "idle";
     toastStore.getState().dismiss(reuseId);
     return;
   }
@@ -760,7 +780,10 @@ export function initUpdater(): void {
 
   // 安全网：会话运行中 controller 被更换（多标签页激活新 SW、强刷旁路等）
   // 意味着旧预缓存已/即将被 cleanupOutdatedCaches 清理，旧页面继续运行会
-  // 出现懒加载 chunk 失效等各式错误 → 立即整页重载进入完整新版本。
+  // 出现懒加载 chunk 失效等各式错误 → 整页重载进入完整新版本。
+  // 正在播放时不立即掩断：弹 sticky toast 告知，等播放器关闭
+  //（activeChannelId → null）后再重载 —— 旧页面带风险续命的窗口仅限
+  // 播放期间，且 phase="applying" 已阻断其它更新流程介入。
   // 仅在本页加载时已有 controller 才监听：首次安装的 clients.claim 不应触发
   // 重载（避免首访误刷）。applyUpdate 自身激活时已置 phase="applying"，此处
   // 让路避免重复 reload。
@@ -768,7 +791,23 @@ export function initUpdater(): void {
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (phase === "applying") return;
       phase = "applying";
-      window.location.reload();
+      if (useStore.getState().activeChannelId === null) {
+        window.location.reload();
+        return;
+      }
+      // 播放中：延迟到播放器关闭时重载（订阅不随 toast 关闭而取消：
+      // chunk 已失效的旧页面继续长期运行风险更高）
+      toastStore.getState().add({
+        type: "info",
+        title: t("update.deferredReload"),
+        duration: Infinity,
+        sticky: true,
+      });
+      const unsub = useStore.subscribe((s) => {
+        if (s.activeChannelId !== null) return;
+        unsub();
+        window.location.reload();
+      });
     });
   }
 

@@ -230,6 +230,7 @@ export const dict: Dict = {
   "update.installing": "インストール中…",
   "update.done": "更新が完了しました",
   "update.checkFailed": "更新の確認に失敗しました。ネットワークを確認して再試行してください。",
+  "update.deferredReload": "新しいバージョンの準備ができました。再生終了後にページを自動更新します。",
 
   // ── テーマ ──
   "theme.system": "システムに従う",

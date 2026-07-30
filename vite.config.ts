@@ -12,7 +12,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'https://signaltv.netlify.app'
 
 // 构建后处理：用绝对 URL 重写 dist/sitemap.xml 的 <loc>，并在
-// dist/robots.txt 末尾追加 Sitemap 指令（源文件保持占位设计不动）
+// dist/robots.txt 末尾追加 Sitemap 指令（源文件保持占位设计不动）；
+// 同时在 HTML 转换阶段把页内占位域名（og:url/og:image/canonical/hreflang/
+// JSON-LD）替换为 SITE_ORIGIN —— 分享卡片抓取器（微信/Facebook/Twitter）
+// 不执行 JS，seo.ts 的运行时覆写对它们无效，必须在构建产物中完成注入
+// （运行时覆写保留作兜底，两者同源同变量不会漂移）
 function seoFilesPlugin(): Plugin {
   let outDir = 'dist'
   return {
@@ -20,6 +24,11 @@ function seoFilesPlugin(): Plugin {
     apply: 'build',
     configResolved(config) {
       outDir = resolve(config.root, config.build.outDir)
+    },
+    transformIndexHtml(html) {
+      // 占位域即目标域时跳过（split/join 全量替换，含 JSON-LD 内的 URL）
+      if (SITE_ORIGIN === 'https://signaltv.netlify.app') return html
+      return html.split('https://signaltv.netlify.app').join(SITE_ORIGIN)
     },
     closeBundle() {
       const sitemapPath = resolve(outDir, 'sitemap.xml')
@@ -135,22 +144,36 @@ export default defineConfig({
             },
           },
           {
-            // flagcdn 国旗
+            // flagcdn 国旗。<img> 无 crossorigin 时响应为 opaque（status 0），
+            // Chromium 对每条 opaque 缓存按 ~7MB 计入配额；purgeOnQuotaError
+            // 让配额超限时优先清本缓存，而非放任浏览器整源驱逐存储
+            //（IndexedDB 里的收藏/历史会被连带清空）
             urlPattern: /^https:\/\/flagcdn\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'flagcdn-cache',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+                purgeOnQuotaError: true,
+              },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
           {
-            // 频道 logo 图片（png/jpg/webp/svg，允许带 query 的 URL 也命中缓存）
+            // 频道 logo 图片（png/jpg/webp/svg，允许带 query 的 URL 也命中缓存）。
+            // logo 分布在数百个任意第三方主机、几乎全是 opaque 响应（配额
+            // 虚胀见上条注释），且 opaque 无法区分成败——上游 404 也会被
+            // CacheFirst 缓存，故条目数与过期时长都收敛（7 天自愈坏响应）
             urlPattern: /^https:\/\/.*\.(png|jpg|jpeg|webp|svg)(\?.*)?$/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'channel-logos-cache',
-              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 7,
+                purgeOnQuotaError: true,
+              },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

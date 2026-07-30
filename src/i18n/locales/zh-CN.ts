@@ -244,6 +244,7 @@ export const dict = {
   "update.installing": "正在安装…",
   "update.done": "已完成更新",
   "update.checkFailed": "检查更新失败，请检查网络后重试",
+  "update.deferredReload": "新版本已就绪，结束播放后将自动刷新页面",
 
   // ── 主题选项 ──
   "theme.system": "跟随系统",

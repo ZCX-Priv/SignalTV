@@ -150,6 +150,9 @@ export function HistoryPanel() {
   const [managing, setManaging] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // 稳定引用：ConfirmModal 的模态栈/焦点 effect 依赖 onClose，内联箭头会在
+  // 父组件重渲染时触发 effect 重跑（弹栈重推 + 焦点跳回），与 Sidebar 同惯例
+  const closeConfirm = useCallback(() => setConfirmOpen(false), []);
 
   // 先按筛选条件过滤：通过频道属性匹配；已下线频道（channels 中不存在）
   // 无法判断属性，仅在无任何筛选时显示
@@ -402,7 +405,7 @@ export function HistoryPanel() {
 
       <ConfirmModal
         open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
+        onClose={closeConfirm}
         onConfirm={deleteSelected}
         title={t("history.deleteConfirmTitle")}
         desc={t("history.deleteConfirmDesc", { count: selected.size })}

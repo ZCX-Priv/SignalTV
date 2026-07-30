@@ -43,6 +43,61 @@ const LATENCY_FLUSH_MS = 200;
 // 会重复探测同一批 URL，用此集合拦截，避免浪费带宽
 const probeInFlight = new Set<string>();
 
+// ── latency 独立持久化 ──
+// latency 不走 zustand persist：persist 对每次 setState 都全量 JSON 序列化
+// 并写 IDB，探测期间 200ms 一次的 flush 会造成约 10 次/秒 × 数百 KB 的
+// 写放大。改为独立 IDB key + 独立防抖写入，并带时间戳做 24h TTL——延迟
+// 是网络环境快照而非频道属性，跨会话陈旧值（含 -1 失败项）到期自动
+// 失效重测，弱网瞬间测出的失败不再永久固化
+const LATENCY_KEY = "signaltv-latency";
+const LATENCY_TTL_MS = 24 * 60 * 60 * 1000;
+const LATENCY_SAVE_DEBOUNCE_MS = 2000;
+// id → 探测时刻（与 latency Map 平行维护，仅持久化链路使用）
+const latencyStamp = new Map<string, number>();
+let latencySaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleLatencySave(): void {
+  if (latencySaveTimer) return;
+  latencySaveTimer = setTimeout(() => {
+    latencySaveTimer = null;
+    const now = Date.now();
+    const entries: [string, number, number][] = [];
+    for (const [id, ms] of useStore.getState().latency) {
+      entries.push([id, ms, latencyStamp.get(id) ?? now]);
+    }
+    void idbSet(LATENCY_KEY, JSON.stringify(entries)).catch(() => {});
+  }, LATENCY_SAVE_DEBOUNCE_MS);
+}
+
+// 读取上次会话的延迟结果：逐项形状校验 [id, ms, at] + TTL 过滤
+//（at 在未来视为污染同样丢弃），命中项回填 latencyStamp 供本会话续写
+async function loadPersistedLatency(): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  try {
+    const raw = await idbGet(LATENCY_KEY);
+    if (!raw) return out;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return out;
+    const now = Date.now();
+    for (const e of parsed) {
+      if (
+        Array.isArray(e) &&
+        typeof e[0] === "string" &&
+        typeof e[1] === "number" &&
+        typeof e[2] === "number" &&
+        e[2] <= now &&
+        now - e[2] < LATENCY_TTL_MS
+      ) {
+        out.set(e[0], e[1]);
+        latencyStamp.set(e[0], e[2]);
+      }
+    }
+  } catch {
+    // 读取/解析失败 → 视为无缓存，照常全新探测
+  }
+  return out;
+}
+
 // 延迟探测全局并发：所有探测入口（按需 / 全量）统一 128 路，不区分网络环境。
 // probeBatch 内部还有主机感知调度（单主机 4 路 + 连续 3 次超时/网络错误熔断），
 // 保证发包时必有空闲 socket 配额，计时不含浏览器内部排队时间
@@ -76,11 +131,17 @@ function batchSetLatency(id: string, ms: number) {
     const patch = pendingLatency;
     pendingLatency = new Map();
     flushTimer = null;
+    const now = Date.now();
     useStore.setState((s) => {
       const next = new Map(s.latency);
-      for (const [k, v] of patch) next.set(k, v);
+      for (const [k, v] of patch) {
+        next.set(k, v);
+        latencyStamp.set(k, now);
+      }
       return { latency: next };
     });
+    // 独立防抖落盘（latency 不在 persist 白名单内，见上方模块注释）
+    scheduleLatencySave();
   }, LATENCY_FLUSH_MS);
 }
 
@@ -351,6 +412,28 @@ interface State {
   setGridLayout: (scope: LayoutScope, l: GridLayout) => void;
 }
 
+// ── 跨标签页 persist 同步 ──
+// persist 是整包 last-write-wins：两个标签页各持内存副本，后写的会静默
+// 覆盖先写的（如 A 页收藏后被 B 页的旧快照整包写回而丢失）。IDB 没有
+// storage 事件，改用 BroadcastChannel：写入成功后广播通知其它标签页防抖
+// rehydrate 把最新快照合并回内存（BroadcastChannel 不投递给自身，无回声；
+// latency 已移出 persist，写入仅由收藏/历史/设置等低频用户操作触发）
+const PERSIST_NAME = "signaltv-iptv";
+const persistSyncChannel =
+  typeof BroadcastChannel !== "undefined"
+    ? new BroadcastChannel("signaltv-persist-sync")
+    : null;
+
+// idbStorage 包装版：setItem 落盘成功后广播键名通知其它标签页
+const syncedIdbStorage = {
+  getItem: idbStorage.getItem,
+  removeItem: idbStorage.removeItem,
+  setItem: async (name: string, value: string): Promise<void> => {
+    await idbStorage.setItem(name, value);
+    persistSyncChannel?.postMessage(name);
+  },
+};
+
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
@@ -393,6 +476,9 @@ export const useStore = create<State>()(
           error: null,
           loadProgress: { channelsReady: false, streamsReady: false },
         });
+        // 上次会话的延迟结果与 API 下载并行读取（单次 IDB 读仅毫秒级），
+        // 最终 set 时合并——本会话已产生的新鲜探测结果优先
+        const latencyPromise = loadPersistedLatency();
         try {
           // 原地合并更新进度（行位置固定，不滚动）
           const patch = (p: Partial<LoadProgress>) =>
@@ -434,7 +520,9 @@ export const useStore = create<State>()(
           let prevTime = 0;
           const onProgress =
             (file: keyof typeof fileBytes) => (bytes: number, contentLength?: number) => {
-              fileBytes[file] = bytes;
+              // 单调递增：fetchJson 重试时 readBodyMeasured 从 0 重新计数，
+              // 直接赋值会使 size/百分比回跳、速率差值为负闪现 "-xxxKB/s"
+              fileBytes[file] = Math.max(fileBytes[file], bytes);
               // 会话间体积漂移很小（iptv-org 日更 ±几个百分点），百分比真实
               // 平滑推进；体积增长/估算偏小时比值可能超 100%，钳制 99，
               // 真正完成由 [OK] 表达
@@ -443,7 +531,10 @@ export const useStore = create<State>()(
               }
               const expected = expectedBytes[file] ?? estimatedBytes[file];
               if (expected) {
-                filePct[file] = Math.min(99, Math.floor((bytes / expected) * 100));
+                filePct[file] = Math.min(
+                  99,
+                  Math.floor((fileBytes[file] / expected) * 100),
+                );
               }
               const now = Date.now();
               if (prevTime && now - prevTime < 300) return;
@@ -492,9 +583,22 @@ export const useStore = create<State>()(
             api.countries(),
           ]);
           const idx = buildChannelIndex(channels, streams);
-          const countryInfo = buildCountryInfo(countries, idx);
+          // 形状防御与 buildChannelIndex 的归一化同级：同一数据源的单条
+          // 脏记录（缺 id/name/code）不应使整个启动失败进错误屏
+          const countryInfo = buildCountryInfo(
+            countries.filter(
+              (c) => !!c && typeof c.code === "string" && typeof c.name === "string",
+            ),
+            idx,
+          );
           const cats = categories
-            .filter((c) => c.id !== "xxx")
+            .filter(
+              (c) =>
+                !!c &&
+                typeof c.id === "string" &&
+                typeof c.name === "string" &&
+                c.id !== "xxx",
+            )
             .sort((a, b) => a.name.localeCompare(b.name));
           // 合并行实际显示时刻与 Loader 门控一致（须等错峰入场完成），
           // 先闪 MERGE_MIN_VISIBLE_MS 光标再打 [OK]
@@ -504,14 +608,17 @@ export const useStore = create<State>()(
           patch({ mergeOk: true });
           // 全流程唯一停留：合并行 [OK] 后 1s 进主页
           await new Promise((r) => setTimeout(r, 1000));
-          set({
+          const persistedLatency = await latencyPromise;
+          set((s) => ({
             channels: idx,
             categories: cats,
             countries: countryInfo,
             loaded: true,
             loading: false,
             loadProgress: null,
-          });
+            // 上次会话结果打底，本会话已探测的新鲜值覆盖同 id 旧值
+            latency: new Map([...persistedLatency, ...s.latency]),
+          }));
         } catch (e) {
           set({
             loading: false,
@@ -644,7 +751,7 @@ export const useStore = create<State>()(
         // 登记 in-flight：全量探测期间拦截 ChannelGrid 窗口探测的重复请求
         for (const id of urls.keys()) probeInFlight.add(id);
         set({ probeRun: { running: true, total: urls.size, done: 0 } });
-        // 并发与按需探测同策略：固定 16
+        // 并发与按需探测同策略（PROBE_CONCURRENCY，见常量处注释）
         let done = 0;
         let ok = 0;
         try {
@@ -676,6 +783,8 @@ export const useStore = create<State>()(
           for (const id of urls.keys()) probeInFlight.delete(id);
           if (fullProbeController === controller) fullProbeController = null;
           set({ probeRun: null });
+          // 兜底落盘：末批结果经 batchSetLatency 进入 state 后确保被保存
+          scheduleLatencySave();
         }
         return { done, ok, aborted: controller.signal.aborted };
       },
@@ -735,8 +844,8 @@ export const useStore = create<State>()(
         set({ gridLayouts: { ...get().gridLayouts, [scope]: l } }),
     }),
     {
-      name: "signaltv-iptv",
-      storage: createJSONStorage(() => idbStorage),
+      name: PERSIST_NAME,
+      storage: createJSONStorage(() => syncedIdbStorage),
       partialize: (s) => ({
         favorites: s.favorites,
         recents: s.recents,
@@ -751,9 +860,8 @@ export const useStore = create<State>()(
         updateMode: s.updateMode,
         timezonePref: s.timezonePref,
         gridLayouts: s.gridLayouts,
-        // 延迟结果跨会话持久化：全量/按需探测过的频道（含 -1 失败项）
-        // 下次会话不再重测；Map 无法直接 JSON 序列化，转 entries 数组存储
-        latency: Array.from(s.latency.entries()) as unknown as State["latency"],
+        // latency 不在白名单内：走独立 IDB key（带时间戳 TTL + 独立防抖），
+        // 避免探测期间高频 setState 触发上万条目的全量序列化写放大
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -774,19 +882,30 @@ export const useStore = create<State>()(
         if (typeof state.gridLayouts !== "object" || state.gridLayouts === null) {
           state.gridLayouts = DEFAULT_GRID_LAYOUTS;
         }
-        // latency 以 entries 数组持久化，还原为 Map；逐项校验形状，
-        // 污染/旧版无此字段时回落空 Map（与其他字段校验风格一致）
+        // latency 已移出 persist（独立 key + TTL，见模块顶部）：
+        // - 新写入的 blob 无 latency 字段 → 合并后保留当前内存 Map，不动
+        //  （BroadcastChannel 触发的重复 rehydrate 也不会清空本会话结果）；
+        // - 旧版 blob 里是 entries 数组 → 一次性迁移：按升级日打时间戳转入
+        //   新 key（保留升级当天体验，24h 后自然过期重测）
         const rawLatency = state.latency as unknown;
-        state.latency = new Map(
-          Array.isArray(rawLatency)
+        if (!(rawLatency instanceof Map)) {
+          const legacy = Array.isArray(rawLatency)
             ? rawLatency.filter(
                 (e): e is [string, number] =>
                   Array.isArray(e) &&
                   typeof e[0] === "string" &&
                   typeof e[1] === "number",
               )
-            : [],
-        );
+            : [];
+          state.latency = new Map(legacy);
+          if (legacy.length > 0) {
+            const now = Date.now();
+            for (const [id] of legacy) {
+              if (!latencyStamp.has(id)) latencyStamp.set(id, now);
+            }
+            scheduleLatencySave();
+          }
+        }
         // 旧版持久化数据没有 themeMode → 从 theme 推断（保留旧用户的实际偏好），
         // 否则新字段缺失会导致"跟随系统"语义意外覆盖用户已选主题
         if (!state.themeMode) {
@@ -853,4 +972,19 @@ if (typeof window !== "undefined") {
     if (s.language !== "system") return;
     void s.setLanguage("system");
   });
+}
+
+// 收到其它标签页的 persist 写入通知：300ms 防抖后重新 rehydrate，
+// 把最新快照合并回内存（onRehydrateStorage 内的主题/语言/时区副作用
+// 均幂等，latency 不在 persist 内不受影响）
+if (persistSyncChannel) {
+  let rehydrateTimer: ReturnType<typeof setTimeout> | null = null;
+  persistSyncChannel.onmessage = (e: MessageEvent) => {
+    if (e.data !== PERSIST_NAME) return;
+    if (rehydrateTimer) clearTimeout(rehydrateTimer);
+    rehydrateTimer = setTimeout(() => {
+      rehydrateTimer = null;
+      void useStore.persist.rehydrate();
+    }, 300);
+  };
 }

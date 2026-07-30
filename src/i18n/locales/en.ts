@@ -236,6 +236,7 @@ export const dict: Dict = {
   "update.installing": "Installing…",
   "update.done": "Update completed",
   "update.checkFailed": "Update check failed. Check your network and try again.",
+  "update.deferredReload": "New version ready. The page will refresh automatically after playback ends.",
 
   // ── Theme options ──
   "theme.system": "System",

@@ -300,8 +300,10 @@ export function buildChannelIndex(
 ): Map<string, ChannelWithStream> {
   const streamMap = new Map<string, Stream[]>();
   for (const s of streams) {
+    // 形状防御：单条脏记录（缺 channel/url）不应击穿合并流程
+    if (!s || typeof s.channel !== "string") continue;
     // 只接受 http/https 协议的流 URL（阻断伪协议注入）
-    if (!s.url || !STREAM_PROTOCOL_RE.test(s.url)) continue;
+    if (typeof s.url !== "string" || !STREAM_PROTOCOL_RE.test(s.url)) continue;
     const arr = streamMap.get(s.channel);
     if (arr) arr.push(s);
     else streamMap.set(s.channel, [s]);
@@ -309,6 +311,8 @@ export function buildChannelIndex(
 
   const out = new Map<string, ChannelWithStream>();
   for (const ch of channels) {
+    // 同级防御：id 非字符串的污染记录直接丢弃（id 是全局唯一键）
+    if (!ch || typeof ch.id !== "string") continue;
     const arr = streamMap.get(ch.id);
     if (!arr || arr.length === 0) continue; // 跳过没有流的频道
     if (arr.length > 1) {
@@ -319,6 +323,9 @@ export function buildChannelIndex(
       ...ch,
       // 字段归一化：API 数据个别记录可能缺失/为 null，
       // 消除下游 .includes / .toLowerCase 的崩溃点
+      //（name 缺失回落 id：matchesQuery/byName 不设防，单条脏记录
+      // 会击穿整个搜索过滤 useMemo 进 ErrorBoundary）
+      name: typeof ch.name === "string" ? ch.name : ch.id,
       country: typeof ch.country === "string" ? ch.country : "",
       categories: Array.isArray(ch.categories) ? ch.categories : [],
       streamUrl: urls[0],

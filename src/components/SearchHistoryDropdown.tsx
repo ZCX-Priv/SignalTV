@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, History, ListChecks, Trash2, CheckSquare, Square, Undo2 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useI18n } from "../i18n";
@@ -43,6 +43,9 @@ export function SearchHistoryDropdown({ open, onPick }: SearchHistoryDropdownPro
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   // 删除二次确认模态（不可撤销操作，与播放历史批量删除同规范）
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // 稳定引用：ConfirmModal 的模态栈/焦点 effect 依赖 onClose，内联箭头会在
+  // 父组件重渲染时触发 effect 重跑（弹栈重推 + 焦点跳回），与 Sidebar 同惯例
+  const closeConfirm = useCallback(() => setConfirmOpen(false), []);
 
   useEffect(() => {
     if (open) {
@@ -202,7 +205,7 @@ export function SearchHistoryDropdown({ open, onPick }: SearchHistoryDropdownPro
           关闭时模态焦点还原把焦点送回输入框 */}
       <ConfirmModal
         open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
+        onClose={closeConfirm}
         onConfirm={deleteSelected}
         title={t("searchHistory.deleteConfirmTitle")}
         desc={t("searchHistory.deleteConfirmDesc", { count: selected.size })}

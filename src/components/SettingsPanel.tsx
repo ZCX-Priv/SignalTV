@@ -165,7 +165,7 @@ export function SettingsPanel() {
     else if (result === "available") presentUpdatePrompt(checkingId); // 检查中 → 交互提示原地变身
     else presentAutoProgress(checkingId); // handled：检查中 → 进度 toast 原地变身
     setCheckingUpdate(false);
-    // 检查收尾后进入 10s 冷却，期间按钮不可点并显示逐秒倒计时
+    // 检查收尾后进入 CHECK_COOLDOWN_MS 冷却，期间按钮不可点并显示逐秒倒计时
     checkCooldownUntil = Date.now() + CHECK_COOLDOWN_MS;
     setCooldownRemain(CHECK_COOLDOWN_MS / 1000);
   };

@@ -105,9 +105,11 @@ function ToastView({ item }: { item: ToastItem }) {
       </span>
       {item.actions && item.actions.length > 0 && (
         <span className="signaltv-toast__actions">
-          {item.actions.map((action) => (
+          {/* key 用索引而非 label：actions 顺序稳定，而不同按钮的文案在
+              某些语言下可能相同，同名 label 会撞 key */}
+          {item.actions.map((action, index) => (
             <button
-              key={action.label}
+              key={index}
               type="button"
               className={`signaltv-toast__btn signaltv-toast__btn--${action.variant ?? "ghost"}`}
               onClick={action.onClick}

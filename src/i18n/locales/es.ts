@@ -238,6 +238,7 @@ export const dict: Dict = {
   "update.installing": "Instalando…",
   "update.done": "Actualización completada",
   "update.checkFailed": "No se pudo comprobar la actualización. Revisa tu red e inténtalo de nuevo.",
+  "update.deferredReload": "Nueva versión lista. La página se actualizará automáticamente al finalizar la reproducción.",
 
   // ── Opciones de tema ──
   "theme.system": "Sistema",
