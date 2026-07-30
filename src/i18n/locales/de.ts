@@ -17,6 +17,7 @@ export const dict: Dict = {
   "common.confirm": "Bestätigen",
   "common.cancel": "Abbrechen",
   "common.channel": "Kanal",
+  "common.backToTop": "Zurück nach oben",
 
   // ── Kopfzeile ──
   "header.menuClose": "Menü schließen",

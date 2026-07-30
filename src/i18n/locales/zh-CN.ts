@@ -34,6 +34,7 @@ export const dict = {
   "common.confirm": "确认",
   "common.cancel": "取消",
   "common.channel": "频道",
+  "common.backToTop": "返回顶部",
 
   // ── 顶栏 ──
   "header.menuClose": "关闭菜单",

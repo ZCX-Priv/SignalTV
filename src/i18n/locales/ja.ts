@@ -17,6 +17,7 @@ export const dict: Dict = {
   "common.confirm": "確認",
   "common.cancel": "キャンセル",
   "common.channel": "チャンネル",
+  "common.backToTop": "トップへ戻る",
 
   // ── ヘッダー ──
   "header.menuClose": "メニューを閉じる",

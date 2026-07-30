@@ -3592,6 +3592,99 @@
    近零时长 + both 保证进入/退出直接呈现终态，不停在初始帧 */
 
 /* ============================================================
+   返回顶部悬浮按钮（BackToTop）
+   ============================================================ */
+/* fixed 悬浮于主内容列底部水平居中（组件渲染在 .app 之外，避开
+   .view-anim 的 transform 包含块）：left 占位侧栏宽 + right:0，
+   margin-inline:auto 配合 width:max-content 在剩余区间居中——
+   不用 left:50% + translateX(-50%)：transform 轴留给浮现/退场的 translateY。
+   z-index 900：低于播放器(1000)/抽屉遮罩(1099)，模态打开时被自然盖住 */
+.back-top {
+  position: fixed;
+  left: var(--sidebar-w);
+  right: 0;
+  bottom: 22px;
+  margin-inline: auto;
+  width: max-content;
+  z-index: 900;
+  height: 42px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px 0 14px;
+  border: 1px solid var(--line-2);
+  background: var(--overlay-1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  /* 默认隐形不可点：opacity/transform 跑过渡，visibility 的 0s 切换
+     延迟到淡出结束后才生效，退场先下滑淡出再彻底隐藏。
+     left 过渡与 .app 的 grid-template-columns 0.24s 同步，
+     侧栏折叠/展开时按钮平滑跟移 */
+  opacity: 0;
+  transform: translateY(12px);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--dur-modal) var(--ease),
+    transform var(--dur-modal) var(--ease),
+    visibility 0s linear var(--dur-modal),
+    left 0.24s var(--ease),
+    border-color var(--dur-micro) var(--ease),
+    background var(--dur-micro) var(--ease);
+}
+.back-top.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  /* 进场时 visibility 立即可见，不能等退场用的延迟 */
+  transition-delay: 0s;
+}
+.back-top:hover {
+  border-color: var(--line-strong);
+  background: var(--bg-elev);
+  transform: translateY(-2px);
+}
+.back-top:active {
+  transform: translateY(0);
+}
+/* 桌面端侧栏折叠态：按钮是 .app 的紧邻兄弟，left 跟随折叠列宽 56px
+  （断点/列宽与 .app:has(.sidebar.is-collapsed) 规则严格一致） */
+@media (min-width: 861px) {
+  .app:has(.sidebar.is-collapsed) + .back-top {
+    left: 56px;
+  }
+}
+/* 移动端（与全局响应式断点一致）：隐藏文字收为纯图标圆按钮 */
+@media (max-width: 1080px) {
+  .back-top {
+    bottom: 16px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+  }
+  .back-top__label {
+    display: none;
+  }
+}
+/* 侧栏变抽屉的单列布局断点：内容列即全视口，left 归零按视口居中 */
+@media (max-width: 860px) {
+  .back-top {
+    left: 0;
+  }
+}
+/* 注：纯装饰性浮现/退场过渡，不入 reduced-motion 豁免清单，
+   全局规则会把过渡压为瞬时；归顶平滑滚动的降级在 JS 中处理 */
+
+/* ============================================================
    白昼模式阴影覆盖 —— 浅底下过重的黑色阴影调浅
    ============================================================ */
 [data-theme="light"] .sidebar__overlay {

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { useStore } from "./store/useStore";
 import { useFilteredChannels } from "./hooks/useChannels";
 import { Header } from "./components/Header";
+import { BackToTop } from "./components/BackToTop";
 import { Sidebar } from "./components/Sidebar";
 import { Hero } from "./components/Hero";
 import { FilterBar } from "./components/FilterBar";
@@ -189,6 +190,10 @@ function App() {
           </div>
         </main>
       </div>
+
+      {/* 返回顶部：必须挂在 .app 之外 —— .view-anim 的入场动画带 transform，
+          会把 fixed 后代的包含块劫持为自身，导致按钮跟随内容滚动 */}
+      <BackToTop />
 
       <ErrorBoundary
         fallback={(reset) => (
