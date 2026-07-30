@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import {
   X,
   Play,
-  Star,
+  Heart,
   Globe2,
   Tv2,
   ExternalLink,
@@ -261,7 +261,7 @@ export function PlayerModal() {
                   else toast.info(t("toast.favRemoved"));
                 }}
               >
-                <Star size={13} fill={isFav ? "currentColor" : "none"} />
+                <Heart size={13} fill={isFav ? "currentColor" : "none"} />
                 {isFav ? t("common.faved") : t("common.fav")}
               </button>
               {websiteUrl && (

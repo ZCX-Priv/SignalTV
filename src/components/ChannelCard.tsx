@@ -1,5 +1,5 @@
 import { memo, useRef, useState, type CSSProperties } from "react";
-import { Play, Star, Tv2 } from "lucide-react";
+import { Play, Heart, Tv2 } from "lucide-react";
 import type { ChannelWithStream } from "../types";
 import { useStore } from "../store/useStore";
 import { channelPosition, flagUrl, flagSvgBgUrl, countryGradient, prettyCategory } from "../lib/format";
@@ -131,7 +131,7 @@ export const ChannelCard = memo(function ChannelCard({ channel, index, animate }
             }}
             aria-label={isFav ? t("common.favRemove") : t("common.favAdd")}
           >
-            <Star size={13} fill={isFav ? "currentColor" : "none"} />
+            <Heart size={13} fill={isFav ? "currentColor" : "none"} />
           </button>
         </div>
 

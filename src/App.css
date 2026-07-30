@@ -2965,7 +2965,7 @@
   opacity: 0.5;
   cursor: default;
 }
-/* 管理模式覆盖按钮：盖住整卡拦截点击（含收藏星标），
+/* 管理模式覆盖按钮：盖住整卡拦截点击（含收藏按钮），
    圆角与 .card 一致避免选中描边溢出卡片轮廓 */
 .history-card__select {
   position: absolute;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { Play, Star, Globe2, Tv2, ArrowUpRight } from "lucide-react";
+import { Play, Heart, Globe2, Tv2, ArrowUpRight } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useAllChannels } from "../hooks/useChannels";
 import { broadcastDate, channelPosition, flagUrlLg, fmt, prettyCategory } from "../lib/format";
@@ -98,7 +98,7 @@ export function Hero() {
               }}
               aria-label={isFav ? t("common.favRemove") : t("common.favAdd")}
             >
-              <Star size={15} fill={isFav ? "currentColor" : "none"} />
+              <Heart size={15} fill={isFav ? "currentColor" : "none"} />
               <span>{isFav ? t("common.faved") : t("common.fav")}</span>
             </button>
           </div>
