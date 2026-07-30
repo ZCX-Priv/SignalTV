@@ -2275,9 +2275,13 @@
   height: 60px;
   border: 1px solid var(--line-strong);
   border-radius: 14px;
-  color: var(--ink);
+  /* 广播图标走红色系而非 --ink：夜间深红压住暗底，白昼浅红提亮（与顶栏 .logo__mark 一致） */
+  color: #b3261e;
   background: radial-gradient(120% 120% at 50% 0%, rgba(255, 59, 48, 0.22), transparent 70%);
   animation: pulse-glow 2s var(--ease-soft) infinite;
+}
+[data-theme="light"] .loader__mark {
+  color: #ff6b61;
 }
 .loader__mark .dot {
   position: absolute;
@@ -2289,6 +2293,10 @@
 .loader__mark--err {
   background: radial-gradient(120% 120% at 50% 0%, rgba(255, 59, 48, 0.4), transparent 70%);
   border-color: var(--signaltv);
+  color: var(--signaltv);
+}
+/* 白昼浅红规则优先级更高，错误态需同权重覆盖以维持信号红 */
+[data-theme="light"] .loader__mark--err {
   color: var(--signaltv);
 }
 @keyframes pulse-glow {

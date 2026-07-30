@@ -105,8 +105,8 @@ const UPDATE_OPTIONS: {
 // 不补足时长则「正在检查更新…」一闪而过不可感知
 const CHECK_TOAST_MIN_MS = 1200;
 
-// 检查更新按钮冷却时长：一次检查收尾后 10s 内不可再点，避免连点狂检
-const CHECK_COOLDOWN_MS = 10_000;
+// 检查更新按钮冷却时长：一次检查收尾后 5s 内不可再点，避免连点狂检
+const CHECK_COOLDOWN_MS = 5_000;
 // 冷却截止时间戳（模块级：设置页关闭重开不重置冷却）
 let checkCooldownUntil = 0;
 

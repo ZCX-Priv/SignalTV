@@ -99,7 +99,8 @@ let dismissedWorker: ServiceWorker | null = null;
 let autoDoneWorker: ServiceWorker | null = null;
 let toastId: string | null = null; // manual 交互式 toast 的 id（null = 未展示）
 let autoFlowToastId: string | null = null; // auto 显式检查进度 toast 的 id
-let checkInFlight = false; // checkForUpdates 进行中（防重入）
+let checkInFlight = false; // 显式检查(checkForUpdates)进行中：后台检查一律让路
+let bgCheckInFlight = false; // 后台检查(maybeCheck)进行中：防自身并发(周期与重试均 minGap=0)
 let retryScheduled = false; // 安装失败后的单次重试已排期
 let lastCheckAt = 0;
 let progressTimer: ReturnType<typeof setInterval> | null = null;
@@ -675,6 +676,26 @@ export type CheckUpdateResult =
   | "latest"
   | "failed";
 
+// 认领一个已存在的 waiting/installing worker（不触发新的 update()/下载），按模式分流
+function adoptExistingWorker(
+  worker: ServiceWorker,
+  mode: UpdateMode,
+): CheckUpdateResult {
+  if (mode === "manual") {
+    // 绕过忽略/本会话静默（显式检查是强意图）；worker 可能仍在 installing，
+    // 同一对象后续转 waiting，点「更新」时 applyUpdate 读实时 waiting 即可激活
+    dismissedWorker = null;
+    phase = "available";
+    activeWorker = worker;
+    return "available";
+  }
+  // auto：本会话已走完显式流程的版本 → 视为最新，不重跑
+  if (worker === autoDoneWorker) return "latest";
+  if (phase === "progress") return "handled";
+  phase = "progress";
+  return "handled";
+}
+
 /**
  * 用户显式检查更新：绕过周期间隔限制，自身 await 检查结果后直接分流
  *（不改变持久化的模式偏好，不依赖后续事件猜测）：
@@ -687,25 +708,10 @@ export async function checkForUpdates(): Promise<CheckUpdateResult> {
   checkInFlight = true;
   try {
     const mode = useStore.getState().updateMode;
-    // 已存在装好的 waiting SW：显式检查视为新意图
-    const waiting = registration.waiting;
-    if (waiting) {
-      if (mode === "manual") {
-        // 认领流程但不当场渲染：reconcile 见非 idle 让路，杜绝并存第二条；
-        // 由设置页在「正在检查」最短展示后 presentUpdatePrompt 原地变身
-        dismissedWorker = null;
-        phase = "available";
-        activeWorker = waiting;
-        return "available";
-      }
-      // auto：该版本本会话已走完显式流程 → 视为最新，不重跑「下载→安装→完成」
-      if (waiting === autoDoneWorker) return "latest";
-      if (phase === "progress") return "handled"; // 已在进行
-      // 认领流程但不当场渲染：由设置页在「正在检查」最短展示后
-      // presentAutoProgress 复用检查中 toast 原地变身为进度 toast
-      phase = "progress";
-      return "handled";
-    }
+    // 已就绪(waiting)或正在下载(installing) → 认领现有 worker，不重复触发下载
+    //（防「手动检查」撞上「后台/自动已在下载」造成并发下载、网络占道）
+    const existing = registration.waiting ?? registration.installing;
+    if (existing) return adoptExistingWorker(existing, mode);
     lastCheckAt = Date.now();
     try {
       await registration.update();
@@ -714,19 +720,7 @@ export async function checkForUpdates(): Promise<CheckUpdateResult> {
       return "failed";
     }
     const worker = registration.installing ?? registration.waiting;
-    if (worker) {
-      if (mode === "manual") {
-        // 认领流程但不当场渲染（同上）；worker 可能仍在 installing，同一对象
-        // 后续转 waiting，点「更新」时 applyUpdate 读实时 waiting 即可激活
-        dismissedWorker = null;
-        phase = "available";
-        activeWorker = worker;
-        return "available";
-      }
-      // auto：认领流程但不当场渲染（同上），推迟到最短展示后复用检查中 toast 变身
-      if (phase !== "progress") phase = "progress";
-      return "handled";
-    }
+    if (worker) return adoptExistingWorker(worker, mode);
     return "latest";
   } finally {
     checkInFlight = false;
@@ -738,12 +732,19 @@ export async function checkForUpdates(): Promise<CheckUpdateResult> {
 async function maybeCheck(minGap: number): Promise<void> {
   if (!registration) return;
   if (useStore.getState().updateMode === "off") return;
+  // 并发/下载防护：显式检查进行中 / 已有活跃流程(manual 交互·auto 进度·applying) /
+  // 已有 SW 正在安装(真实下载中) / 另一路后台检查进行中 → 一律让路，杜绝重复触发下载
+  if (checkInFlight || bgCheckInFlight || phase !== "idle") return;
+  if (registration.installing) return;
   if (Date.now() - lastCheckAt < minGap) return;
+  bgCheckInFlight = true;
   lastCheckAt = Date.now();
   try {
     await registration.update();
   } catch {
     // 离线/网络异常 → 静默，下个周期再试
+  } finally {
+    bgCheckInFlight = false;
   }
   // update() 若发现新版会经 onNeedRefresh 触发 reconcile；但「本已存在的
   // waiting」不会再次触发事件，这里主动补一次 reconcile 兜底评估
