@@ -162,7 +162,6 @@ export function SettingsPanel() {
     const remain = CHECK_TOAST_MIN_MS - (Date.now() - startedAt);
     if (remain > 0) await new Promise((r) => setTimeout(r, remain));
     if (result === "latest") toast.success(t("update.latest"), { key: CHECK_KEY });
-    else if (result === "downloading") toast.info(t("update.foundDownloading"), { key: CHECK_KEY });
     else if (result === "failed") toast.error(t("update.checkFailed"), { key: CHECK_KEY });
     else toast.dismiss(checkingId); // available/handled：updater 已弹自家 toast，只收检查中提示
     setCheckingUpdate(false);

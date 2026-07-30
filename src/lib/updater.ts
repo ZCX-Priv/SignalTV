@@ -560,30 +560,6 @@ function cancelAutoFlow(): void {
   if (phase === "progress") phase = "idle";
 }
 
-// manual 显式检查发现新版正在安装：装好后直接弹交互式 toast（绕过忽略/本会话
-// 静默 —— 用户显式检查是强意图）。与 reconcile 可能同时命中，靠 showPromptToast
-// 的 phase 幂等保证只弹一条。
-function promptWhenInstalled(worker: ServiceWorker): void {
-  const show = () => {
-    if (useStore.getState().updateMode !== "manual") return;
-    dismissedWorker = null; // 显式意图覆盖此前的本会话静默
-    showPromptToast(worker);
-  };
-  if (isInstalled(worker)) {
-    show();
-    return;
-  }
-  const onState = () => {
-    if (isInstalled(worker)) {
-      worker.removeEventListener("statechange", onState);
-      show();
-    } else if (worker.state === "redundant") {
-      worker.removeEventListener("statechange", onState);
-    }
-  };
-  worker.addEventListener("statechange", onState);
-}
-
 // ── 唯一决策函数 ──
 
 // 基于实时 waiting + 当前 updateMode 决定是否/如何提示。onNeedRefresh、周期
@@ -614,10 +590,9 @@ async function reconcile(): Promise<void> {
 
 // ── 手动检查（设置页「检查更新」按钮） ──
 
-/** 手动检查结果：available=新版已就绪并已弹提示；downloading=manual 模式发现新版下载中；handled=auto 模式已由 updater 的进度 toast 接管提示；latest=已是最新；failed=检查失败 */
+/** 手动检查结果：available=新版已发现并弹交互提示；handled=auto 模式已由进度 toast 接管；latest=已是最新；failed=检查失败 */
 export type CheckUpdateResult =
   | "available"
-  | "downloading"
   | "handled"
   | "latest"
   | "failed";
@@ -658,9 +633,12 @@ export async function checkForUpdates(): Promise<CheckUpdateResult> {
     const worker = registration.installing ?? registration.waiting;
     if (worker) {
       if (mode === "manual") {
-        // 装好后直接弹交互式 toast（绕过忽略）；此刻先返回下载中提示
-        promptWhenInstalled(worker);
-        return "downloading";
+        // 发现新版本立即弹两按钮交互式提示（绕过忽略/本会话静默 ——
+        // 显式检查是强意图）；worker 可能仍在 installing，同一对象后续转
+        // waiting，点「更新」时 applyUpdate 读实时 waiting 即可激活
+        dismissedWorker = null;
+        showPromptToast(worker);
+        return "available";
       }
       // auto：新版本正在下载安装 → 进度 toast 接管后续提示
       if (phase !== "progress") startAutoProgress(worker);
