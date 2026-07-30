@@ -14,7 +14,7 @@ import {
 import { useStore } from "../store/useStore";
 import type { ThemeMode, UpdateMode } from "../store/useStore";
 import { toast } from "../lib/toast";
-import { checkForUpdates } from "../lib/updater";
+import { checkForUpdates, presentUpdatePrompt } from "../lib/updater";
 import { TimezoneMap } from "./TimezoneMap";
 import {
   NATIVE_LOCALE_NAMES,
@@ -141,11 +141,10 @@ export function SettingsPanel() {
   }, [coolingDown]);
 
   // 点「检查更新」：info 提示（不转圈）至少展示 CHECK_TOAST_MIN_MS 后，
-  // 通过同一去重键（key）原地变身为成功/信息/错误结果提示，
-  // 避免「先收掉再新弹」的双 toast 硬切换（info 退场与结果弹出同帧，
-  // 观感为突然消失）；available（manual 交互式 toast）与 handled
-  //（auto 单条进度 toast 全程接管）由 updater 弹出，此处只收掉检查中
-  // 提示、不再叠加任何 toast（避免双 toast）
+  // 通过同一去重键（key）原地变身为成功/信息结果提示；manual 发现新版本时
+  // 由 presentUpdatePrompt 把这条检查中 toast 就地改成交互式提示（更新/忽略），
+  // 始终单条 toast、不并存第二条；handled（auto 单条进度 toast 全程接管）
+  // 由 updater 另弹进度 toast，此处只收掉检查中提示
   const handleCheckUpdate = async () => {
     if (checkingUpdate) return;
     setCheckingUpdate(true);
@@ -163,7 +162,8 @@ export function SettingsPanel() {
     if (remain > 0) await new Promise((r) => setTimeout(r, remain));
     if (result === "latest") toast.success(t("update.latest"), { key: CHECK_KEY });
     else if (result === "failed") toast.error(t("update.checkFailed"), { key: CHECK_KEY });
-    else toast.dismiss(checkingId); // available/handled：updater 已弹自家 toast，只收检查中提示
+    else if (result === "available") presentUpdatePrompt(checkingId); // 检查中 → 交互提示原地变身
+    else toast.dismiss(checkingId); // handled：auto 进度 toast 自持
     setCheckingUpdate(false);
     // 检查收尾后进入 10s 冷却，期间按钮不可点并显示逐秒倒计时
     checkCooldownUntil = Date.now() + CHECK_COOLDOWN_MS;

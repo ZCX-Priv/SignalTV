@@ -388,30 +388,72 @@ function startCountdown(id: string): void {
   }, 1000);
 }
 
-// 弹交互式更新 toast（幂等：非 idle 时不重复弹，供多入口安全调用）
-function showPromptToast(worker: ServiceWorker): void {
-  if (phase !== "idle") return;
-  phase = "available";
-  activeWorker = worker;
-  toastId = toastStore.getState().add({
-    type: "info",
+// 交互式更新提示的 toast 字段（更新/忽略两按钮）；key:undefined 使复用检查中
+// toast 后脱离 update-check 去重键，避免下次检查命中同键把提示串改回「检查中」
+function promptToastFields() {
+  return {
+    type: "info" as const,
     title: t("update.available"),
+    description: undefined,
+    progress: undefined,
     duration: Infinity,
     sticky: true,
+    key: undefined,
     onClose: onPromptClosed,
     actions: [
       {
         label: t("update.actionUpdate"),
-        variant: "primary",
+        variant: "primary" as const,
         onClick: startDownload,
       },
       {
         label: t("update.actionIgnore"),
-        variant: "ghost",
+        variant: "ghost" as const,
         onClick: ignoreVersion,
       },
     ],
-  });
+  };
+}
+
+// 渲染交互式更新 toast。reuseId 仍在场 → 原地变身（单条 toast 平滑过渡，
+// 供设置页把「正在检查」提示就地改成交互提示）；否则新建一条 sticky toast
+function renderPromptToast(reuseId?: string): void {
+  const store = toastStore.getState();
+  const canReuse =
+    reuseId !== undefined &&
+    store.toasts.some((it) => it.id === reuseId && !it.closing);
+  if (canReuse) {
+    store.update(reuseId, promptToastFields());
+    toastId = reuseId;
+  } else {
+    toastId = store.add(promptToastFields());
+  }
+}
+
+// 弹交互式更新 toast（幂等：非 idle 时不重复弹，供 reconcile 后台发现新版调用）
+function showPromptToast(worker: ServiceWorker): void {
+  if (phase !== "idle") return;
+  phase = "available";
+  activeWorker = worker;
+  renderPromptToast();
+}
+
+/**
+ * 设置页「检查更新」在「正在检查」最短展示后调用：把该检查中 toast 原地
+ * 变身为交互式更新提示（避免与「有新版本」并存两条 toast）。若等待期间流程
+ * 被模式切换等清空/改写（phase 已非 available 或已另有提示 toast），则收掉这条
+ * 复用 toast，不残留「正在检查」。
+ */
+export function presentUpdatePrompt(reuseId: string): void {
+  if (
+    phase !== "available" ||
+    !activeWorker ||
+    (toastId !== null && toastId !== reuseId)
+  ) {
+    toastStore.getState().dismiss(reuseId);
+    return;
+  }
+  renderPromptToast(reuseId);
 }
 
 // ── 统一激活入口 ──
@@ -613,8 +655,11 @@ export async function checkForUpdates(): Promise<CheckUpdateResult> {
     const waiting = registration.waiting;
     if (waiting) {
       if (mode === "manual") {
-        dismissedWorker = null; // 绕过本会话静默，直接弹
-        showPromptToast(waiting);
+        // 认领流程但不当场渲染：reconcile 见非 idle 让路，杜绝并存第二条；
+        // 由设置页在「正在检查」最短展示后 presentUpdatePrompt 原地变身
+        dismissedWorker = null;
+        phase = "available";
+        activeWorker = waiting;
         return "available";
       }
       // auto：该版本本会话已走完显式流程 → 视为最新，不重跑「下载→安装→完成」
@@ -633,11 +678,11 @@ export async function checkForUpdates(): Promise<CheckUpdateResult> {
     const worker = registration.installing ?? registration.waiting;
     if (worker) {
       if (mode === "manual") {
-        // 发现新版本立即弹两按钮交互式提示（绕过忽略/本会话静默 ——
-        // 显式检查是强意图）；worker 可能仍在 installing，同一对象后续转
-        // waiting，点「更新」时 applyUpdate 读实时 waiting 即可激活
+        // 认领流程但不当场渲染（同上）；worker 可能仍在 installing，同一对象
+        // 后续转 waiting，点「更新」时 applyUpdate 读实时 waiting 即可激活
         dismissedWorker = null;
-        showPromptToast(worker);
+        phase = "available";
+        activeWorker = worker;
         return "available";
       }
       // auto：新版本正在下载安装 → 进度 toast 接管后续提示
