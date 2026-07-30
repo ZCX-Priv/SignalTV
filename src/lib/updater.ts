@@ -1,27 +1,38 @@
 // PWA 版本更新管理器 —— 统一接管 Service Worker 注册与更新流程。
 //
+// 架构：单一状态机，不再用一堆互相纠缠的布尔标志事后猜测「这次事件属于
+// 哪条流程」。核心事实来源只有两个：
+// - phase：当前进行中的流程阶段（见 UpdatePhase）；
+// - registration.waiting：实时的待激活 SW（ServiceWorker 对象引用即会话内
+//   的版本身份，新版本 = 新对象，无需再算哈希比对）。
+// 所有「是否/如何提示」的决策收敛到唯一函数 reconcile()，每次都基于实时
+// waiting + 当前 updateMode 判断，天然对齐真实版本、杜绝跨事件标志错配。
+//
 // 三种更新方式（用户偏好持久化在 useStore.updateMode）：
-// - auto：后台静默增量下载（断点续传由 Workbox 预缓存天然提供：
-//   install 逐文件先 cacheMatch，已缓存的跳过；中断后重试只补缺失文件），
-//   会话内不打扰；下次进入页面时由 activateWaitingBeforeBoot 在 React
-//   挂载前无感激活并重载，用户看到的是一次正常加载。
-//   （历史教训：曾在 pagehide 瞬间发 SKIP_WAITING，新 SW 激活与刷新导航
-//   并发，旧 SW 返回的旧 HTML 引用的资源已被清理 → 黑屏）
-// - manual：弹交互式 toast（更新/忽略/X），点「更新」走模拟进度条 →
-//   10s 倒计时 → SKIP_WAITING + reload；点「忽略」把版本号写入 IDB
-//   永久跳过该版本；点 X 仅本会话静默，下次进入页面再提示。
+// - auto：后台静默增量下载（断点续传由 Workbox 预缓存天然提供：install
+//   逐文件先 cacheMatch，已缓存的跳过；中断后重试只补缺失文件），会话内
+//   不打扰；下次进入页面时由 activateWaitingBeforeBoot 在 React 挂载前无感
+//   激活并重载，用户看到的是一次正常加载。
+// - manual：弹交互式 toast（更新/忽略/X），点「更新」走模拟进度条 → 10s
+//   倒计时 → applyUpdate；点「忽略」把版本哈希写入 IDB 永久跳过该版本；
+//   点 X 仅本会话静默该版本（记 worker 引用），下次进入页面再提示。
 // - off：不周期检查更新，也不提示。
 //
-// 设置页「检查更新」按钮走 checkForUpdates()：用户显式意图，绕过周期
-// 间隔限制，按当前模式分流（off 模式下按钮已在设置页隐藏）：
-// - manual：发现新版本弹交互式 toast（步骤与周期检查一致）；
-// - auto：全程单条进度 toast 接管：「发现新版本，正在下载…」进度条
-//   → 「正在安装…」→ success「已完成更新」，不弹交互式 toast；
-//   waiting SW 保持不动，仍按 auto 语义下次启动无感激活。
+// 设置页「检查更新」按钮走 checkForUpdates()：用户显式意图，绕过周期间隔，
+// 自身 await 检查结果后直接分流（不依赖后续事件猜测）：
+// - manual：发现新版本弹交互式 toast（显式意图，绕过忽略/本会话静默）；
+// - auto：单条进度 toast 全程接管：「发现新版本，正在下载…」→「正在安装…」
+//   → success「已完成更新」，不弹交互式 toast；waiting 保持不动，仍按 auto
+//   语义下次启动无感激活。
 //
-// 版本标识：onNeedRefresh 不携带版本号，取 sw.js 文本做 FNV-1a 哈希
-// 作为 versionId（sw.js 内含 precache revision，每次构建必变）。
-// fetch 失败时 versionId 为 null → 跳过忽略匹配，照常提示（宁可多提示不可漏）。
+// 跨版本可靠性：激活统一走 applyUpdate/activateWaitingBeforeBoot，读实时
+// waiting、同时监听 controllerchange 与 waiting.state==="activated" 两个信号，
+// 兜底超时拉长到 10s，避免旧版「固定 2s 超时即强制 reload」与新 SW 慢激活
+// （activate 阶段 cleanupOutdatedCaches 清旧预缓存）竞态导致的黑屏/chunk 失效。
+//
+// 版本哈希（fnv1a(sw.js)）仅用于 manual 的「持久忽略」：只在用户点忽略时
+// 记录、在 manual 即将弹 toast 时读一次（按 worker 引用缓存，每个 waiting
+// 至多 fetch 一次）。auto/off 全程零额外 fetch，弱网下不被哈希计算阻塞。
 import { registerSW } from "virtual:pwa-register";
 import { toastStore, toast } from "./toast";
 import { idbGet, idbSet } from "./idb";
@@ -29,31 +40,31 @@ import { useStore, getBootPersistedState } from "../store/useStore";
 import type { UpdateMode } from "../store/useStore";
 import { t } from "../i18n";
 
-// 忽略版本记录的 IDB key（只存最近一次被忽略的 versionId）
+// 忽略版本记录的 IDB key（只存最近一次被忽略的版本哈希）
 const IGNORED_KEY = "signaltv-ignored-update";
 // 周期检查间隔：60 分钟
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 // tab 从后台切回可见时的最小检查间隔：5 分钟
 const VISIBLE_CHECK_GAP_MS = 5 * 60 * 1000;
-// 模拟下载进度总时长（onNeedRefresh 时资源实际已被 SW 预缓存完毕）
-const PROGRESS_DURATION_MS = 1500;
-// 下载完成后自动刷新的倒计时秒数
-const RELOAD_COUNTDOWN_S = 10;
-// SKIP_WAITING 后等待 controllerchange 的兜底超时
-const RELOAD_FALLBACK_MS = 3000;
-// 等待 zustand persist rehydrate 的兜底超时（IDB 异常时不至于永久卡住）
-const HYDRATION_TIMEOUT_MS = 3000;
-// 启动期无感激活：等待 controllerchange 的兜底超时（超时同样重载，
-// 详见 activateWaitingBeforeBoot —— SKIP_WAITING 发出后绝不继续跑旧版）
-const BOOT_ACTIVATE_TIMEOUT_MS = 2000;
-// 启动期自动重载的防循环护栏 key（sessionStorage）
-const RELOAD_GUARD_KEY = "signaltv-update-reloading";
 // 网络恢复（online 事件）后的最小补查间隔：1 分钟
 const ONLINE_CHECK_GAP_MS = 60 * 1000;
 // SW 安装失败（如下载中断）后的单次重试延迟：60s
 const INSTALL_RETRY_DELAY_MS = 60 * 1000;
+// manual 点「更新」后的模拟下载进度总时长（资源实际已被 SW 预缓存完毕）
+const PROGRESS_DURATION_MS = 1500;
+// 下载完成后自动刷新的倒计时秒数
+const RELOAD_COUNTDOWN_S = 10;
+// applyUpdate 发出 SKIP_WAITING 后的兜底超时：拉长到 10s，给新 SW 充分的
+// 激活时间，避免短兜底 reload 撞上 activate 阶段的缓存清理（chunk 失效）
+const APPLY_FALLBACK_MS = 10_000;
+// 启动期无感激活兜底超时：同样 10s，仅作极端卡死逃生舱（详见 activateWaitingBeforeBoot）
+const BOOT_ACTIVATE_TIMEOUT_MS = 10_000;
+// 等待 zustand persist rehydrate 的兜底超时（IDB 异常时不至于永久卡住）
+const HYDRATION_TIMEOUT_MS = 3000;
+// 启动期自动重载的防循环护栏 key（sessionStorage）
+const RELOAD_GUARD_KEY = "signaltv-update-reloading";
 // auto 显式检查：模拟下载进度封顶百分比（真实安装完成前不跑满，
-// onNeedRefresh 到达后才跳 100 转「正在安装…」）
+// 安装完成（statechange installed）后才跳 100 转「正在安装…」）
 const AUTO_FLOW_PROGRESS_CAP = 90;
 // auto 显式检查：模拟进度推进到封顶的总时长
 const AUTO_FLOW_PROGRESS_MS = 4000;
@@ -62,29 +73,40 @@ const AUTO_FLOW_FAST_MS = 600;
 // auto 显式检查：「正在安装…」停留时长，之后收掉进度 toast 弹「已完成更新」
 const AUTO_FLOW_INSTALL_MS = 1000;
 
-// ── 模块级状态 ──
+// ── 状态机 ──
+
+// 更新流程阶段：任一时刻至多一条流程活跃（模式单值 + 模式切换清理保证互斥）
+// - idle：无进行中的提示流程
+// - available/downloading/countdown：manual 交互式流程的三段
+// - progress：auto 显式检查的单条进度 toast 接管中
+// - applying：已发 SKIP_WAITING，整页重载在即（终态，任何决策都让路）
+type UpdatePhase =
+  | "idle"
+  | "available"
+  | "downloading"
+  | "countdown"
+  | "progress"
+  | "applying";
+
 let registration: ServiceWorkerRegistration | null = null;
 let swScriptUrl: string | null = null;
-let updateAvailable = false; // onNeedRefresh 已触发（存在 waiting SW）
-let versionId: string | null = null; // 当前 waiting SW 的版本哈希
-let promptedVersionId: string | null = null; // 本会话最近一次弹过 toast 的版本
-let toastId: string | null = null; // 更新 toast 的 id（null = 未展示）
-let dismissedThisSession = false; // 用户点 X：本会话不再弹同版本
-let downloading = false; // 已点「更新」，进度/倒计时流程中（防重入）
-let reloading = false; // 已触发整页重载（防重入）
+let phase: UpdatePhase = "idle";
+// manual 交互式流程当前处理的 waiting worker（点忽略/X 时据此定位版本）
+let activeWorker: ServiceWorker | null = null;
+// 本会话点过 X 静默的 worker：同一 worker 不再自动提示，新版本（新对象）照常提示
+let dismissedWorker: ServiceWorker | null = null;
+// auto 显式流程本会话已收尾的 worker：再次显式检查该版本直接回「最新」，不重跑流程
+let autoDoneWorker: ServiceWorker | null = null;
+let toastId: string | null = null; // manual 交互式 toast 的 id（null = 未展示）
+let autoFlowToastId: string | null = null; // auto 显式检查进度 toast 的 id
+let checkInFlight = false; // checkForUpdates 进行中（防重入）
 let retryScheduled = false; // 安装失败后的单次重试已排期
-let checking = false; // checkForUpdates 进行中（防重入）
-let explicitCheck = false; // manual 模式显式检查的下载中，完成后强制弹交互式 toast
-let explicitAutoCheck = false; // auto 模式显式检查的下载中，完成后走单 toast 进度流程收尾
-// 当前 waiting SW 已走完 auto 显式检查流程（已弹过「已完成更新」）：
-// 再次显式检查时直接提示已是最新，不重跑「下载→安装→完成」；
-// 新版本到达（handleNewVersion）时复位，允许对新版本重新走流程
-let autoFlowDone = false;
-let autoFlowToastId: string | null = null; // auto 显式检查的进度 toast id
-let autoFlowTimer: ReturnType<typeof setInterval> | null = null;
 let lastCheckAt = 0;
 let progressTimer: ReturnType<typeof setInterval> | null = null;
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
+let autoFlowTimer: ReturnType<typeof setInterval> | null = null;
+// 版本哈希缓存：按 worker 引用缓存，保证每个 waiting 至多 fetch 一次 sw.js
+let versionHashCache: { worker: ServiceWorker; hash: string | null } | null = null;
 
 function clearFlowTimers(): void {
   if (progressTimer !== null) {
@@ -96,6 +118,20 @@ function clearFlowTimers(): void {
     countdownTimer = null;
   }
 }
+
+function clearAutoFlowTimer(): void {
+  if (autoFlowTimer !== null) {
+    clearInterval(autoFlowTimer);
+    autoFlowTimer = null;
+  }
+}
+
+// worker 是否已装好（可激活）：waiting=installed，激活中/后同样视为已就绪
+function isInstalled(worker: ServiceWorker): boolean {
+  return worker.state === "installed" || worker.state === "activated";
+}
+
+// ── 版本哈希（仅用于 manual 持久忽略） ──
 
 // FNV-1a 32 位哈希：0 依赖，对 sw.js 全文计算，构建产物变化即哈希变化
 function fnv1a(text: string): string {
@@ -129,6 +165,24 @@ async function computeVersionId(): Promise<string | null> {
   }
 }
 
+// 按 worker 引用缓存哈希：新版本 = 新 worker 对象，缓存自然失效并重算
+async function getVersionHash(worker: ServiceWorker): Promise<string | null> {
+  if (versionHashCache?.worker === worker) return versionHashCache.hash;
+  const hash = await computeVersionId();
+  versionHashCache = { worker, hash };
+  return hash;
+}
+
+// 该 waiting 版本是否被用户持久忽略；哈希失败（null）时判为未忽略（宁可多提示）
+async function isIgnored(worker: ServiceWorker): Promise<boolean> {
+  const hash = await getVersionHash(worker);
+  if (hash === null) return false;
+  const ignored = await idbGet(IGNORED_KEY).catch(() => undefined);
+  return ignored === hash;
+}
+
+// ── 就绪等待 ──
+
 // 等待离开首屏加载页：Loader 可见期间不弹更新 toast（会盖在加载日志上），
 // 等应用进入稳定态（加载完成 loaded，或失败进入错误屏）后再展示
 function waitForAppReady(): Promise<void> {
@@ -146,8 +200,8 @@ function waitForAppReady(): Promise<void> {
   });
 }
 
-// 等待 persist rehydrate 完成：SW 的 waiting 事件可能早于 IDB 中
-// updateMode 偏好就绪，直接读 store 会拿到默认值而非用户偏好
+// 等待 persist rehydrate 完成：SW 的 waiting 事件可能早于 IDB 中 updateMode
+// 偏好就绪，直接读 store 会拿到默认值（auto）而非用户偏好（如 manual）
 function waitForHydration(): Promise<void> {
   if (useStore.persist.hasHydrated()) return Promise.resolve();
   return new Promise((resolve) => {
@@ -165,8 +219,8 @@ function waitForHydration(): Promise<void> {
 
 // ── auto 模式：启动期无感激活（渲染前完成，用户只看到一次正常加载） ──
 
-// 渲染前读取持久化的 updateMode（此时 persist 尚未 rehydrate，
-// 不能读 store 默认值；与 useStore 的 getInitial* 同模式的原始解析）
+// 渲染前读取持久化的 updateMode（此时 persist 尚未 rehydrate，不能读 store
+// 默认值；与 useStore 的 getInitial* 同模式的原始解析）
 async function getBootUpdateMode(): Promise<UpdateMode> {
   try {
     const state = (await getBootPersistedState()) as {
@@ -182,14 +236,16 @@ async function getBootUpdateMode(): Promise<UpdateMode> {
 
 /**
  * 启动期无感激活：main.tsx bootstrap 在 React 挂载前 await。
- * auto 模式且存在上个会话装好的 waiting SW 时（waiting 仅在全部资源
- * 预缓存完成后才会出现，天然保证「没下载完不替换」），发 SKIP_WAITING
- * 并在 controllerchange（新 SW 确认接管）后整页重载 —— 此时页面仅有
- * index.html 主题底色，重载表现为一次正常加载，无旧版闪现/黑屏。
- * 一旦发出 SKIP_WAITING，Promise 永不 resolve、必定重载：激活指令无法
- * 撤回，若超时后继续挂载旧版，新 SW 随后激活会清理旧预缓存
- *（cleanupOutdatedCaches）并接管页面（clientsClaim），旧版懒加载 chunk
- * 拉取即失败（曾表现为「播放器加载失败」等各式错误）。
+ * auto 模式且存在上个会话装好的 waiting SW 时（waiting 仅在全部资源预缓存
+ * 完成后才会出现，天然保证「没下载完不替换」），发 SKIP_WAITING 并在新 SW
+ * 确认接管后整页重载 —— 此时页面仅有 index.html 主题底色，重载表现为一次
+ * 正常加载，无旧版闪现/黑屏。
+ *
+ * 可靠性：同时监听 controllerchange 与 waiting.state==="activated"，任一到达
+ * 即重载；兜底超时 10s（不再是旧版的 2s）—— 跨版本大预缓存激活较慢时，短
+ * 兜底会在新 SW 尚在 activate 阶段（cleanupOutdatedCaches 清旧缓存）就强制
+ * reload，导致旧页面 chunk 失效。一旦发出 SKIP_WAITING，Promise 永不 resolve、
+ * 必定重载：激活指令无法撤回。
  */
 export async function activateWaitingBeforeBoot(): Promise<void> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
@@ -220,9 +276,12 @@ export async function activateWaitingBeforeBoot(): Promise<void> {
       done = true;
       window.location.reload();
     };
-    // 正常路径：新 SW 确认接管后重载，进入完整新版本
+    // 正常路径：新 SW 确认接管（controllerchange）或自身激活完成后重载
     navigator.serviceWorker.addEventListener("controllerchange", reload, {
       once: true,
+    });
+    waiting.addEventListener("statechange", () => {
+      if (waiting.state === "activated") reload();
     });
     // 防循环护栏先于 SKIP_WAITING 写入：任一路径的重载都受护栏保护
     try {
@@ -231,49 +290,52 @@ export async function activateWaitingBeforeBoot(): Promise<void> {
       // 护栏写入失败也照常激活重载（前面已确认 sessionStorage 可读）
     }
     waiting.postMessage({ type: "SKIP_WAITING" });
-    // 兜底：激活超时同样重载 —— 激活确实卡死时重载后仍由旧 SW 控制、
-    // 照常进旧版（护栏已消费不会循环）；激活稍慢完成则重载即进新版
+    // 兜底逃生舱：激活确实卡死时重载后仍由旧 SW 控制、照常进旧版（护栏已
+    // 消费不会循环）；激活稍慢完成则前面两个信号会先触发、进新版
     setTimeout(reload, BOOT_ACTIVATE_TIMEOUT_MS);
   });
 }
 
-// ── manual 模式：更新 toast 流程 ──
+// ── manual 模式：交互式更新 toast 流程 ──
 
-// 程序性关闭 toast（模式切换/忽略），不设置会话关闭标记
-function dismissToast(): void {
+// 程序性收掉 manual 提示 toast（模式切换/忽略），不设本会话静默标记
+function dismissPromptToast(): void {
   clearFlowTimers();
-  downloading = false;
   if (toastId) {
     toastStore.getState().dismiss(toastId);
     toastId = null;
   }
 }
 
-// 用户点 X：清理定时器并标记本会话不再弹（Toaster 已负责 dismiss）
-function onToastClosed(): void {
+// 用户点 X：本会话静默该 worker 版本（Toaster 已负责 dismiss，此处清状态）
+function onPromptClosed(): void {
   clearFlowTimers();
-  downloading = false;
+  dismissedWorker = activeWorker;
   toastId = null;
-  dismissedThisSession = true;
+  activeWorker = null;
+  phase = "idle";
 }
 
-// 点「忽略」：版本号写入 IDB，该版本永久不再提示；
-// versionId 为 null（哈希失败）时无法标记，退化为 X 的本会话关闭语义
+// 点「忽略」：把该版本哈希写入 IDB，永久不再提示（哈希失败则无法持久记录，
+// 退化为仅收掉本次提示 —— 下次仍会评估，符合「宁可多提示」）
 function ignoreVersion(): void {
-  if (versionId) {
-    void idbSet(IGNORED_KEY, versionId).catch(() => {});
-  } else {
-    dismissedThisSession = true;
+  const worker = activeWorker;
+  if (worker) {
+    void getVersionHash(worker).then((hash) => {
+      if (hash) void idbSet(IGNORED_KEY, hash).catch(() => {});
+    });
   }
-  dismissToast();
+  dismissPromptToast();
+  activeWorker = null;
+  phase = "idle";
 }
 
 // 点「更新」：模拟下载进度 0→100（真实资源已预缓存，见文件头注释）
 function startDownload(): void {
-  if (downloading || reloading || !toastId) return;
-  downloading = true;
+  if (phase !== "available" || !toastId) return;
+  phase = "downloading";
   const id = toastId;
-  // 标题直接换成「正在下载更新…」，不走描述行（创建时本无 description）
+  // 标题直接换成「正在下载更新…」，清空按钮，起进度条
   toastStore.getState().update(id, {
     title: t("update.downloading"),
     actions: [],
@@ -294,8 +356,9 @@ function startDownload(): void {
   }, 100);
 }
 
-// 进度满格后：10s 倒计时按钮（刷新页面 (Ns)），归零或点击即刷新
+// 进度满格后：10s 倒计时按钮（刷新页面 (Ns)），归零或点击即激活重载
 function startCountdown(id: string): void {
+  phase = "countdown";
   let remain = RELOAD_COUNTDOWN_S;
   const render = () =>
     toastStore.getState().update(id, {
@@ -306,7 +369,7 @@ function startCountdown(id: string): void {
         {
           label: t("update.actionReload", { s: remain }),
           variant: "primary",
-          onClick: applyAndReload,
+          onClick: () => void applyUpdate(),
         },
       ],
     });
@@ -318,48 +381,24 @@ function startCountdown(id: string): void {
         clearInterval(countdownTimer);
         countdownTimer = null;
       }
-      applyAndReload();
+      void applyUpdate();
       return;
     }
     render();
   }, 1000);
 }
 
-// 激活 waiting SW 并刷新页面：controllerchange 后 reload，3s 兜底强制 reload
-function applyAndReload(): void {
-  if (reloading) return;
-  reloading = true;
-  clearFlowTimers();
-  const waiting = registration?.waiting;
-  if (!waiting) {
-    // waiting 已不存在（如已被其他 tab 激活）→ 直接刷新即是新版本
-    window.location.reload();
-    return;
-  }
-  let done = false;
-  const reload = () => {
-    if (done) return;
-    done = true;
-    window.location.reload();
-  };
-  navigator.serviceWorker?.addEventListener("controllerchange", reload, {
-    once: true,
-  });
-  waiting.postMessage({ type: "SKIP_WAITING" });
-  // 逃生舱：正常路径 controllerchange 先到，不会触发此兜底
-  setTimeout(reload, RELOAD_FALLBACK_MS);
-}
-
-function showUpdateToast(): void {
-  if (toastId) return;
-  promptedVersionId = versionId;
-  dismissedThisSession = false;
+// 弹交互式更新 toast（幂等：非 idle 时不重复弹，供多入口安全调用）
+function showPromptToast(worker: ServiceWorker): void {
+  if (phase !== "idle") return;
+  phase = "available";
+  activeWorker = worker;
   toastId = toastStore.getState().add({
     type: "info",
     title: t("update.available"),
     duration: Infinity,
     sticky: true,
-    onClose: onToastClosed,
+    onClose: onPromptClosed,
     actions: [
       {
         label: t("update.actionUpdate"),
@@ -375,41 +414,65 @@ function showUpdateToast(): void {
   });
 }
 
-// manual 模式分派：忽略版本/本会话已关闭 → 静默，否则弹 toast
-async function dispatchManual(): Promise<void> {
-  if (reloading || toastId) return;
-  // Loader 可见期不弹：等进入正式界面后再展示（延迟期间仅推迟展示，
-  // 判定在真正展示前执行，用户中途切走 manual 模式则不再弹出）
-  await waitForAppReady();
-  if (reloading || toastId) return;
-  if (useStore.getState().updateMode !== "manual") return;
-  // 本会话点过 X：同版本不再弹；周期检查发现更新的版本（哈希不同）则重新提示
-  if (dismissedThisSession) {
-    if (versionId === null || versionId === promptedVersionId) return;
+// ── 统一激活入口 ──
+
+/**
+ * 激活 waiting SW 并整页重载。读实时 waiting（不缓存旧引用），同时监听
+ * controllerchange 与 waiting.state==="activated"，任一到达即重载；兜底 10s。
+ * 跨版本场景下，页面挂起期间服务器可能已连发多版，此处始终应用最新的 waiting。
+ */
+async function applyUpdate(): Promise<void> {
+  if (phase === "applying") return;
+  phase = "applying";
+  clearFlowTimers();
+  let done = false;
+  const reloadOnce = () => {
+    if (done) return;
+    done = true;
+    window.location.reload();
+  };
+  // 优先读当前 registration 的实时 waiting；缺失时从最新 registration 再取一次
+  let worker = registration?.waiting ?? null;
+  if (!worker) {
+    const reg = await navigator.serviceWorker
+      .getRegistration()
+      .catch(() => undefined);
+    worker = reg?.waiting ?? null;
   }
-  if (versionId) {
-    const ignored = await idbGet(IGNORED_KEY).catch(() => undefined);
-    if (ignored === versionId) return;
+  if (!worker) {
+    // 无 waiting（已被其他 tab 激活等）→ 直接刷新即是新版本
+    reloadOnce();
+    return;
   }
-  showUpdateToast();
+  const target = worker;
+  navigator.serviceWorker.addEventListener("controllerchange", reloadOnce, {
+    once: true,
+  });
+  target.addEventListener("statechange", () => {
+    if (target.state === "activated") reloadOnce();
+  });
+  if (isInstalled(target) && target.state === "activated") {
+    // 极罕见竞态：已激活 → 直接重载
+    reloadOnce();
+  } else {
+    target.postMessage({ type: "SKIP_WAITING" });
+  }
+  // 逃生舱：正常路径 controllerchange/activated 先到，不会触发此兜底
+  setTimeout(reloadOnce, APPLY_FALLBACK_MS);
 }
 
-// ── 决策入口 ──
+// ── auto 显式检查：单条进度 toast 流程 ──
 
-// ── auto 模式显式检查：单 toast 进度流程 ──
-
-function clearAutoFlowTimer(): void {
-  if (autoFlowTimer !== null) {
-    clearInterval(autoFlowTimer);
-    autoFlowTimer = null;
-  }
-}
-
-// 创建「发现新版本，正在下载…」进度 toast：
-// - cap < 100：模拟进度封顶等待真实安装完成（finishAutoFlow 跳满）；
-// - cap = 100（waiting 已存在，资源早已下载好）：快速跑满后直接进入安装提示
-function startAutoFlow(durationMs: number, cap: number): void {
-  if (autoFlowToastId) return;
+// 创建「发现新版本，正在下载…」进度 toast 并推进：
+// - worker 已装好（waiting）：快速跑满 → 直接转「正在安装…」→「已完成更新」；
+// - worker 安装中（installing）：进度封顶 90 等真实安装完成（statechange
+//   installed）→ 跳满转安装提示；安装失败（redundant）→ 转错误提示。
+function startAutoProgress(worker: ServiceWorker): void {
+  if (autoFlowToastId) return; // 已在进行
+  phase = "progress";
+  const alreadyInstalled = isInstalled(worker);
+  const cap = alreadyInstalled ? 100 : AUTO_FLOW_PROGRESS_CAP;
+  const duration = alreadyInstalled ? AUTO_FLOW_FAST_MS : AUTO_FLOW_PROGRESS_MS;
   const id = toastStore.getState().add({
     type: "info",
     title: t("update.foundDownloading"),
@@ -420,6 +483,7 @@ function startAutoFlow(durationMs: number, cap: number): void {
     onClose: () => {
       clearAutoFlowTimer();
       autoFlowToastId = null;
+      if (phase === "progress") phase = "idle";
     },
   });
   autoFlowToastId = id;
@@ -427,21 +491,41 @@ function startAutoFlow(durationMs: number, cap: number): void {
   autoFlowTimer = setInterval(() => {
     const pct = Math.min(
       cap,
-      Math.round(((Date.now() - startedAt) / durationMs) * 100),
+      Math.round(((Date.now() - startedAt) / duration) * 100),
     );
     toastStore.getState().update(id, { progress: pct });
     if (pct >= cap && autoFlowTimer !== null) {
       clearAutoFlowTimer();
-      // cap=100 快路径：不等 onNeedRefresh（早已触发过），直接转安装提示
-      if (cap >= 100) showAutoFlowInstalled(id);
+      // 快路径（资源已就绪）：不等 statechange，直接转安装提示
+      if (cap >= 100) finishAutoProgress(worker);
     }
   }, 100);
+  // 安装中路径：监听真实安装完成/失败
+  if (!alreadyInstalled) {
+    const onState = () => {
+      if (isInstalled(worker)) {
+        worker.removeEventListener("statechange", onState);
+        finishAutoProgress(worker);
+      } else if (worker.state === "redundant") {
+        worker.removeEventListener("statechange", onState);
+        failAutoProgress();
+      }
+    };
+    worker.addEventListener("statechange", onState);
+  }
 }
 
-// 进度跑满后：标题切「正在安装…」，短暂停留后收掉并弹 success「已完成更新」
-function showAutoFlowInstalled(id: string): void {
-  // 进入收尾即视为该 waiting 版本的显式流程已完成（含 cap=100 快路径）
-  autoFlowDone = true;
+// 真实安装完成：进度跳满 →「正在安装…」→ 收掉进度 toast 弹「已完成更新」；
+// 进度 toast 已被用户关闭时仅弹完成提示（更新确实已就绪）
+function finishAutoProgress(worker: ServiceWorker): void {
+  clearAutoFlowTimer();
+  autoDoneWorker = worker; // 记录该版本已走完显式流程 → 再次显式检查回「最新」
+  const id = autoFlowToastId;
+  if (!id) {
+    toast.success(t("update.done"));
+    if (phase === "progress") phase = "idle";
+    return;
+  }
   toastStore.getState().update(id, {
     title: t("update.installing"),
     progress: 100,
@@ -451,76 +535,81 @@ function showAutoFlowInstalled(id: string): void {
     autoFlowToastId = null;
     toastStore.getState().dismiss(id);
     toast.success(t("update.done"));
+    if (phase === "progress") phase = "idle";
   }, AUTO_FLOW_INSTALL_MS);
 }
 
-// 真实安装完成（onNeedRefresh 到达）：进度跳满 → 安装提示 → 完成提示；
-// 进度 toast 已被用户关闭时仅弹完成提示（更新确实已就绪）
-function finishAutoFlow(): void {
-  explicitAutoCheck = false;
-  autoFlowDone = true;
-  clearAutoFlowTimer();
-  if (autoFlowToastId) {
-    showAutoFlowInstalled(autoFlowToastId);
-  } else {
-    toast.success(t("update.done"));
-  }
-}
-
-// 安装失败（installing → redundant）：收掉进度 toast 转错误提示，复位标志
-function failAutoFlow(): void {
-  explicitAutoCheck = false;
+// 安装失败（installing → redundant）：收掉进度 toast 转错误提示
+function failAutoProgress(): void {
   clearAutoFlowTimer();
   if (autoFlowToastId) {
     toastStore.getState().dismiss(autoFlowToastId);
     autoFlowToastId = null;
     toast.error(t("update.checkFailed"));
   }
+  if (phase === "progress") phase = "idle";
 }
 
-async function handleNewVersion(): Promise<void> {
-  updateAvailable = true;
-  // 新 waiting 版本到达：作废旧版本的「auto 显式流程已完成」标记
-  autoFlowDone = false;
+// 收掉进行中的 auto 显式检查进度流程（模式切换时用；后台下载安装不受影响）
+function cancelAutoFlow(): void {
+  clearAutoFlowTimer();
+  if (autoFlowToastId) {
+    toastStore.getState().dismiss(autoFlowToastId);
+    autoFlowToastId = null;
+  }
+  if (phase === "progress") phase = "idle";
+}
+
+// manual 显式检查发现新版正在安装：装好后直接弹交互式 toast（绕过忽略/本会话
+// 静默 —— 用户显式检查是强意图）。与 reconcile 可能同时命中，靠 showPromptToast
+// 的 phase 幂等保证只弹一条。
+function promptWhenInstalled(worker: ServiceWorker): void {
+  const show = () => {
+    if (useStore.getState().updateMode !== "manual") return;
+    dismissedWorker = null; // 显式意图覆盖此前的本会话静默
+    showPromptToast(worker);
+  };
+  if (isInstalled(worker)) {
+    show();
+    return;
+  }
+  const onState = () => {
+    if (isInstalled(worker)) {
+      worker.removeEventListener("statechange", onState);
+      show();
+    } else if (worker.state === "redundant") {
+      worker.removeEventListener("statechange", onState);
+    }
+  };
+  worker.addEventListener("statechange", onState);
+}
+
+// ── 唯一决策函数 ──
+
+// 基于实时 waiting + 当前 updateMode 决定是否/如何提示。onNeedRefresh、周期
+// 检查、可见性检查、online 补查、模式切换统一调用。串行安全：多入口并发时
+// 靠 phase 幂等 + await 后重校验，保证至多弹一条、且对齐真实版本。
+async function reconcile(): Promise<void> {
+  if (phase !== "idle") return; // applying/progress/manual 流程进行中 → 不介入
+  if (!registration?.waiting) {
+    activeWorker = null;
+    return;
+  }
   await waitForHydration();
-  versionId = await computeVersionId();
-  // 显式分支前校验模式匹配（防御：await 期间模式被切换时，标志虽已由
-  // 模式切换订阅复位，此处再兜底一层，杜绝旧模式分支在新模式下触发）
+  if (phase !== "idle") return;
+  const waiting = registration?.waiting ?? null;
+  if (!waiting) return;
   const mode = useStore.getState().updateMode;
-  // auto 模式显式检查：真实安装完成 → 进度跳满转「正在安装…」→「已完成更新」，
-  // 不弹交互式 toast（waiting SW 保持不动，下次启动无感激活）
-  if (explicitAutoCheck && mode !== "manual") {
-    finishAutoFlow();
-    return;
-  }
-  // manual 模式显式检查触发的下载完成：跳过忽略判定直接弹交互式 toast
-  if (explicitCheck && mode === "manual") {
-    explicitCheck = false;
-    dismissedThisSession = false;
-    if (!reloading && !toastId) showUpdateToast();
-    return;
-  }
-  // 走到这里说明并非当前模式的显式检查收尾：清掉可能错配的遗留标志
-  explicitCheck = false;
-  explicitAutoCheck = false;
-  applyMode(mode);
-}
-
-// 按当前模式落实行为（onNeedRefresh 与模式切换共用）
-function applyMode(mode: UpdateMode): void {
-  if (reloading || !updateAvailable) return;
-  if (mode === "off") {
-    dismissToast();
-    return;
-  }
-  if (mode === "auto") {
-    // 会话中途发现的新版本静默保持 waiting，不打扰当前观看；
-    // 下次进入页面时由 activateWaitingBeforeBoot 在渲染前无感激活
-    dismissToast();
-    return;
-  }
-  // manual
-  void dispatchManual();
+  // auto/off：保持 waiting 静默（下次启动由 activateWaitingBeforeBoot 无感激活）
+  if (mode !== "manual") return;
+  if (waiting === dismissedWorker) return; // 本会话已点 X 静默该版本
+  if (await isIgnored(waiting)) return; // 已持久忽略该版本
+  if (phase !== "idle") return;
+  await waitForAppReady(); // Loader 期间延后到进入正式界面
+  if (phase !== "idle") return;
+  if (registration?.waiting !== waiting) return; // await 期间已被新版取代 → 交给下一次 reconcile
+  if (useStore.getState().updateMode !== "manual") return;
+  showPromptToast(waiting);
 }
 
 // ── 手动检查（设置页「检查更新」按钮） ──
@@ -534,58 +623,52 @@ export type CheckUpdateResult =
   | "failed";
 
 /**
- * 用户显式检查更新：绕过周期间隔限制，按当前 updateMode 分流
- *（不改变持久化的模式偏好）：
- * - manual：发现新版本弹交互式更新 toast（更新/忽略/X）；
- * - auto/off：全程单条进度 toast：下载进度 → 正在安装 → 已完成更新
- *（off 模式下按钮已隐藏，此处仅作兼容兜底）。
+ * 用户显式检查更新：绕过周期间隔限制，自身 await 检查结果后直接分流
+ *（不改变持久化的模式偏好，不依赖后续事件猜测）：
+ * - manual：发现新版本弹交互式更新 toast（更新/忽略/X），绕过忽略/本会话静默；
+ * - auto：单条进度 toast 全程接管：下载进度 → 正在安装 → 已完成更新
+ *（off 模式下按钮已隐藏，此处按 auto 语义兜底）。
  */
 export async function checkForUpdates(): Promise<CheckUpdateResult> {
-  if (checking || !registration) return "failed";
-  checking = true;
+  if (!registration || phase === "applying" || checkInFlight) return "failed";
+  checkInFlight = true;
   try {
     const mode = useStore.getState().updateMode;
     // 已存在装好的 waiting SW：显式检查视为新意图
-    if (registration.waiting) {
-      updateAvailable = true;
-      dismissedThisSession = false;
-      // auto：该 waiting 版本本会话已走完显式进度流程 → 视为已是最新，
-      // 不重跑「下载→安装→完成」（更新仍按 auto 语义下次启动无感激活）
-      if (mode !== "manual" && autoFlowDone) return "latest";
-      if (versionId === null) versionId = await computeVersionId();
+    const waiting = registration.waiting;
+    if (waiting) {
       if (mode === "manual") {
-        // 跳过忽略版本/本会话关闭判定直接弹出
-        if (!reloading && !toastId) showUpdateToast();
+        dismissedWorker = null; // 绕过本会话静默，直接弹
+        showPromptToast(waiting);
         return "available";
       }
-      // auto：资源早已下载完 → 进度快速跑满 →「正在安装…」→「已完成更新」
-      startAutoFlow(AUTO_FLOW_FAST_MS, 100);
+      // auto：该版本本会话已走完显式流程 → 视为最新，不重跑「下载→安装→完成」
+      if (waiting === autoDoneWorker) return "latest";
+      if (phase === "progress") return "handled"; // 已在进行
+      startAutoProgress(waiting);
       return "handled";
     }
     lastCheckAt = Date.now();
-    // 先立显式标记再触发检查：install 极快完成时 onNeedRefresh 也能命中对应分支
-    if (mode === "manual") explicitCheck = true;
-    else explicitAutoCheck = true;
     try {
       await registration.update();
     } catch {
       // 离线/网络异常
-      explicitCheck = false;
-      explicitAutoCheck = false;
       return "failed";
     }
-    if (registration.installing || registration.waiting) {
-      if (mode === "manual") return "downloading";
-      // auto：新版本正在下载安装 → 进度 toast 接管后续提示；
-      // explicitAutoCheck 已被复位说明 install 极快，finishAutoFlow 已弹完成提示
-      if (explicitAutoCheck) startAutoFlow(AUTO_FLOW_PROGRESS_MS, AUTO_FLOW_PROGRESS_CAP);
+    const worker = registration.installing ?? registration.waiting;
+    if (worker) {
+      if (mode === "manual") {
+        // 装好后直接弹交互式 toast（绕过忽略）；此刻先返回下载中提示
+        promptWhenInstalled(worker);
+        return "downloading";
+      }
+      // auto：新版本正在下载安装 → 进度 toast 接管后续提示
+      if (phase !== "progress") startAutoProgress(worker);
       return "handled";
     }
-    explicitCheck = false;
-    explicitAutoCheck = false;
     return "latest";
   } finally {
-    checking = false;
+    checkInFlight = false;
   }
 }
 
@@ -601,6 +684,9 @@ async function maybeCheck(minGap: number): Promise<void> {
   } catch {
     // 离线/网络异常 → 静默，下个周期再试
   }
+  // update() 若发现新版会经 onNeedRefresh 触发 reconcile；但「本已存在的
+  // waiting」不会再次触发事件，这里主动补一次 reconcile 兜底评估
+  void reconcile();
 }
 
 /**
@@ -613,12 +699,13 @@ export function initUpdater(): void {
   // 安全网：会话运行中 controller 被更换（多标签页激活新 SW、强刷旁路等）
   // 意味着旧预缓存已/即将被 cleanupOutdatedCaches 清理，旧页面继续运行会
   // 出现懒加载 chunk 失效等各式错误 → 立即整页重载进入完整新版本。
-  // 仅在本页加载时已有 controller 才监听：首次安装的 clients.claim
-  // 不应触发重载（避免首访误刷）。
+  // 仅在本页加载时已有 controller 才监听：首次安装的 clients.claim 不应触发
+  // 重载（避免首访误刷）。applyUpdate 自身激活时已置 phase="applying"，此处
+  // 让路避免重复 reload。
   if (navigator.serviceWorker.controller) {
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (reloading) return;
-      reloading = true;
+      if (phase === "applying") return;
+      phase = "applying";
       window.location.reload();
     });
   }
@@ -643,17 +730,14 @@ export function initUpdater(): void {
         void maybeCheck(ONLINE_CHECK_GAP_MS);
       });
       // 安装失败（如下载中断，installing → redundant）→ 60s 后单次重试；
-      // 重试再失败则等 online 事件或 60 分钟周期，避免离线时空转轮询
+      // 重试再失败则等 online 事件或 60 分钟周期，避免离线时空转轮询。
+      // auto 进度流程进行中则收掉进度 toast 转错误提示。
       r.addEventListener("updatefound", () => {
         const installing = r.installing;
         if (!installing) return;
         installing.addEventListener("statechange", () => {
           if (installing.state !== "redundant") return;
-          // 显式检查触发的安装失败：复位标志，否则后续周期检查
-          // 发现的新版本会误走显式分支（无视模式偏好）；
-          // auto 进度流程进行中则收掉进度 toast 转错误提示
-          explicitCheck = false;
-          failAutoFlow();
+          failAutoProgress();
           if (retryScheduled) return;
           retryScheduled = true;
           setTimeout(() => {
@@ -662,28 +746,33 @@ export function initUpdater(): void {
           }, INSTALL_RETRY_DELAY_MS);
         });
       });
+      // 上个会话遗留的 waiting SW：workbox 的 waiting 事件可能早于本回调
+      // 设置 registration 就触发（此时 reconcile 读不到 registration 而提前
+      // 返回、不再重试），故注册就绪后主动补一次 reconcile 兜底评估
+      if (r.waiting) void reconcile();
     },
     onNeedRefresh() {
-      void handleNewVersion();
+      void reconcile();
     },
   });
 
-  // 模式切换联动：off/auto 清理提示转静默、manual 立即评估是否弹 toast
+  // 模式切换联动：统一委托 reconcile 重新决策，切走 manual/auto 时清理各自
+  // 遗留 toast。用户显式切换视为新意图 → 清本会话 X 静默标记。
   useStore.subscribe((s, prev) => {
     if (s.updateMode === prev.updateMode) return;
-    // 用户显式切换视为新意图：清除「本会话已关闭」标记，
-    // 切到 manual 且存在未忽略的 waiting SW 时能立即弹出
-    dismissedThisSession = false;
-    // 作废旧模式的显式检查意图：遗留标志会让 onNeedRefresh 误入旧模式
-    // 分支（曾表现为 auto 下弹交互式 toast、manual 下被 auto 流程接管）
-    explicitCheck = false;
-    explicitAutoCheck = false;
-    // 收掉遗留的 auto 显式检查进度 toast（后台下载安装不受影响）
-    clearAutoFlowTimer();
-    if (autoFlowToastId) {
-      toastStore.getState().dismiss(autoFlowToastId);
-      autoFlowToastId = null;
+    if (phase === "applying") return; // 重载在即，不打扰
+    dismissedWorker = null;
+    // 切到 auto/off：收掉进行中的 manual 交互式流程（waiting 保持，下次启动激活）
+    if (
+      s.updateMode !== "manual" &&
+      (phase === "available" || phase === "downloading" || phase === "countdown")
+    ) {
+      dismissPromptToast();
+      activeWorker = null;
+      phase = "idle";
     }
-    applyMode(s.updateMode);
+    // 收掉遗留的 auto 显式检查进度 toast（后台下载安装不受影响）
+    cancelAutoFlow();
+    void reconcile();
   });
 }
