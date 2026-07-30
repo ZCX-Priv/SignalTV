@@ -231,6 +231,7 @@ export const dict: Dict = {
   "update.ready": "Neue Version bereit",
   "update.actionReload": "Seite neu laden ({s}s)",
   "settings.checkUpdate": "Nach Updates suchen",
+  "settings.checkUpdateCountdown": "({s}s)",
   "update.checking": "Suche nach Updates…",
   "update.latest": "Sie verwenden bereits die neueste Version",
   "update.foundDownloading": "Neue Version gefunden, wird im Hintergrund geladen…",

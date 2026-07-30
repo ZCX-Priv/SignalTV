@@ -223,6 +223,7 @@ export const dict: Dict = {
   "update.ready": "新バージョンの準備完了",
   "update.actionReload": "ページを再読み込み ({s}s)",
   "settings.checkUpdate": "更新を確認",
+  "settings.checkUpdateCountdown": "({s}s)",
   "update.checking": "更新を確認しています…",
   "update.latest": "すでに最新バージョンです",
   "update.foundDownloading": "新しいバージョンが見つかりました。バックグラウンドでダウンロード中…",

@@ -2609,6 +2609,11 @@
     display: none;
   }
 }
+/* 冷却倒计时数字：独立于文字标签，移动端不隐藏（文字隐藏后仍显示倒计时）；
+   等宽数字避免逐秒变化时的宽度抖动 */
+.settings__check-update-count {
+  font-variant-numeric: tabular-nums;
+}
 .settings__options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

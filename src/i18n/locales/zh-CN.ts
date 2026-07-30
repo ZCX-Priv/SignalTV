@@ -237,6 +237,7 @@ export const dict = {
   "update.ready": "新版本已就绪",
   "update.actionReload": "刷新页面 ({s}s)",
   "settings.checkUpdate": "检查更新",
+  "settings.checkUpdateCountdown": "({s}s)",
   "update.checking": "正在检查更新…",
   "update.latest": "当前已是最新版本",
   "update.foundDownloading": "发现新版本，正在后台下载…",

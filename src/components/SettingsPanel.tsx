@@ -123,18 +123,21 @@ export function SettingsPanel() {
   const channels = useStore((s) => s.channels);
   // 手动检查更新进行中：按钮禁用 + 图标旋转
   const [checkingUpdate, setCheckingUpdate] = useState(false);
-  // 冷却中：仅禁用不转圈；挂载时按模块级截止时间戳初始化，
-  // 冷却期内关闭重开设置页不会提前解锁
-  const [coolingDown, setCoolingDown] = useState(
-    () => Date.now() < checkCooldownUntil,
+  // 冷却剩余秒数（0 = 不在冷却，仅禁用不转圈以区别检查中的旋转态）：挂载时
+  // 按模块级截止时间戳初始化，冷却期内关闭重开设置页不会提前解锁
+  const [cooldownRemain, setCooldownRemain] = useState(() =>
+    Math.max(0, Math.ceil((checkCooldownUntil - Date.now()) / 1000)),
   );
+  const coolingDown = cooldownRemain > 0;
   useEffect(() => {
     if (!coolingDown) return;
-    const timer = setTimeout(
-      () => setCoolingDown(false),
-      Math.max(0, checkCooldownUntil - Date.now()),
-    );
-    return () => clearTimeout(timer);
+    // 每秒按实时时间戳重算剩余秒数（自校正，后台切走再切回也准确）
+    const timer = setInterval(() => {
+      setCooldownRemain(
+        Math.max(0, Math.ceil((checkCooldownUntil - Date.now()) / 1000)),
+      );
+    }, 1000);
+    return () => clearInterval(timer);
   }, [coolingDown]);
 
   // 点「检查更新」：info 提示（不转圈）至少展示 CHECK_TOAST_MIN_MS 后，
@@ -163,9 +166,9 @@ export function SettingsPanel() {
     else if (result === "failed") toast.error(t("update.checkFailed"), { key: CHECK_KEY });
     else toast.dismiss(checkingId); // available/handled：updater 已弹自家 toast，只收检查中提示
     setCheckingUpdate(false);
-    // 检查收尾后进入 10s 冷却，期间按钮不可点
+    // 检查收尾后进入 10s 冷却，期间按钮不可点并显示逐秒倒计时
     checkCooldownUntil = Date.now() + CHECK_COOLDOWN_MS;
-    setCoolingDown(true);
+    setCooldownRemain(CHECK_COOLDOWN_MS / 1000);
   };
 
   return (
@@ -323,6 +326,12 @@ export function SettingsPanel() {
               <span className="settings__check-update-label">
                 {t("settings.checkUpdate")}
               </span>
+              {/* 倒计时数字独立于文字标签：移动端隐藏文字后仍常显倒计时 */}
+              {coolingDown && (
+                <span className="settings__check-update-count">
+                  {t("settings.checkUpdateCountdown", { s: cooldownRemain })}
+                </span>
+              )}
             </button>
           )}
         </header>
