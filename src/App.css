@@ -3596,8 +3596,7 @@
    ============================================================ */
 /* fixed 悬浮于主内容列底部水平居中（组件渲染在 .app 之外，避开
    .view-anim 的 transform 包含块）：left 占位侧栏宽 + right:0，
-   margin-inline:auto 配合 width:max-content 在剩余区间居中——
-   不用 left:50% + translateX(-50%)：transform 轴留给浮现/退场的 translateY。
+   margin-inline:auto 配合 width:max-content 在剩余区间居中。
    z-index 900：低于播放器(1000)/抽屉遮罩(1099)，模态打开时被自然盖住 */
 .back-top {
   position: fixed;
@@ -3614,25 +3613,23 @@
   gap: 8px;
   padding: 0 18px 0 14px;
   border: 1px solid var(--line-2);
-  background: var(--overlay-1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* 不透明实色底对齐顶栏色系（--bg-2 正是白昼顶栏渐变起点色）：
+     扁平化风格不引入半透明玻璃底，也避免白昼下透底偏白 */
+  background: var(--bg-2);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 13px;
   cursor: pointer;
   box-shadow: var(--shadow-1);
-  /* 默认隐形不可点：opacity/transform 跑过渡，visibility 的 0s 切换
-     延迟到淡出结束后才生效，退场先下滑淡出再彻底隐藏。
+  /* 默认隐形不可点：无浮动位移，仅 opacity 淡入淡出；扁平化风格下
+     不做 translateY 滑动。visibility 的 0s 切换延迟到淡出结束后才生效。
      left 过渡与 .app 的 grid-template-columns 0.24s 同步，
      侧栏折叠/展开时按钮平滑跟移 */
   opacity: 0;
-  transform: translateY(12px);
   visibility: hidden;
   pointer-events: none;
   transition:
     opacity var(--dur-modal) var(--ease),
-    transform var(--dur-modal) var(--ease),
     visibility 0s linear var(--dur-modal),
     left 0.24s var(--ease),
     border-color var(--dur-micro) var(--ease),
@@ -3640,7 +3637,6 @@
 }
 .back-top.is-visible {
   opacity: 1;
-  transform: translateY(0);
   visibility: visible;
   pointer-events: auto;
   /* 进场时 visibility 立即可见，不能等退场用的延迟 */
@@ -3649,10 +3645,6 @@
 .back-top:hover {
   border-color: var(--line-strong);
   background: var(--bg-elev);
-  transform: translateY(-2px);
-}
-.back-top:active {
-  transform: translateY(0);
 }
 /* 桌面端侧栏折叠态：按钮是 .app 的紧邻兄弟，left 跟随折叠列宽 56px
   （断点/列宽与 .app:has(.sidebar.is-collapsed) 规则严格一致） */
