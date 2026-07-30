@@ -2393,6 +2393,11 @@
     min-height: 0;      /* 移除 240px 下限，避免小屏拉伸破坏比例 */
     max-height: none;   /* 移除 42vh 上限，让 16:9 比例严格生效 */
     flex-shrink: 0;     /* 防止视频被压缩，保证 16:9 比例严格生效 */
+    /* 覆盖主样式 border-radius:12px：圆角是桌面端悬浮卡片（margin:14px 留边）
+       的配套属性；移动端通栏布局无留边，黑色视频块的圆角与顶栏分隔线、
+       信息区 border-top 直线硬碰，四角还露出面板底色三角。归零后
+       顶栏—视频—信息区三段通栏无缝拼接，衔接自然 */
+    border-radius: 0;
   }
   .player__info {
     border-left: 0;
