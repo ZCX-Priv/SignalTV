@@ -48,8 +48,12 @@ const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const VISIBLE_CHECK_GAP_MS = 5 * 60 * 1000;
 // 网络恢复（online 事件）后的最小补查间隔：1 分钟
 const ONLINE_CHECK_GAP_MS = 60 * 1000;
-// SW 安装失败（如下载中断）后的单次重试延迟：60s
+// SW 安装失败（如下载中断，installing → redundant）后的退避重试起步延迟：60s，
+// 每次失败翻倍（封顶见下），安装成功或网络恢复（online）时复位
 const INSTALL_RETRY_DELAY_MS = 60 * 1000;
+// 退避重试延迟封顶：10 分钟——失败常态化（弱网非断网，online 事件不会来）
+// 时的稳态重试频率；离线时 update() 秒抛，重试代价极低，不算空转轮询
+const INSTALL_RETRY_MAX_MS = 10 * 60 * 1000;
 // manual 点「更新」后的模拟下载进度总时长（资源实际已被 SW 预缓存完毕）
 const PROGRESS_DURATION_MS = 1500;
 // 下载完成后自动刷新的倒计时秒数
@@ -72,6 +76,11 @@ const AUTO_FLOW_PROGRESS_MS = 4000;
 const AUTO_FLOW_FAST_MS = 600;
 // auto 显式检查：「正在安装…」停留时长，之后收掉进度 toast 弹「已完成更新」
 const AUTO_FLOW_INSTALL_MS = 1000;
+// auto 显式检查进度流程的停滞兜底：installing 超时仍未 installed/redundant
+//（半开连接下 SW 内预缓存 fetch 可挂数分钟直到浏览器杀 SW）→ 降级进度
+// toast 并释放 phase，避免全程阻塞后台检查。0.5Mbps 下 2.4MB 预缓存约
+// 60-90s，取 120s 留足余量
+const AUTO_FLOW_STALL_MS = 120_000;
 
 // ── 状态机 ──
 
@@ -101,11 +110,16 @@ let toastId: string | null = null; // manual 交互式 toast 的 id（null = 未
 let autoFlowToastId: string | null = null; // auto 显式检查进度 toast 的 id
 let checkInFlight = false; // 显式检查(checkForUpdates)进行中：后台检查一律让路
 let bgCheckInFlight = false; // 后台检查(maybeCheck)进行中：防自身并发(周期与重试均 minGap=0)
-let retryScheduled = false; // 安装失败后的单次重试已排期
+// 安装失败后的指数退避重试链（替代旧版单发 60s 重试：弱网下单发失败
+// 即断链，要等 60 分钟周期才有下一次机会）
+let installRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let installRetryDelay = INSTALL_RETRY_DELAY_MS; // 当前退避延迟（成功/online 复位）
 let lastCheckAt = 0;
 let progressTimer: ReturnType<typeof setInterval> | null = null;
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 let autoFlowTimer: ReturnType<typeof setInterval> | null = null;
+// auto 进度流程的停滞兜底定时器（与 autoFlowTimer 同生命周期统一清理）
+let autoFlowStallTimer: ReturnType<typeof setTimeout> | null = null;
 // 版本哈希缓存：按 worker 引用缓存，保证每个 waiting 至多 fetch 一次 sw.js
 let versionHashCache: { worker: ServiceWorker; hash: string | null } | null = null;
 
@@ -124,6 +138,10 @@ function clearAutoFlowTimer(): void {
   if (autoFlowTimer !== null) {
     clearInterval(autoFlowTimer);
     autoFlowTimer = null;
+  }
+  if (autoFlowStallTimer !== null) {
+    clearTimeout(autoFlowStallTimer);
+    autoFlowStallTimer = null;
   }
 }
 
@@ -581,7 +599,7 @@ function startAutoProgress(worker: ServiceWorker, reuseId?: string): void {
       if (cap >= 100) finishAutoProgress(worker);
     }
   }, 100);
-  // 安装中路径：监听真实安装完成/失败
+  // 安装中路径：监听真实安装完成/失败 + 停滞兜底
   if (!alreadyInstalled) {
     const onState = () => {
       if (isInstalled(worker)) {
@@ -593,6 +611,28 @@ function startAutoProgress(worker: ServiceWorker, reuseId?: string): void {
       }
     };
     worker.addEventListener("statechange", onState);
+    // 停滞兜底：超时仍未 installed/redundant（半开连接下 SW 内 fetch 可挂
+    // 数分钟）→ 进度 toast 原地降级为普通提示并释放 phase，解除对后台
+    // 检查的全程阻塞（重复下载仍由 maybeCheck 的 registration.installing
+    // 守卫杜绝）。onState 监听保留：稍后 installed 仍弹「已完成更新」
+    //（toastId 已空，finishAutoProgress 只弹 success）；redundant 静默交给
+    // 退避重试链（failAutoProgress 的 toastId-null 分支不弹错）。
+    // 正常收尾时由 finish/fail 内的 clearAutoFlowTimer 统一清掉本定时器。
+    autoFlowStallTimer = setTimeout(() => {
+      autoFlowStallTimer = null;
+      clearAutoFlowTimer();
+      if (autoFlowToastId === id) {
+        // 标题本就是「发现新版本，正在后台下载…」，去进度条/去 sticky/
+        // 限时自动消失（与 toast.ts 默认时长一致）即是准确的降级语义
+        toastStore.getState().update(id, {
+          progress: undefined,
+          sticky: false,
+          duration: 3500,
+        });
+        autoFlowToastId = null;
+      }
+      if (phase === "progress") phase = "idle";
+    }, AUTO_FLOW_STALL_MS);
   }
 }
 
@@ -749,26 +789,85 @@ export async function checkForUpdates(): Promise<CheckUpdateResult> {
 
 // ── 周期检查 ──
 
-async function maybeCheck(minGap: number): Promise<void> {
-  if (!registration) return;
-  if (useStore.getState().updateMode === "off") return;
+// 后台检查结果：供退避重试链续链决策（done=update() 已执行；
+// failed=update() 抛错；skipped=被守卫让路/未到间隔）
+type BgCheckOutcome = "done" | "failed" | "skipped";
+
+async function maybeCheck(minGap: number): Promise<BgCheckOutcome> {
+  if (!registration) return "skipped";
+  if (useStore.getState().updateMode === "off") return "skipped";
   // 并发/下载防护：显式检查进行中 / 已有活跃流程(manual 交互·auto 进度·applying) /
   // 已有 SW 正在安装(真实下载中) / 另一路后台检查进行中 → 一律让路，杜绝重复触发下载
-  if (checkInFlight || bgCheckInFlight || phase !== "idle") return;
-  if (registration.installing) return;
-  if (Date.now() - lastCheckAt < minGap) return;
+  if (checkInFlight || bgCheckInFlight || phase !== "idle") return "skipped";
+  if (registration.installing) return "skipped";
+  if (Date.now() - lastCheckAt < minGap) return "skipped";
   bgCheckInFlight = true;
   lastCheckAt = Date.now();
+  let outcome: BgCheckOutcome = "done";
   try {
     await registration.update();
   } catch {
-    // 离线/网络异常 → 静默，下个周期再试
+    // 离线/网络异常 → 静默；回滚间隔戳：失败的检查不占用 visibility(5min)/
+    // online(1min) 的最小间隔窗口，下一个事件触发即可立刻补查
+    lastCheckAt = 0;
+    outcome = "failed";
   } finally {
     bgCheckInFlight = false;
   }
   // update() 若发现新版会经 onNeedRefresh 触发 reconcile；但「本已存在的
   // waiting」不会再次触发事件，这里主动补一次 reconcile 兜底评估
   void reconcile();
+  return outcome;
+}
+
+// ── 安装监视与退避重试链 ──
+
+// 排期一次退避重试（幂等：已有排期则让它跑完）。到期后经 maybeCheck
+// 发起检查（保持 registration.update() 仅有 maybeCheck/checkForUpdates 两个
+// 调用点的约束），并按结果续链：
+// - failed（update() 网络失败）：翻倍退避后再排——旧版此处直接断链，
+//   弱网（非断网，online 事件不会来）要等 60 分钟周期才有下一次机会；
+// - skipped（被守卫让路：显式检查/活跃流程/已在安装）：同延迟再排；
+//   模式已切 off 则终止链；
+// - done：链自然移交——有新版则 updatefound → watchInstalling 接管
+//  （再失败会重新进链），无新版（已最新/版本回撤）则终止。
+function scheduleInstallRetry(): void {
+  if (installRetryTimer !== null) return;
+  installRetryTimer = setTimeout(() => {
+    installRetryTimer = null;
+    void maybeCheck(0).then((outcome) => {
+      if (useStore.getState().updateMode === "off") return;
+      if (outcome === "failed") {
+        installRetryDelay = Math.min(installRetryDelay * 2, INSTALL_RETRY_MAX_MS);
+        scheduleInstallRetry();
+      } else if (outcome === "skipped") {
+        scheduleInstallRetry();
+      }
+    });
+  }, installRetryDelay);
+}
+
+// 已挂监视的 worker：updatefound 与注册就绪时的遗留 installing 两条路径
+// 可能碰同一对象，防重复挂监听/重复调度重试
+const watchedWorkers = new WeakSet<ServiceWorker>();
+
+// 监视一个正在安装（或刚发现）的 worker 的安装结局：
+// - 安装成功（installed/activated）：退避延迟复位；
+// - 安装失败（redundant，如下载中断）：收掉 auto 进度流程（若在），
+//   以当前延迟排期重试，并为下次失败翻倍退避。
+function watchInstalling(worker: ServiceWorker): void {
+  if (watchedWorkers.has(worker)) return;
+  watchedWorkers.add(worker);
+  worker.addEventListener("statechange", () => {
+    if (isInstalled(worker)) {
+      installRetryDelay = INSTALL_RETRY_DELAY_MS;
+      return;
+    }
+    if (worker.state !== "redundant") return;
+    failAutoProgress();
+    scheduleInstallRetry();
+    installRetryDelay = Math.min(installRetryDelay * 2, INSTALL_RETRY_MAX_MS);
+  });
 }
 
 /**
@@ -826,27 +925,25 @@ export function initUpdater(): void {
         }
       });
       // 网络恢复即补查：上次中断的下载在新一轮 install 中增量续传
-      //（Workbox 预缓存逐文件先 cacheMatch，已下载的不会重下）
+      //（Workbox 预缓存逐文件先 cacheMatch，已下载的不会重下）；
+      // 退避延迟同步复位：网络已恢复，无需继续长退避
       window.addEventListener("online", () => {
+        installRetryDelay = INSTALL_RETRY_DELAY_MS;
         void maybeCheck(ONLINE_CHECK_GAP_MS);
       });
-      // 安装失败（如下载中断，installing → redundant）→ 60s 后单次重试；
-      // 重试再失败则等 online 事件或 60 分钟周期，避免离线时空转轮询。
-      // auto 进度流程进行中则收掉进度 toast 转错误提示。
+      // 安装失败（installing → redundant）→ 指数退避重试链：60s 起步、
+      // 每次失败翻倍、封顶 10 分钟，安装成功或 online 时复位（旧版单发
+      // 60s 重试在弱网下失败即断链，要等 60 分钟周期）。auto 进度流程
+      // 进行中则收掉进度 toast 转错误提示。监视统一走 watchInstalling。
       r.addEventListener("updatefound", () => {
         const installing = r.installing;
         if (!installing) return;
-        installing.addEventListener("statechange", () => {
-          if (installing.state !== "redundant") return;
-          failAutoProgress();
-          if (retryScheduled) return;
-          retryScheduled = true;
-          setTimeout(() => {
-            retryScheduled = false;
-            void maybeCheck(0);
-          }, INSTALL_RETRY_DELAY_MS);
-        });
+        watchInstalling(installing);
       });
+      // 上一会话遗留的 installing（下载跨会话未完成）：本会话不会再
+      // 触发 updatefound，必须在注册就绪时主动补挂监视，否则它失败
+      //（redundant）时无人调度重试——这是「后台下载卡住」的监听盲区
+      if (r.installing) watchInstalling(r.installing);
       // 上个会话遗留的 waiting SW：workbox 的 waiting 事件可能早于本回调
       // 设置 registration 就触发（此时 reconcile 读不到 registration 而提前
       // 返回、不再重试），故注册就绪后主动补一次 reconcile 兜底评估
