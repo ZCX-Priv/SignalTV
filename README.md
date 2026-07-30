@@ -137,7 +137,8 @@ Signal-TV/
 │   ├── favicon.png              # 站点图标（Radio 信号塔，1024×1024 源图）
 │   ├── pwa-192x192.png          # PWA 图标 192×192
 │   ├── pwa-512x512.png          # PWA 图标 512×512
-│   ├── pwa-512x512-maskable.png # PWA maskable 图标（自适应裁剪）
+│   ├── pwa-1024x1024.png        # PWA 图标 1024×1024（复用 favicon）
+│   ├── pwa-1024x1024-maskable.png # PWA maskable 图标（自适应裁剪）
 │   ├── llms.txt                 # 给 LLM 用的站点描述
 │   ├── robots.txt               # 爬虫指令
 │   └── sitemap.xml              # 站点地图

@@ -509,25 +509,47 @@ async function applyUpdate(): Promise<void> {
 // - worker 已装好（waiting）：快速跑满 → 直接转「正在安装…」→「已完成更新」；
 // - worker 安装中（installing）：进度封顶 90 等真实安装完成（statechange
 //   installed）→ 跳满转安装提示；安装失败（redundant）→ 转错误提示。
-function startAutoProgress(worker: ServiceWorker): void {
+function startAutoProgress(worker: ServiceWorker, reuseId?: string): void {
   if (autoFlowToastId) return; // 已在进行
   phase = "progress";
   const alreadyInstalled = isInstalled(worker);
   const cap = alreadyInstalled ? 100 : AUTO_FLOW_PROGRESS_CAP;
   const duration = alreadyInstalled ? AUTO_FLOW_FAST_MS : AUTO_FLOW_PROGRESS_MS;
-  const id = toastStore.getState().add({
-    type: "info",
-    title: t("update.foundDownloading"),
-    duration: Infinity,
-    sticky: true,
-    progress: 0,
-    // 用户点 X：仅收掉进度提示，下载安装照常在后台继续
-    onClose: () => {
-      clearAutoFlowTimer();
-      autoFlowToastId = null;
-      if (phase === "progress") phase = "idle";
-    },
-  });
+  // 用户点 X：仅收掉进度提示，下载安装照常在后台继续
+  const onClose = () => {
+    clearAutoFlowTimer();
+    autoFlowToastId = null;
+    if (phase === "progress") phase = "idle";
+  };
+  const store = toastStore.getState();
+  const canReuse =
+    reuseId !== undefined &&
+    store.toasts.some((it) => it.id === reuseId && !it.closing);
+  let id: string;
+  if (canReuse) {
+    // 复用检查中 toast 原地变身为进度 toast；key:undefined 脱离 update-check
+    // 去重键，避免下次检查命中同键把进度提示串改回「检查中」
+    store.update(reuseId, {
+      type: "info",
+      title: t("update.foundDownloading"),
+      description: undefined,
+      duration: Infinity,
+      sticky: true,
+      key: undefined,
+      progress: 0,
+      onClose,
+    });
+    id = reuseId;
+  } else {
+    id = store.add({
+      type: "info",
+      title: t("update.foundDownloading"),
+      duration: Infinity,
+      sticky: true,
+      progress: 0,
+      onClose,
+    });
+  }
   autoFlowToastId = id;
   const startedAt = Date.now();
   autoFlowTimer = setInterval(() => {
@@ -602,6 +624,20 @@ function cancelAutoFlow(): void {
   if (phase === "progress") phase = "idle";
 }
 
+/**
+ * 设置页「检查更新」在「正在检查」最短展示后调用（auto/off）：把该检查中 toast
+ * 原地变身为进度 toast 并推进（避免与进度提示并存两条）。若等待期间流程被清空
+ * （phase 已非 progress）或已另有进度 toast，则收掉这条复用 toast，不残留「正在检查」。
+ */
+export function presentAutoProgress(reuseId: string): void {
+  const worker = registration?.installing ?? registration?.waiting ?? null;
+  if (phase !== "progress" || !worker || autoFlowToastId !== null) {
+    toastStore.getState().dismiss(reuseId);
+    return;
+  }
+  startAutoProgress(worker, reuseId); // 复用检查中 toast 变身为进度 toast
+}
+
 // ── 唯一决策函数 ──
 
 // 基于实时 waiting + 当前 updateMode 决定是否/如何提示。onNeedRefresh、周期
@@ -665,7 +701,9 @@ export async function checkForUpdates(): Promise<CheckUpdateResult> {
       // auto：该版本本会话已走完显式流程 → 视为最新，不重跑「下载→安装→完成」
       if (waiting === autoDoneWorker) return "latest";
       if (phase === "progress") return "handled"; // 已在进行
-      startAutoProgress(waiting);
+      // 认领流程但不当场渲染：由设置页在「正在检查」最短展示后
+      // presentAutoProgress 复用检查中 toast 原地变身为进度 toast
+      phase = "progress";
       return "handled";
     }
     lastCheckAt = Date.now();
@@ -685,8 +723,8 @@ export async function checkForUpdates(): Promise<CheckUpdateResult> {
         activeWorker = worker;
         return "available";
       }
-      // auto：新版本正在下载安装 → 进度 toast 接管后续提示
-      if (phase !== "progress") startAutoProgress(worker);
+      // auto：认领流程但不当场渲染（同上），推迟到最短展示后复用检查中 toast 变身
+      if (phase !== "progress") phase = "progress";
       return "handled";
     }
     return "latest";
