@@ -330,4 +330,4 @@ API 请求带超时（默认 15s，`channels.json` / `streams.json` 放宽到 30
 
 ## 许可证
 
-[MIT License](./LICENSE) © 2025 Thinker
+[MIT License](./LICENSE) © 2026 SOLO-Thinker
